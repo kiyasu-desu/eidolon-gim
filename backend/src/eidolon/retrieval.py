@@ -89,7 +89,8 @@ FALLBACK_REFERENCES = 3
 vectors, of which no threshold can tell the relevant."""
 
 RECALL_EPISODES = 3
-"""The most episodes one call of the recall-story tool brings back."""
+"""The most episodes one recall brings back. If relevant confirmed experiences exist,
+conditional reactions cannot fill every slot."""
 RECALL_ENTRIES = 3
 """The most lives and releases of the work facts recalling brings back along with the
 episodes."""
@@ -502,7 +503,7 @@ class Retrieval:
             episode_ids = {nearest.origin: None} if nearest else {}
             found = list(entries[:1])
         else:
-            episode_ids, found = self._relevant(best, story, entries)
+            episode_ids, found = await asyncio.to_thread(self._relevant, best, story, entries)
         corpus = self._sources.corpus
         episodes = await asyncio.to_thread(_episodes, corpus, episode_ids) if episode_ids else []
         if not episodes and not found:
@@ -517,18 +518,34 @@ class Retrieval:
         entries: Sequence[WorldEntry],
     ) -> tuple[dict[str, None], list[WorldEntry]]:
         """The episodes (their identifiers, in order) and the work facts to recall, of the
-        `story` candidates and `entries` reranked together, `best` first."""
-        episode_ids: dict[str, None] = {}
+        `story` candidates and `entries` reranked together, `best` first. Reserve one
+        episode slot for a confirmed experience that passed the relevance threshold,
+        if conditional reactions would otherwise occupy every slot."""
+        ranked_ids: dict[str, None] = {}
         found: list[WorldEntry] = []
         min_relevance = self._min_relevance()
         for i, score in best:
             if score < min_relevance:
                 continue
             if i < len(story):
-                if len(episode_ids) < RECALL_EPISODES:
-                    episode_ids.setdefault(story[i].origin)
+                ranked_ids.setdefault(story[i].origin)
             elif len(found) < RECALL_ENTRIES:
                 found.append(entries[i - len(story)])
+        episode_ids = dict.fromkeys(list(ranked_ids)[:RECALL_EPISODES])
+        # Conditional reactions are useful context, but cannot establish what happened.
+        # Do not let them occupy every slot when a confirmed episode also passed the
+        # same relevance threshold. Keep the total bound and the reranker's order.
+        corpus = self._sources.corpus
+        if len(episode_ids) == RECALL_EPISODES and all(
+            corpus.imported_from(id) == "gim-conditional-csv" for id in episode_ids
+        ):
+            confirmed = next((
+                id for id in ranked_ids if id not in episode_ids
+                and corpus.imported_from(id) in ("csv", "json", "gim-csv")
+            ), None)
+            if confirmed is not None:
+                episode_ids.popitem()
+                episode_ids[confirmed] = None
         return episode_ids, found
 
     def close(self) -> None:
