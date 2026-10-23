@@ -201,6 +201,7 @@ export const LIMIT_FIELDS = [
   "photos_per_hour",
   "call_minutes",
   "turns_per_call",
+  "concurrent_calls",
   "history_turns",
 ];
 

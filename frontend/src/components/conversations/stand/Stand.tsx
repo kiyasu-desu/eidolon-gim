@@ -4,10 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Outfit } from "@/lib/api";
 import type { StandDirection } from "@/lib/standAnimations";
+import { is3DStandOutfit } from "@/lib/stand3d";
 import { cn } from "@/lib/utils";
 
 import { loadSpineRuntime } from "./spineRuntime";
+import { Stand3DEngine } from "./Stand3DEngine";
 import { StandEngine, type Framing } from "./StandEngine";
+
+type AnyStandEngine = StandEngine | Stand3DEngine;
 
 type Props = {
   /** 依次试的衣装：选中的那套，再是默认衣装（`outfitsToTry`）。变了就在原地换上。 */
@@ -49,9 +53,10 @@ export function Stand({
 }: Props) {
   // 按衣装的值而不是数组来载入：角色列表或衣装清单重新拉取时，同样的衣装不会让立绘重新载入。
   const wanted = JSON.stringify(outfits.map(({ id, url }) => ({ id, url })));
+  const is3D = outfits.some(is3DStandOutfit);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const engine = useRef<StandEngine | null>(null);
-  const [ready, setReady] = useState<StandEngine | null>(null);
+  const engine = useRef<AnyStandEngine | null>(null);
+  const [ready, setReady] = useState<AnyStandEngine | null>(null);
   /** 加载中（包括几套衣装都加载不到）、画出来了，或者这台设备上画不了。 */
   const [phase, setPhase] = useState<"loading" | "shown" | "failed">("loading");
 
@@ -78,16 +83,26 @@ export function Stand({
     engine.current?.direct(direction, isReducedMotion);
   }, [direction, isReducedMotion]);
 
-  // 引擎每次挂载只建一个：runtime 到了就建，之后换衣装都在它上面换。
+  // 引擎每次挂载只建一个：runtime 到了就建（3D 立绘直接用 Three.js 建），之后换衣装都在它上面换。
   useEffect(() => {
     const target = canvas.current;
     if (!target) return;
     let cancelled = false;
-    let created: StandEngine | null = null;
-    loadSpineRuntime()
-      .then((spine) => {
-        if (cancelled) return;
-        created = new StandEngine(target, spine, current.current.framing, current.current.maxPixelRatio);
+    let created: AnyStandEngine | null = null;
+    const createEngine = is3D
+      ? Promise.resolve().then(
+          () => new Stand3DEngine(target, current.current.framing, current.current.maxPixelRatio),
+        )
+      : loadSpineRuntime().then(
+          (spine) => new StandEngine(target, spine, current.current.framing, current.current.maxPixelRatio),
+        );
+    createEngine
+      .then((instance) => {
+        if (cancelled) {
+          instance.dispose();
+          return;
+        }
+        created = instance;
         created.setStill(current.current.isStill);
         created.setPaused(current.current.isPaused);
         created.direct(current.current.direction, current.current.isReducedMotion);
@@ -102,7 +117,7 @@ export function Stand({
       created?.dispose();
       engine.current = null;
     };
-  }, []);
+  }, [is3D]);
 
   // 依次试这几套衣装，换上第一套载入成功的。
   useEffect(() => {

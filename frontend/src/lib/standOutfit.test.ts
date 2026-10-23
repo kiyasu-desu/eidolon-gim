@@ -218,4 +218,12 @@ describe("prefetching her stand", () => {
       "https://stand.example/spine/idols/stand/1030010010/data.png",
     ]);
   });
+
+  it("fetches model.json and animations.json for a 3D stand outfit without the Spine runtime", () => {
+    const outfit3d = { id: "stand_3d/ttmr-default", url: "/api/characters/temari/stand/" };
+    expect(prefetchedFiles(outfit3d, "/vendor/spine-3.6/spine-webgl.js")).toEqual([
+      "/api/characters/temari/stand/model.json",
+      "/api/characters/temari/stand/animations.json",
+    ]);
+  });
 });

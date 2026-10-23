@@ -85,8 +85,8 @@ export type Stand = {
   default_outfit: Outfit;
   /** Her outfit list: `{idol_id, cards}`, each card with its `everyday` clothes and `stage`
    * costume (either may be null), whose `url` and `thumbnail` are relative to the list
-   * (docs/deploy.md「立绘素材」). */
-  outfits_url: string;
+   * (docs/deploy.md「立绘素材」); `null` when she has a single default outfit and no list. */
+  outfits_url: string | null;
 };
 
 /** One outfit of her stand: `id` is `stand/<enzaId>` or `stand_costume/<enzaId>`, and `url` the

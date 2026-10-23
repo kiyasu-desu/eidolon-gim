@@ -1,0 +1,68 @@
+/* 沿用落地页的深色、光线与三套自托管字体；单角色入口没有媒体和滚动舞台依赖。 */
+.gim-landing {
+  --gim-width: 1200px;
+  --gim-gutter: clamp(24px, 6vw, 80px);
+  overflow: clip;
+  scrollbar-color: var(--lp-dim) transparent;
+}
+.gim-landing ::selection { background: var(--lp-ink); color: #020203; }
+.gim-landing a { text-underline-offset: 5px; }
+.gim-wordmark:focus-visible,
+.gim-skip:focus-visible,
+.gim-actions > a:last-child:focus-visible,
+.gim-footer a:focus-visible { outline: 2px solid var(--lp-ink); outline-offset: 5px; }
+.gim-skip { position: fixed; left: 24px; top: -80px; z-index: 20; padding: 12px; background: #020203; }
+.gim-skip:focus { top: 16px; }
+.gim-header,
+.gim-hero,
+.gim-scope,
+.gim-start,
+.gim-footer { width: min(100%, var(--gim-width)); margin-inline: auto; padding-inline: var(--gim-gutter); }
+.gim-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 24px; position: relative; z-index: 2; }
+.gim-wordmark { font-family: var(--lp-ja); font-size: 22px; white-space: nowrap; text-decoration: none; }
+.gim-hero { position: relative; min-height: 730px; min-height: min(830px, calc(100svh - 80px)); display: grid; grid-template-columns: 1.4fr 0.6fr; align-items: center; gap: 40px; padding-block: 80px 120px; }
+.gim-hero .lp-beam { top: 69%; width: 76%; z-index: 0; opacity: 0.18; }
+.gim-hero-copy,
+.gim-nameplate { position: relative; z-index: 1; }
+.gim-hero h1 { font-family: var(--lp-zh-title); font-size: clamp(44px, 6vw, 76px); line-height: 1.35; letter-spacing: -0.025em; text-wrap: balance; margin: 0 0 28px; }
+.gim-lede { font-family: var(--lp-zh-title); font-size: clamp(22px, 3vw, 32px); margin: 0 0 24px; text-wrap: balance; }
+.gim-body { max-width: 65ch; color: var(--lp-dim); font-size: 16px; line-height: 1.9; margin: 0; }
+.gim-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 32px; }
+.gim-actions > a:last-child { font-size: 14px; color: var(--lp-dim); text-decoration: underline; }
+.gim-actions > a:last-child:hover { color: var(--lp-ink); }
+.gim-note { color: var(--lp-dim); font-size: 13px; line-height: 1.9; margin: 24px 0 0; }
+.gim-nameplate { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.gim-nameplate > p { font-family: var(--lp-ja); font-size: clamp(64px, 7vw, 88px); writing-mode: vertical-rl; line-height: 1.3; letter-spacing: 0.12em; margin: 0; }
+.gim-nameplate figcaption { max-width: 18em; font-size: 12px; line-height: 1.8; text-align: center; color: var(--lp-dim); }
+.gim-scope { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding-block: 100px; scroll-margin-top: 32px; }
+.gim-landing h2 { font-family: var(--lp-zh-title); font-size: clamp(28px, 3vw, 40px); line-height: 1.5; text-wrap: balance; margin: 0 0 24px; }
+.gim-facts { margin: 0; }
+.gim-facts > div { padding-block: 28px; border-top: 1px solid rgb(238 236 242 / 0.2); }
+.gim-facts > div:first-child { padding-top: 0; border-top: 0; }
+.gim-facts dt { font-size: 18px; margin-bottom: 8px; }
+.gim-facts dd { margin: 0; color: var(--lp-dim); font-size: 15px; line-height: 1.9; }
+.gim-start { padding-block: 80px 112px; }
+.gim-start > button,
+.gim-start > a { margin-top: 32px; }
+.gim-footer { padding-block: 32px; border-top: 1px solid rgb(238 236 242 / 0.2); color: var(--lp-dim); font-size: 12px; line-height: 1.9; }
+.gim-footer p { margin: 0 0 16px; }
+.gim-footer nav { display: flex; flex-wrap: wrap; gap: 24px; }
+.gim-footer a:hover { color: var(--lp-ink); }
+@media (max-width: 700px) {
+  .gim-header { padding-block: 20px; gap: 8px; flex-wrap: wrap; }
+  .gim-wordmark { font-size: 18px; }
+  .gim-header > div { gap: 4px; }
+  .gim-hero { min-height: auto; grid-template-columns: 1fr; gap: 64px; padding-block: 64px 80px; }
+  .gim-hero h1 { font-size: clamp(40px, 8vw, 56px); margin-bottom: 20px; }
+  .gim-hero .lp-beam { left: 0; top: 71%; width: 62%; height: 2px; transform: none; }
+  .gim-hero .lp-beam::before { left: 0; right: 0; top: -300px; bottom: -300px; background: linear-gradient(to top, var(--lp-halo)) top / 100% 50% no-repeat, linear-gradient(to bottom, var(--lp-halo)) bottom / 100% 50% no-repeat; }
+  .gim-hero .lp-beam::after { left: auto; right: -300px; top: 50%; bottom: auto; transform: translateY(-50%); background: radial-gradient(circle 220px, var(--lp-tip)), radial-gradient(circle 300px at 0 50%, var(--lp-halo)) right / 50% 100% no-repeat; }
+  .gim-nameplate { align-items: flex-end; gap: 16px; }
+  .gim-nameplate > p { writing-mode: horizontal-tb; font-size: 52px; letter-spacing: 0.04em; }
+  .gim-nameplate figcaption { text-align: right; }
+  .gim-scope { grid-template-columns: 1fr; gap: 40px; padding-block: 64px; }
+  .gim-start { padding-block: 48px 80px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gim-landing *, .gim-landing *::before, .gim-landing *::after { scroll-behavior: auto; transition: none; animation: none; }
+}

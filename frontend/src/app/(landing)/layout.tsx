@@ -1,5 +1,6 @@
 import "../globals.css";
 import "./landing.css";
+import "./gim.css";
 
 import type { Metadata } from "next";
 import localFont from "next/font/local";
@@ -7,11 +8,9 @@ import { headers } from "next/headers";
 
 import { copy } from "@/i18n";
 
-import { TIER_SCRIPT } from "./tierScript";
-
 /**
- * 标题、描述和分享卡片（Open Graph、Twitter 卡片）。卡片的图是同目录下的 opengraph-image.jpg
- * （scripts/landing-og.mjs 生成），Next 按文件约定给 `/` 和 `/about` 都加上；X 没有 twitter:image 时
+ * 标题、描述和分享卡片（Open Graph、Twitter 卡片）。卡片由同目录下的 opengraph-image.tsx
+ * 生成，Next 按文件约定给 `/` 和 `/about` 都加上；X 没有 twitter:image 时
  * 用 og:image，不另放一份。卡片要绝对地址，而自托管的构建不知道部署在哪个域名下：按这次请求的地址拼
  * （Caddy 转发时带着原来的 Host 和 X-Forwarded-Proto）。
  */
@@ -100,16 +99,10 @@ const fontVariables = [jaAct0, ja, zhTitleAct0, zhTitle, zhAct0, zh].map((f) => 
  * 落地页自己的根 layout（ADR-0016 修订）：不加载应用根 layout 里 next/font 的 CJK 字体，那些切片 CSS
  * 会阻塞首屏；全局样式表只为登录面板和按钮（shadcn）引入。永远深色，不跟随系统。
  * 和应用之间跳转是整页加载。
- *
- * <head> 里的内联脚本在页面画出来之前定档，写到 <html> 的 data-lp-* 上（tierScript.ts）；
- * 这几个属性不是 React 渲染的，所以 <html> 不比对它们（suppressHydrationWarning）。
  */
 export default function LandingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" className={`dark ${fontVariables}`} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: TIER_SCRIPT }} />
-      </head>
+    <html lang="zh-CN" className={`dark ${fontVariables}`}>
       <body>{children}</body>
     </html>
   );

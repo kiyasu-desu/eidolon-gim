@@ -111,9 +111,9 @@ describe("一级列表上的摘要", () => {
     expect(settingsSummaries({ ...loading, call: { ...call, phoneTexture: false } }).call).toBe("高保真 · 电话质感关");
   });
 
-  it("外观是 SCSP 头像开／关", () => {
-    expect(settingsSummaries({ ...loading, appearance: { scspAvatars: true } }).appearance).toBe("SCSP 头像开");
-    expect(settingsSummaries({ ...loading, appearance: { scspAvatars: false } }).appearance).toBe("SCSP 头像关");
+  it("外观是备用头像开／关", () => {
+    expect(settingsSummaries({ ...loading, appearance: { scspAvatars: true } }).appearance).toBe("备用头像开");
+    expect(settingsSummaries({ ...loading, appearance: { scspAvatars: false } }).appearance).toBe("备用头像关");
   });
 
   it("搭话是开／关", () => {

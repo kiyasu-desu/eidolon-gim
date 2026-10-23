@@ -73,15 +73,19 @@ export function useStandOutfits(character: Character): StandOutfits | null {
   const worn = stand && listUrl ? wornOutfit(outfitId, cards, stand.default_outfit, absolute(listUrl)) : null;
 
   // 读到本机的选择就预取她穿的那套，不等清单；清单到了发现这套已经没有了、或者换了衣装，就预取新的那套。
-  const prefetchUrl = choice?.characterId === characterId && worn ? worn.url : null;
+  // 单套默认立绘（没有衣装清单 `outfits_url`）也在空闲时预取默认立绘。
+  const prefetchOutfit =
+    choice?.characterId === characterId ? (worn ?? stand?.default_outfit ?? null) : null;
+  const prefetchId = prefetchOutfit?.id ?? null;
+  const prefetchUrl = prefetchOutfit?.url ?? null;
   useEffect(() => {
-    if (!prefetchUrl || !shouldPrefetch(connection())) return;
-    const files = prefetchedFiles({ url: prefetchUrl }, SPINE_RUNTIME_URL);
+    if (!prefetchId || !prefetchUrl || !shouldPrefetch(connection())) return;
+    const files = prefetchedFiles({ id: prefetchId, url: prefetchUrl }, SPINE_RUNTIME_URL);
     return whenIdle(() => {
       // 读完响应体才算进了缓存；预取失败无所谓，打电话时再下载。
       for (const file of files) fetch(file).then((response) => response.arrayBuffer()).catch(() => {});
     });
-  }, [prefetchUrl]);
+  }, [prefetchId, prefetchUrl]);
 
   if (!stand || !worn) return null;
   return {

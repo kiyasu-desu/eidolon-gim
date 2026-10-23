@@ -21,6 +21,7 @@ const REASONS: Record<string, string> = {
   too_new: "GitHub 账号注册满一年后才能用来登录。",
   email_unverified: "这个 Google 账号的邮箱还没有验证，验证后才能用来登录。",
   banned: "这位用户已被封禁，无法登录。",
+  not_allowed: "此站点仅供个人使用，你的账号不在访问白名单中。",
   state: "登录请求已失效，请重新登录。",
   cancelled: "已取消登录。",
   provider: "暂时无法向登录服务确认你的身份，请稍后再试。",

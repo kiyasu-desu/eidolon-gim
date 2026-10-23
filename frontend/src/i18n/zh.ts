@@ -21,10 +21,10 @@ const reasoningEffortProblems = {
 
 export const zh = {
   app: {
-    name: "Eidolon-SC",
-    description: "和 283 事务所的偶像说说话",
+    name: "Eidolon-GIM",
+    description: "和月村手毬说说话",
     /** 链到项目仓库的那个链接：落地页右上角的字，导航栏底部（电脑）图标键的读屏名字。 */
-    repositoryLabel: "GitHub",
+    repositoryLabel: "上游源码",
   },
   /** 导航外壳的导航栏（电脑）和 dock（手机），DESIGN.md「Layout」。 */
   nav: {
@@ -39,8 +39,8 @@ export const zh = {
   },
   /** 落地页的链接贴到聊天软件、社交网站时预览卡片上的文字（Open Graph、Twitter 卡片）。页面上不显示，不进字体子集。 */
   share: {
-    title: "Eidolon-SC · 和 283 事务所的偶像说说话",
-    description: "她们用自己的声音说日语，配中文字幕；可以给她打电话，她还会记得你说过的事。非官方粉丝作品，角色由 AI 扮演。",
+    title: "Eidolon-GIM · 和月村手毬说说话",
+    description: "《学园偶像大师》月村手毬的本地对话原型。非官方粉丝作品，角色由 AI 扮演；通话取决于本机语音配置，尚未接入专属音色、剧情库和动态形象。",
   },
   common: {
     back: "返回",
@@ -172,7 +172,7 @@ export const zh = {
     /** 消息区里跨天处的日期条；昨天、更早的写法和列表一样（conversationList）。 */
     today: "今天",
     emptyTitle: (name: string) => `和${name}打个招呼吧`,
-    emptyDescription: "打字，或者点右上角的电话和她通话。",
+    emptyDescription: "从一句问候开始。语音通话取决于本机语音配置。",
     replying: (name: string) => `${name}正在回复`,
     /** 对话事件（GLOSSARY.md「对话事件」）给用户看的一句话：消息区的分隔线和列表的「最后一句」都用它。 */
     events: {
@@ -319,6 +319,11 @@ export const zh = {
     speakFreely: "直接说话就好",
     repliesInText: "她会用文字回复",
     hearing: (text: string) => `你：${text}…`,
+    /** 通话里打出去的话，她开口前留在台词卡底部。 */
+    typed: (text: string) => `你：${text}`,
+    /** 底栏的打字键；点了底栏换成输入栏。 */
+    type: "打字",
+    closeTyping: "收起输入栏",
     micMute: "麦克风静音",
     micUnmute: "取消麦克风静音",
     hangUp: "挂断",
@@ -382,6 +387,10 @@ export const zh = {
         /** 点名这个部署的免限额密钥（GLOSSARY.md「免限额密钥」），经 `sayServices` 拼上服务名。 */
         body: (services: string) => `这个部署上，带上自己的${services}的通话不计入限额。`,
       },
+      busy: {
+        title: "现在打电话的人太多",
+        body: "稍后再拨一次试试。",
+      },
       own_key: {
         title: "你的自带密钥出错了",
         body: "自带密钥调用失败时，不会悄悄改用部署者的密钥。检查一下设置页里的密钥再重拨。",
@@ -398,10 +407,10 @@ export const zh = {
 
   /** 全站都要说清的声明（PRODUCT.md「Brand Commitments」）。 */
   legal: {
-    disclaimer: "非官方的粉丝作品，与版权方无关。角色由 AI 扮演。",
+    disclaimer: "《学园偶像大师》非官方粉丝作品，与版权方无关。当前仅月村手毬，角色由 AI 扮演。",
     privacy: "隐私政策",
     terms: "使用条款",
-    pageTitle: (page: string) => `${page} · Eidolon-SC`,
+    pageTitle: (page: string) => `${page} · Eidolon-GIM`,
   },
   failure: {
     signIn: "去登录",
@@ -409,7 +418,7 @@ export const zh = {
     toOwnKeys: "去设置自带密钥",
   },
   login: {
-    lede: "和《偶像大师 闪耀色彩》283 事务所的偶像们打电话、说话。她们会用自己的声音回答你，记得原作里和制作人一起走过的事，也会记住你告诉她们的事。",
+    lede: "和《学园偶像大师》的月村手毬进行文字对话。这是本地私用原型，角色由 AI 扮演；通话取决于本机语音配置，尚未接入剧情库、专属音色和动态形象。",
     signInRegion: "登录",
     signInWith: (provider: string) => `用 ${provider} 登录`,
     noProviders: "部署者还没有配置登录方式。",
@@ -423,11 +432,34 @@ export const zh = {
   },
   /** 落地页（ADR-0016）。各幕的文案由后续的 ticket 补上，都要交用户审。 */
   landing: {
-    disclaimer: "非官方粉丝作品，角色由 AI 扮演。",
+    disclaimer: "《学园偶像大师》非官方粉丝作品，角色由 AI 扮演。",
     signIn: "登录",
     continue: "继续",
     panelTitle: "登录",
     devSignIn: "开发登录",
+    prototype: {
+      skip: "跳到正文",
+      title: "从一句话开始。",
+      intro: "制作人，今天想聊些什么？这是《学园偶像大师》月村手毬的本地文字对话原型。",
+      name: "月村手毬",
+      placeholder: "姓名排版占位 · 尚未接入角色形象",
+      start: "登录，开始对话",
+      resume: "继续和手毬对话",
+      scopeLink: "了解当前版本",
+      scopeTitle: "现在，可以打字和她聊聊。",
+      scopeBody: "当前仅有月村手毬一位角色。回复由对话模型生成，不代表官方设定；没有资料支持的经历可能说错。",
+      facts: [
+        { title: "文字对话", body: "发送消息，查看回复；刷新页面后仍可继续查看已保存的记录。" },
+        { title: "语音与通话", body: "通话取决于本机语音配置，需要可用的识别与合成服务。角色专属音色尚未接入，中性合成声音不代表原作声音。" },
+        { title: "剧情与形象", body: "尚未导入原作剧情，也没有动态模型。这里的姓名排版是资源缺失时的占位，不是角色立绘。" },
+      ],
+      startTitle: "给今天留下一段对话。",
+      data: "对话保存在这台部署机器的本地数据库。回复时会把必要的对话内容发给配置的模型服务；数据处理方式见隐私政策。",
+      providers: (providers: string) => `可用登录方式：${providers}。`,
+      devLogin: "本机已开启开发登录，可从登录面板进入。",
+      noLogin: "当前尚未配置可用的登录方式，请联系部署者。",
+      footerLabel: "关于与法律信息",
+    },
     /**
      * 第 1 幕「プリズム」：白光射进棱镜，散成她们的颜色（画面上仍是分光，文字只说这是什么）。name 是竖排的
      * 日文幕名，纯装饰，和幕名轨那一格同步改。title 的人数按名单算。
@@ -560,8 +592,8 @@ export const zh = {
       daysKnown: (days: number) => `已认识 ${days} 天`,
       phoneTextureOn: "电话质感开",
       phoneTextureOff: "电话质感关",
-      scspAvatarsOn: "SCSP 头像开",
-      scspAvatarsOff: "SCSP 头像关",
+      scspAvatarsOn: "备用头像开",
+      scspAvatarsOff: "备用头像关",
       reachOutsOn: "开",
       reachOutsOff: "关",
       ownKeysNone: "全部用部署者的服务",
@@ -629,8 +661,8 @@ export const zh = {
     },
     /** 「关于」的四行和最下面的免责声明（应用里只留这一处）。 */
     about: {
-      site: "关于 Eidolon-SC",
-      repository: "GitHub 仓库",
+      site: "关于 Eidolon-GIM",
+      repository: "上游源码（Eidolon-SC）",
       privacy: "隐私政策",
       terms: "使用条款",
       disclaimer: "非官方粉丝作品，与版权方无关；角色由 AI 扮演。",
@@ -640,7 +672,7 @@ export const zh = {
       formOfAddressHint: "角色对你的叫法，只改变叫法，你仍然是她们的制作人。留空时，角色按各自的习惯称呼你。",
       formOfAddressPlaceholder: "例如：小林さん",
       gender: "性别",
-      genderHint: "只影响角色现在怎么对待你，不会改写她们回忆中的原作剧情。",
+      genderHint: "影响角色在当前对话中如何称呼和对待你。",
       genderDefault: "沿用原作设定（男性）",
       male: "男性",
       female: "女性",
@@ -666,7 +698,8 @@ export const zh = {
       on: "她们会主动搭话",
     },
     appearance: {
-      scspAvatars: "SCSP 头像",
+      scspAvatars: "备用头像",
+      noAlternate: "当前角色尚未配置备用头像。",
     },
     call: {
       mic: "默认麦克风",
@@ -1383,6 +1416,7 @@ export const zh = {
         photos_per_hour: "每小时照片数",
         call_minutes: "单次通话的时长上限（分钟）",
         turns_per_call: "单次通话的回合上限",
+        concurrent_calls: "同时进行的通话数上限",
         history_turns: "带上的历史回合数",
         /** 免限额密钥（GLOSSARY.md「免限额密钥」）的三个开关。 */
         exempting_llm: "免限额密钥：LLM",
@@ -1879,7 +1913,7 @@ export const zh = {
           // 不论免限额密钥是哪几项都要对，不点名哪几项。
           { term: "语言模型服务", text: "扮演角色、提炼记忆和给对话起标题时，对话内容和相关记忆会发给语言模型服务：你填了自己的 LLM，就发给你选择的服务（另配了后台模型的，提炼记忆和起标题时发给它）；没填，就发给部署者配置的服务。开着搭话时，即使你不在线，服务器也会把这段对话和相关记忆发给部署者配置的服务，生成她先说的话；填了自己的 LLM 也一样。" },
           { term: "判断模型", text: "每个回合，你说的话连同最近几个回合的对话会发给部署者配置的判断模型（TypeSafe 的 Jev，经 OpenRouter 等转发；或 Cloudflare 的 Clef），用来判断要不要回忆剧情或查资料、你是不是在要照片，以及这句话让角色对你的好感度怎样变化；通话中角色的回复也会一段段发过去，判断她的情绪。判断模型始终由部署者提供，填了自带密钥也不改变这一点。" },
-          { term: "语音服务", text: "通话时，你的声音会发给部署者选择的语音识别服务（Soniox 或阿里云百炼）识别成文字，角色的回复会发给 Fish Audio 合成语音。阿里云百炼不会用你的声音训练模型，但会保存一段时间，存放在中国内地或新加坡，取决于部署者的账号。" },
+          { term: "语音服务", text: "通话音频先通过 WebRTC 传到部署机器。使用 Windows 本机识别或合成时，对应处理在该机器完成，处理使用的临时音频在完成、取消或超时后删除；识别出的文字仍会按上述说明发给语言模型。使用远程识别（Soniox 或阿里云百炼）或合成（Fish Audio）时，对应音频或回复会发给该服务，包括你选择自带密钥的服务。阿里云百炼的数据存放地域取决于账号配置。" },
           { term: "向量化和重排服务", text: "为了在对话中找到相关的剧情和记忆，你说的话和记忆会发给部署者选择的向量化服务（硅基流动或 Google Gemini）和重排服务（硅基流动）。" },
           { term: "生图服务", text: "角色给你发照片时，描述这张照片的英文 tag（地点、服装、动作，由角色根据对话写出）会发给部署者配置的生图服务（NovelAI，或者转发它的中转）；不发你说的原话。你填了自己的生图密钥，就发给你自己选择的服务。" },
           { term: "登录服务", text: "登录时，Google 或 GitHub 会知道你登录了这个网站。" },
@@ -1918,7 +1952,7 @@ export const zh = {
   terms: {
     title: "使用条款",
     items: [
-      { term: "非官方的粉丝作品", text: "与《偶像大师 闪耀色彩》的版权方和官方没有任何关系。" },
+      { term: "非官方的粉丝作品", text: "这是《学园偶像大师》的本地私用单角色原型，当前仅月村手毬；与版权方和官方没有任何关系。" },
       { term: "角色由 AI 扮演", text: "和你说话的角色不是真人，也不代表官方设定。她们说的话可能出错，请不要当真，也不要依赖她们做重要的决定。" },
       { term: "不保证一直可用", text: "服务由个人部署和负担费用，可能随时调整限额、暂停或关闭，数据也可能因故丢失。" },
       { term: "年满 13 岁", text: "你需要年满 13 岁才能使用。" },

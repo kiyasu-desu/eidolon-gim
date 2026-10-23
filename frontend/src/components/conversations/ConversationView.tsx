@@ -421,7 +421,7 @@ export function ConversationView({
         <LiveCallLayer
           live={live}
           character={character}
-          standOutfits={outfits?.toTry ?? []}
+          standOutfits={outfits?.toTry ?? (character.stand ? [character.stand.default_outfit] : [])}
           layerRef={focus.layer}
           isFullScreen={isFullScreen}
           go={go}

@@ -3,6 +3,7 @@
 // her in. The choice is kept in this browser's local storage, one outfit per character.
 
 import type { Outfit } from "@/lib/api";
+import { is3DStandOutfit } from "@/lib/stand3d";
 
 /** An outfit as the outfit list gives it, with its thumbnail. */
 export type ListedOutfit = Outfit & { thumbnail: string };
@@ -136,8 +137,11 @@ export function shouldPrefetch(connection: { saveData?: boolean } | undefined): 
 }
 
 /** What prefetching her stand fetches: the runtime at `runtimeUrl`, and the files of the
- * outfit she wears. */
-export function prefetchedFiles(outfit: Pick<Outfit, "url">, runtimeUrl: string): string[] {
+ * outfit she wears (or `model.json` and `animations.json` for a 3D stand). */
+export function prefetchedFiles(outfit: Pick<Outfit, "id" | "url">, runtimeUrl: string): string[] {
+  if (is3DStandOutfit(outfit)) {
+    return ["model.json", "animations.json"].map((file) => `${outfit.url}${file}`);
+  }
   return [runtimeUrl, ...["data.json", "data.atlas", "data.png"].map((file) => `${outfit.url}${file}`)];
 }
 

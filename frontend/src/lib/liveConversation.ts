@@ -36,6 +36,7 @@ import {
   nextPacedAt,
   pacedCard,
   previousLineOf,
+  typedOf,
   type LineCard,
   type LineCardEvent,
 } from "@/lib/linePacing";
@@ -116,6 +117,12 @@ export type Snapshot = {
   layer: Layer | null;
   /** The list of microphones is open; only while the call is connected. */
   pickingMic: boolean;
+  /** The call layer's dock is swapped for the input bar, to type to her; only while the call is
+   * connected, and each call starts without it. */
+  typing: boolean;
+  /** What the user typed in the call, shown at the line card's foot until her reply to it is
+   * said (`linePacing.ts`); null for nothing. */
+  typed: string | null;
   /** What the user is saying in the call so far. */
   hearing: string;
   /** The line the call screen's line card shows, by the rules in `linePacing.ts`: with her
@@ -176,7 +183,16 @@ export type Snapshot = {
 
 type State = Omit<
   Snapshot,
-  "entries" | "line" | "previousLine" | "stand" | "canDial" | "canStartNew" | "cooling" | "ended" | "callPhoto"
+  | "entries"
+  | "line"
+  | "previousLine"
+  | "typed"
+  | "stand"
+  | "canDial"
+  | "canStartNew"
+  | "cooling"
+  | "ended"
+  | "callPhoto"
 > & {
   log: ConversationLog;
   /** The photo she sent last in the call under way or the last one, by its id. */
@@ -194,6 +210,7 @@ const IDLE: Omit<State, "log" | "card" | "stand" | "dial" | "callPhotoId"> = {
   call: { phase: "idle" },
   layer: null,
   pickingMic: false,
+  typing: false,
   hearing: "",
   micMuted: false,
   micId: "",
@@ -214,6 +231,7 @@ export const NOT_OPEN: Snapshot = {
   entries: [],
   line: null,
   previousLine: null,
+  typed: null,
   stand: CALM,
   canDial: false,
   canStartNew: false,
@@ -413,7 +431,7 @@ export class LiveConversation {
       // The call takes it up like speech; its reply arrives as call events. Typed while she
       // speaks, it interrupts her.
       this.call.sendText(text);
-      this.moveCard({ type: "interrupted" }, { stand: this.directed({ type: "typed" }) });
+      this.moveCard({ type: "interrupted", typed: text }, { stand: this.directed({ type: "typed" }) });
       return;
     }
     this.apply({ type: "submitted", text, at: this.isoNow() }, { busy: true });
@@ -569,7 +587,9 @@ export class LiveConversation {
   /** Collapse the call layer onto the conversation, while the call is under way. */
   collapse(): void {
     const layer = this.state.layer;
-    if (isLive(this.state.call) && layer && !layer.collapsed) this.update({ layer: { ...layer, collapsed: true } });
+    // The input bar goes with it: folded away it would leave the viewport as the bar sets it.
+    if (isLive(this.state.call) && layer && !layer.collapsed)
+      this.update({ layer: { ...layer, collapsed: true }, typing: false });
   }
 
   /** Unfold the call layer, while the call is under way: once it is over it cannot open again.
@@ -594,6 +614,16 @@ export class LiveConversation {
 
   closeMicPicker(): void {
     if (this.state.pickingMic) this.update({ pickingMic: false });
+  }
+
+  /** Swap the call layer's dock for the input bar, to type to her in the call. */
+  openTyping(): void {
+    if (this.state.call.phase === "connected" && !this.state.typing) this.update({ typing: true });
+  }
+
+  /** Back to the dock; what is typed stays in the input box. */
+  closeTyping(): void {
+    if (this.state.typing) this.update({ typing: false });
   }
 
   /** Mic mute: the microphone's track only, in the browser; typing still goes to the call. */
@@ -923,13 +953,15 @@ export class LiveConversation {
  * How the call screen follows the call, from one state to the next: the layer draws the call
  * under way, and dialing, and a call ending for a reason, open it up again, so the user sees
  * the call or why it ended. Back at idle it keeps that last call, folded away, until the next
- * call. The microphone list is only for a connected call.
+ * call. The microphone list and the input bar are only for a connected call.
  */
 function withCallScreenRules(before: State, next: State): State {
   const layer = nextLayer(before, next);
-  const pickingMic = next.pickingMic && next.call.phase === "connected";
-  if (layer === next.layer && pickingMic === next.pickingMic) return next;
-  return { ...next, layer, pickingMic };
+  const connected = next.call.phase === "connected";
+  const pickingMic = next.pickingMic && connected;
+  const typing = next.typing && connected;
+  if (layer === next.layer && pickingMic === next.pickingMic && typing === next.typing) return next;
+  return { ...next, layer, pickingMic, typing };
 }
 
 /** The layer for the next state: the call under way, or the last one kept folded away. */
@@ -981,6 +1013,7 @@ function toSnapshot(state: State): Snapshot {
     entries: log.entries,
     line: lineOf(card),
     previousLine: previousLineOf(card),
+    typed: typedOf(card),
     stand: directionOf(stand),
     canDial: free && !isCooling(state) && !isEnded(state),
     canStartNew: canStartNew(state),

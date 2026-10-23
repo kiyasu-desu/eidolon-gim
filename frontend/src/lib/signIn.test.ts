@@ -11,6 +11,7 @@ describe("signInFailure", () => {
     expect(signInFailure("too_new")).toContain("一年");
     expect(signInFailure("email_unverified")).toContain("验证");
     expect(signInFailure("banned")).toContain("封禁");
+    expect(signInFailure("not_allowed")).toContain("白名单");
     expect(signInFailure("taken")).toContain("另一位用户");
   });
 
