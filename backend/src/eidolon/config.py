@@ -177,6 +177,28 @@ class SttKey:
     region: BailianRegion | None = None
 
 
+@dataclass(frozen=True)
+class WindowsSpeechSettings:
+    """Installed Windows speech components; these are local resources, never API keys."""
+
+    recognition_language: str = "zh-CN"
+    voice: str = "Microsoft Haruka Desktop"
+    voice_language: str = "ja-JP"
+
+    @classmethod
+    def from_env(cls) -> "WindowsSpeechSettings | None":
+        mode = os.environ.get("EIDOLON_LOCAL_SPEECH", "").strip()
+        if not mode:
+            return None
+        if mode != "windows":
+            raise RuntimeError("EIDOLON_LOCAL_SPEECH 只能留空或设为 windows")
+        return cls(
+            os.environ.get("EIDOLON_WINDOWS_STT_LANGUAGE", "").strip() or "zh-CN",
+            os.environ.get("EIDOLON_WINDOWS_TTS_VOICE", "").strip() or "Microsoft Haruka Desktop",
+            os.environ.get("EIDOLON_WINDOWS_TTS_LANGUAGE", "").strip() or "ja-JP",
+        )
+
+
 DEFAULT_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
 DEFAULT_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_RERANK_MODEL = "Qwen/Qwen3-Reranker-0.6B"
@@ -228,6 +250,9 @@ DEFAULT_CALL_MINUTES = 10
 DEFAULT_TURNS_PER_CALL = 40
 """About what ten minutes of talking takes; a cap on typing turns in quickly during a call."""
 DEFAULT_PHOTOS_PER_HOUR = 5
+DEFAULT_CONCURRENT_CALLS = 10
+"""What one process on the deployment's two cores carries, every call's audio on the one
+event loop."""
 DEFAULT_HISTORY_TURNS = 20
 """How many of a conversation's latest turns the chat model reads; memories carry the rest."""
 
@@ -416,6 +441,7 @@ class Settings:
     bailian_stt_model: str = DEFAULT_BAILIAN_STT_MODEL
     """What Alibaba Cloud Model Studio recognizes speech with, whoever's key it is on."""
     fish_audio_api_key: str | None = None
+    local_speech: WindowsSpeechSettings | None = None
     fish_audio_model: FishAudioModel = DEFAULT_FISH_AUDIO_MODEL
     embedding: "EmbeddingSettings | None" = None
     rerank: "RerankSettings | None" = None
@@ -434,8 +460,8 @@ class Settings:
     towards no limit (GLOSSARY.md「免限额密钥」), at least one; all three unless `.env`
     turns some off, and the admin console may override it. Text turns go by the LLM alone."""
     affinity_and_gifts: bool = True
-    """Whether affinity and gifts are on (GLOSSARY.md「好感度」), as they are only with the
-    judge model; on unless `.env` turns them off, and the admin console may override it."""
+    """Whether affinity and gifts are on (GLOSSARY.md「好感度」), only with a judge model.
+    GIM environment configuration defaults off; the admin console may override it."""
     reach_outs: bool = False
     """Whether characters reach out to users (GLOSSARY.md「搭话」), on the deployer's chat
     model; off unless `.env` turns it on, and the admin console may override it."""
@@ -461,6 +487,10 @@ class Settings:
     admins: frozenset[tuple[str, str]] = frozenset()
     """The identities, as (provider, subject), whose users are admins and may enter the
     admin console (ADR-0013); without any, there is no admin console."""
+    private_mode: bool = False
+    """Require an explicit identity allowlist for a personal deployment."""
+    allowed_identities: frozenset[tuple[str, str]] = frozenset()
+    """When nonempty, only these provider subjects may sign in or use sessions."""
     contact: str | None = None
     """How to reach the deployer, told to banned users when they try to sign in; None
     tells them no one."""
@@ -470,6 +500,10 @@ class Settings:
     every character's call background without her stand."""
 
     def __post_init__(self) -> None:
+        if self.private_mode and not self.allowed_identities:
+            raise RuntimeError("仅自用模式需要填写 EIDOLON_ALLOWED_IDENTITIES，拒绝以空白名单启动")
+        if self.allowed_identities and self.dev_login:
+            raise RuntimeError("账号白名单不能与 EIDOLON_DEV_LOGIN 同时开启，请关闭开发登录")
         if self.background_llm is None:
             object.__setattr__(self, "background_llm", self.chat_llm)
         if self.dev_login and self.domain:
@@ -521,6 +555,7 @@ class Settings:
             dashscope_api_key=os.environ.get("DASHSCOPE_API_KEY") or None,
             bailian_stt_model=_bailian_stt_model(),
             fish_audio_api_key=os.environ.get("FISH_AUDIO_API_KEY") or None,
+            local_speech=WindowsSpeechSettings.from_env(),
             fish_audio_model=fish_audio_model_from_env(),
             embedding=EmbeddingSettings.from_env(),
             rerank=RerankSettings.from_env(),
@@ -530,7 +565,7 @@ class Settings:
             usage_limits=UsageLimits.from_env(),
             history_turns=history_turns_from_env(),
             exempting_keys=exempting_keys_from_env(),
-            affinity_and_gifts=_switch("EIDOLON_AFFINITY_AND_GIFTS", default=True),
+            affinity_and_gifts=_switch("EIDOLON_AFFINITY_AND_GIFTS", default=False),
             reach_outs=_switch("EIDOLON_REACH_OUTS"),
             proxy=proxy_from_env(),
             service_status=service_status_from_env(),
@@ -542,6 +577,8 @@ class Settings:
             gemini_billing_enabled=os.environ.get("GEMINI_BILLING_ENABLED", "").strip() == "1",
             stand_assets_url=stand_assets_url_from_env(),
             admins=admins_from_env(),
+            private_mode=_switch("EIDOLON_PRIVATE_MODE"),
+            allowed_identities=identities_from_env("EIDOLON_ALLOWED_IDENTITIES"),
             contact=os.environ.get("EIDOLON_CONTACT", "").strip() or None,
         )
 
@@ -575,11 +612,11 @@ def _bailian_stt_model() -> str:
 
 
 def database_path_from_env() -> Path:
-    return Path(os.environ.get("EIDOLON_DATABASE_PATH", "data/eidolon.db"))
+    return Path(os.environ.get("EIDOLON_DATABASE_PATH", "data/eidolon-gim.db"))
 
 
 def characters_path_from_env() -> Path:
-    return Path(os.environ.get("EIDOLON_CHARACTERS_PATH", "../characters/characters.toml"))
+    return Path(os.environ.get("EIDOLON_CHARACTERS_PATH", "../characters/gim/characters.toml"))
 
 
 def story_path_from_env() -> Path:
@@ -625,17 +662,22 @@ def admins_from_env() -> frozenset[tuple[str, str]]:
     """`EIDOLON_ADMINS`: comma-separated `provider:subject`, as `eidolon user list` prints
     each sign-in method; by subject, not email, as two identities sharing an email are not
     the same user."""
+    return identities_from_env("EIDOLON_ADMINS")
+
+
+def identities_from_env(name: str) -> frozenset[tuple[str, str]]:
+    """Stable OAuth subjects, never display names or email addresses."""
     admins: set[tuple[str, str]] = set()
-    for item in _comma_list(os.environ.get("EIDOLON_ADMINS", "")):
+    for item in _comma_list(os.environ.get(name, "")):
         provider, _, subject = item.partition(":")
         if provider not in ADMIN_PROVIDERS:
             raise RuntimeError(
-                f"环境变量 EIDOLON_ADMINS 里的 {item} 不对：每一项是「提供方:身份标识」，"
+                f"环境变量 {name} 里的 {item} 不对：每一项是「提供方:身份标识」，"
                 f"提供方只能是 {'、'.join(ADMIN_PROVIDERS)}（身份标识见 eidolon user list）"
             )
         if not subject.strip():
             raise RuntimeError(
-                f"环境变量 EIDOLON_ADMINS 里的 {item} 缺少身份标识（见 eidolon user list）"
+                f"环境变量 {name} 里的 {item} 缺少身份标识（见 eidolon user list）"
             )
         admins.add((provider, subject.strip()))
     return frozenset(admins)
@@ -1075,13 +1117,15 @@ time limit (`EIDOLON_CALL_MINUTES=0`)."""
 class UsageLimits:
     """How many text turns and voice calls each user may start in any hour, and how many
     photos she may send them (GLOSSARY.md「照片」), counted across all their devices and
-    sign-in methods, and how long and how many turns one call may last; None is no limit."""
+    sign-in methods, how long and how many turns one call may last, and how many calls
+    there may be at once, all users' together, exempt ones too; None is no limit."""
 
     turns_per_hour: int | None = DEFAULT_TURNS_PER_HOUR
     calls_per_hour: int | None = DEFAULT_CALLS_PER_HOUR
     call_minutes: int | None = DEFAULT_CALL_MINUTES
     turns_per_call: int | None = DEFAULT_TURNS_PER_CALL
     photos_per_hour: int | None = DEFAULT_PHOTOS_PER_HOUR
+    concurrent_calls: int | None = DEFAULT_CONCURRENT_CALLS
 
     @classmethod
     def from_env(cls) -> "UsageLimits":
@@ -1091,6 +1135,7 @@ class UsageLimits:
             call_minutes=_limit("EIDOLON_CALL_MINUTES", DEFAULT_CALL_MINUTES),
             turns_per_call=_limit("EIDOLON_TURNS_PER_CALL", DEFAULT_TURNS_PER_CALL),
             photos_per_hour=_limit("EIDOLON_PHOTOS_PER_HOUR", DEFAULT_PHOTOS_PER_HOUR),
+            concurrent_calls=_limit("EIDOLON_CONCURRENT_CALLS", DEFAULT_CONCURRENT_CALLS),
         )
 
 

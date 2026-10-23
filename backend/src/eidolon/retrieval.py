@@ -82,13 +82,13 @@ log = logging.getLogger(__name__)
 
 MAX_REFERENCES = 5
 """The most references one turn's prompt carries, after reranking."""
-CANDIDATES_PER_SOURCE = 12
+CANDIDATES_PER_SOURCE = 24
 """How many candidates each reference source offers the reranker."""
 FALLBACK_REFERENCES = 3
 """How many references a turn's prompt carries if reranking fails: those nearest by their
 vectors, of which no threshold can tell the relevant."""
 
-RECALL_EPISODES = 2
+RECALL_EPISODES = 3
 """The most episodes one call of the recall-story tool brings back."""
 RECALL_ENTRIES = 3
 """The most lives and releases of the work facts recalling brings back along with the
@@ -118,6 +118,12 @@ RECALL_STORY_TOOL = Tool(
 
 _CANON_RULE = (
     "剧情里没有记录制作人当时选了哪个选项，不要断言制作人当时说了什么或选了什么。"
+    "带有「互斥分支」或「条件情境」标记的内容，只是相应选项或条件下的角色反应，"
+    "属于条件反应资料，不是已经确认的正式经历。"
+    "不代表该选项已选中、条件已触发，也不能将不同分支拼成连续发生的经过。"
+    "只能在对应情境中参考这些反应；回顾具体经历时若触发状态不明，应自然表达不确定，"
+    "引用时应准确区分选拔场次、演出类型和歌曲名称。"
+    "不要向制作人复述脚本编号、分支编号或内部条件标记。"
 )
 _NOT_IN_STORY = (
     "剧情库里没有记录这段经过，但这不等于这件事没有发生过。"
@@ -152,7 +158,10 @@ class StoryReferences:
 
     kind: ReferenceKind = "episode"
     heading = "剧情"
-    guide = "「剧情」是你亲身经历过的原作剧情，可以像回忆往事一样自然地提起，不要照搬台词。" + _CANON_RULE
+    guide = (
+        "「剧情」中未标注条件的正式经历可以像回忆往事一样自然地提起，不要照搬台词；"
+        "明确标注的条件反应资料只能在对应情境中参考，不能当作已经发生。"
+    ) + _CANON_RULE
     label = "剧情库"
     unit = "段"
 

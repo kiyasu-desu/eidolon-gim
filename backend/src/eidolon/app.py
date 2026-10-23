@@ -3,6 +3,7 @@
 import asyncio
 import json
 import math
+import re
 from collections.abc import AsyncIterator, Callable
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import asdict
@@ -18,13 +19,16 @@ from eidolon.admission import CoolingDown
 from eidolon.assembly import Backend
 from eidolon.call import (
     CallFailed,
+    CallsBusy,
     CallNotFound,
     CallOptions,
     IceCandidate,
     Quality,
     SessionDescription,
+    StillPlacing,
 )
 from eidolon.characters import Character, ScriptedLine, in_idol_order
+from eidolon.database import readable
 from eidolon.engine import ENDED, TurnJudged, shown
 from eidolon.greetings import (
     LANDING_MEMORY_STILL_PATH,
@@ -64,6 +68,10 @@ from eidolon.throttle import Throttled
 from eidolon.turn_outcome import TurnOutcome
 from eidolon.usage import OverLimit
 from eidolon.world import World
+
+HEALTH_TIMEOUT = 5.0
+"""How long, in seconds, the health check may take before the backend is taken not to
+serve: its threads may all be taken."""
 
 _PICTURE_CACHE = {"Cache-Control": "public, max-age=86400"}
 """Avatars and call backgrounds change only with a deploy (ADR-0003): browsers keep them a
@@ -170,13 +178,29 @@ DeviceTimezone = Annotated[str | None, Header(alias="X-Timezone")]
 """The time zone the browser detected; the producer profile's own time zone overrides it."""
 
 
+_STAND_3D_ASSET = re.compile(r"(model\.json|animations\.json|textures/[A-Za-z0-9_.-]+\.png)")
+
+
 def _stand(character: Character, assets_url: str | None) -> dict | None:
     """Her stand on the call screen: where her default outfit's files are, and her outfit
-    list (`stand_outfits`). None, and her call background alone, unless her idol, her
-    default outfit and the stand assets are all configured."""
-    if character.idol_id is None or character.default_outfit is None or assets_url is None:
-        return None
+    list (`stand_outfits`). A 3D stand (`stand_3d/...`) is served from her local `stand_model`
+    directory or `assets_url` without requiring an integer `idol_id`."""
     outfit = character.default_outfit
+    if outfit is None:
+        return None
+    if outfit.startswith("stand_3d/"):
+        if character.stand_model is not None:
+            url = f"/api/characters/{character.id}/stand/"
+        elif assets_url is not None:
+            url = f"{assets_url}/{outfit}/"
+        else:
+            return None
+        return {
+            "default_outfit": {"id": outfit, "url": url},
+            "outfits_url": None,
+        }
+    if character.idol_id is None or assets_url is None:
+        return None
     return {
         "default_outfit": {"id": outfit, "url": f"{assets_url}/{outfit_path(outfit)}"},
         "outfits_url": f"{assets_url}/{list_path(character.idol_id)}",
@@ -330,6 +354,18 @@ def create_app(backend: Backend) -> FastAPI:
     async def call_not_found(_: Request, e: CallNotFound) -> JSONResponse:
         return JSONResponse({"detail": str(e)}, status_code=404)
 
+    @app.exception_handler(CallsBusy)
+    async def calls_busy(_: Request, e: CallsBusy) -> JSONResponse:
+        """Refused for now, as many calls being under way as there may be at once; told
+        apart from calls being unavailable by its `code`."""
+        return JSONResponse({"detail": str(e), "code": "calls_busy"}, status_code=503)
+
+    @app.exception_handler(StillPlacing)
+    async def still_placing(_: Request, e: StillPlacing) -> JSONResponse:
+        """Refused for now, the user's last call not yet answered; as a conflict, told apart
+        from a call refused for the limit's 429."""
+        return JSONResponse({"detail": str(e)}, status_code=409)
+
     @app.exception_handler(CallFailed)
     async def call_failed(_: Request, e: CallFailed) -> JSONResponse:
         return JSONResponse({"detail": str(e)}, status_code=500)
@@ -348,9 +384,24 @@ def create_app(backend: Backend) -> FastAPI:
         if store.ended(conversation.id) is not None:
             raise HTTPException(409, ENDED)
 
+    def conversation_to_call(conversation_id: str, user_id: str) -> Conversation:
+        """The user's conversation a call is to go into, as `conversation_or_404` finds it,
+        unless she has ended it (`refuse_if_ended`)."""
+        conversation = conversation_or_404(conversation_id, user_id)
+        refuse_if_ended(conversation)
+        return conversation
+
     @app.get("/api/health")
-    def health() -> dict:
-        return {"ok": True}
+    async def health() -> JSONResponse:
+        """Whether the backend can serve: 503 when it cannot read the database in time,
+        on a thread, as those it serves are."""
+        try:
+            ok = await asyncio.wait_for(
+                asyncio.to_thread(readable, backend.settings.database_path), HEALTH_TIMEOUT
+            )
+        except TimeoutError:
+            ok = False
+        return JSONResponse({"ok": ok}, status_code=200 if ok else 503)
 
     add_account_routes(app, backend)
     add_admin_routes(app, backend)
@@ -393,8 +444,9 @@ def create_app(backend: Backend) -> FastAPI:
             )
         if body.call is None:
             raise HTTPException(422, "缺少要通话的对话")
-        conversation = conversation_or_404(body.call.conversation_id, user_id)
-        refuse_if_ended(conversation)
+        conversation = await asyncio.to_thread(
+            conversation_to_call, body.call.conversation_id, user_id
+        )
         return await calls.start(
             user_id,
             conversation,
@@ -482,6 +534,23 @@ def create_app(backend: Backend) -> FastAPI:
         if character is None or character.background is None:
             raise HTTPException(404, "没有这位角色的通话背景图")
         return _picture(character.background, request)
+
+    @app.get("/api/characters/{character_id}/stand/{asset_path:path}")
+    def character_stand_asset(character_id: str, asset_path: str, request: Request) -> Response:
+        """A 3D stand asset (`model.json`, `animations.json`, or `textures/*.png`) from her
+        local `stand_model` directory, cached and revalidated like her avatar."""
+        character = characters.get(character_id)
+        if (
+            character is None
+            or character.stand_model is None
+            or not _STAND_3D_ASSET.fullmatch(asset_path)
+        ):
+            raise HTTPException(404, "没有这份立绘素材")
+        root = character.stand_model.resolve()
+        target = (root / asset_path).resolve()
+        if not target.is_relative_to(root) or not target.is_file():
+            raise HTTPException(404, "没有这份立绘素材")
+        return _picture(target, request)
 
     @app.get("/api/characters/{character_id}/affinity")
     def affinity(character_id: str, user_id: UserId) -> dict | None:

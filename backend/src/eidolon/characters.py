@@ -63,9 +63,9 @@ log = logging.getLogger(__name__)
 _VALID_ID = re.compile(r"[a-z][a-z0-9_-]*")
 _REQUIRED = ("id", "name", "intro", "voice_id", "sheet", "color")
 _IMAGE_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
-_OUTFIT = re.compile(r"(stand|stand_costume)/[0-9]{10}")
+_OUTFIT = re.compile(r"((stand|stand_costume)/[0-9]{10}|stand_3d/[a-z0-9][a-z0-9_-]*)")
 """An outfit: her everyday clothes on a card (`stand`) or its stage costume
-(`stand_costume`), and the card's ten-digit enzaId."""
+(`stand_costume`) with the card's ten-digit enzaId, or a 3D stand outfit (`stand_3d/<slug>`)."""
 
 DRAFT_MARKER = "<!-- 人设草稿：由后台模型根据剧情生成，尚未校对。校对完成后删除这一行。 -->"
 
@@ -138,9 +138,11 @@ class Character:
     idol_id: int | None = None
     """Who she is in the original's Spine mirror (`idolId` in `spine_manifest.json`)."""
     default_outfit: str | None = None
-    """The outfit her stand wears unless the user picks another, as `<category>/<enzaId>`:
-    `stand/1030010010` is her everyday clothes on that card, `stand_costume/...` its stage
-    costume. Its files are at `spine/idols/<category>/<enzaId>/` under the stand assets."""
+    """The outfit her stand wears unless the user picks another: `<category>/<enzaId>` for a
+    Spine stand (`stand/1030010010` or `stand_costume/...`), or `stand_3d/<slug>` for a 3D stand."""
+    stand_model: Path | None = None
+    """Local directory of her 3D stand assets (`model.json`, `animations.json`, `textures/`);
+    None when she has no local 3D stand."""
     greeting: Greeting | None = None
     """Her greeting on the landing page; None shows her there without one."""
     call_opener: CallOpener | None = None
@@ -261,9 +263,10 @@ def _parse_character(
         isinstance(default_outfit, str) and _OUTFIT.fullmatch(default_outfit)
     ):
         raise CharacterConfigError(
-            f"角色 {label} 的 default_outfit 应写成 stand/<enzaId> 或 stand_costume/<enzaId>"
-            f"（enzaId 是十位数字），现在是 {default_outfit!r}"
+            f"角色 {label} 的 default_outfit 应写成 stand/<enzaId>、stand_costume/<enzaId>"
+            f"（enzaId 是十位数字）或 stand_3d/<slug>，现在是 {default_outfit!r}"
         )
+    stand_model = _optional_stand_model(entry, base, label)
 
     return Character(
         id=entry["id"],
@@ -280,6 +283,7 @@ def _parse_character(
         sheet_path=sheet_path,
         idol_id=idol_id,
         default_outfit=default_outfit,
+        stand_model=stand_model,
         greeting=_greeting(entry, label, readings),
         call_opener=_call_opener(entry, label, readings),
         name_zh=_other_name(entry, "name_zh", label),
@@ -349,6 +353,16 @@ def _optional_file(entry: dict, field: str, base: Path, label: str) -> Path | No
         log.warning("%s %s of character %s is missing; showing none", field, path, label)
         return None
     return path
+
+
+def _optional_stand_model(entry: dict, base: Path, label: str) -> Path | None:
+    """The local 3D stand asset directory `stand_model` names, relative to the configuration."""
+    value = entry.get("stand_model")
+    if value is None:
+        return None
+    if not (isinstance(value, str) and value.strip()) or len(value.splitlines()) > 1:
+        raise CharacterConfigError(f"角色 {label} 的 stand_model 应为不空的单行字符串，现在是 {value!r}")
+    return (base / value.strip()).resolve()
 
 
 def is_draft(sheet: str) -> bool:

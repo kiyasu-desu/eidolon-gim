@@ -35,7 +35,7 @@ from eidolon.image_generation import ImageFailed
 from eidolon.own_keys import OwnImageService, ProviderLLMService
 from eidolon.photo_prompt import check_prompt
 from eidolon.price_catalog import Catalog
-from eidolon.proxy import ProxyRoutes, Unreachable, masked, reach
+from eidolon.proxy import MAX_CONNECTIONS, ProxyRoutes, Unreachable, masked, reach
 from tests.conftest import ClientFactory
 from tests.fakes import (
     FakeCatalog,
@@ -295,8 +295,9 @@ async def stalling() -> AsyncIterator[StallingProxy]:
     await fake.aclose()
 
 
-POOL_LIMIT = 100
-"""How many connections an httpx client keeps at most."""
+POOL_LIMIT = MAX_CONNECTIONS
+"""How many connections a service's way to its provider keeps at most: more than httpx's
+own 100, which the tunnels below would wait on, given up on, were it that."""
 
 GIVEN_UP = httpx.Timeout(5, connect=0.2, pool=1)
 

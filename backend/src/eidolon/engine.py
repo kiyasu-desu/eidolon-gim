@@ -130,16 +130,27 @@ from eidolon.llm import ChatLLM, ChatMessage, Reasoning, Tool, ToolCall, TurnLLM
 from eidolon.memory import Memories, last_turn_query
 from eidolon.own_keys import OwnKeyFailed
 from eidolon.photos import CANNOT_SEND, NOT_RECEIVED, Eligibility, Photos, photo_turn
-from eidolon.producer import effective_timezone, local_date, now_prompt, producer_prompt
+from eidolon.producer import (
+    ProducerProfile,
+    effective_timezone,
+    local_date,
+    now_prompt,
+    producer_prompt,
+)
 from eidolon.reply_format import (
     format_instructions,
     PhotoTagged,
-    ReplyParser,
     Segment,
     SegmentComplete,
     SegmentDelta,
     SpeechDelta,
     format_reply,
+)
+from eidolon.reply_language import (
+    JapaneseReply,
+    LANGUAGE_REMINDER,
+    history_reply,
+    rewrite_japanese,
 )
 from eidolon.retrieval import RECALL_STORY_TOOL, Retrieval, Retrieved
 from eidolon.store import (
@@ -362,6 +373,21 @@ async def _judged(
         return None, False
 
 
+@dataclass(frozen=True)
+class _BeforeAsking:
+    """What a turn reads from the database before it is asked: her character, the
+    conversation's record, when the user and she were last in touch (None in a call, where
+    she knows they are talking), her affinity as it begins, what it may send for a photo, and
+    the producer profile."""
+
+    character: Character
+    record: list[Recorded]
+    last_contact: datetime | None
+    affinity: Status | None
+    eligibility: Eligibility | None
+    profile: ProducerProfile
+
+
 @dataclass
 class _Photo:
     """The photo a turn sends, on the user's `own` image generation if the turn brings it:
@@ -414,7 +440,7 @@ def _reached_out(reach_out: ReachOut, timezone: str) -> str:
     """What she is told of her `reach_out`, the producer in `timezone`: when, then her words
     as her replies are written in her prompt."""
     at = datetime.fromisoformat(reach_out.created_at).astimezone(ZoneInfo(timezone))
-    said = format_reply(reach_out.segments)
+    said = history_reply(reach_out.segments).content
     return f"（{at.month}月{at.day}日 {at:%H:%M}，你先给制作人发了：）{said}"
 
 
@@ -598,25 +624,26 @@ class ConversationEngine:
         voiced_by: FishAudioModel | None,
         photo: _Photo,
     ) -> AsyncIterator[TurnEvent]:
-        if self._store.ended(conversation.id) is not None:
+        # The database is read and written on threads all through the turn: waiting on it
+        # on the event loop would keep everyone's calls on it from going on meanwhile.
+        read = await asyncio.to_thread(
+            self._read_before_asking, conversation, in_call is not None, photo.own
+        )
+        if read is None:
             yield TurnRejected(ENDED)
             return
-        character = self._characters[conversation.character_id]
-        record = self._store.record(conversation.id)
+        character, record, last_contact, affinity, eligibility, profile = (
+            read.character, read.record, read.last_contact, read.affinity, read.eligibility,
+            read.profile,
+        )
         # Said after reading the record, so an event this turn's prompt does not tell of
         # comes before the turn, and is told of with its words from the next turn on.
         said_at = timestamp()
-        last_contact = (
-            self._store.last_contact(conversation.user_id, conversation.character_id)
-            if in_call is None else None  # in a call, she knows they are talking
-        )
         messages = [entry for entry in record if isinstance(entry, Message)]
         turns = self._history_turns()
         # What all but the chat model read: her reach-outs the user answers her latest words.
         history = [*latest_turns(messages, turns), *_answering(record)]
-        affinity = self._affinity(conversation)
         judging = affinity is not None and not affinity.cooling
-        eligibility = self._photo_eligibility(conversation, character, photo.own)
         asking_photo = eligibility is not None
         judged_apart = None
         if (judging or asking_photo) and self._retrieval is None and self._affinity_judge:
@@ -624,7 +651,6 @@ class ConversationEngine:
                 _judged(self._affinity_judge, character, history, text, judging, asking_photo)
             )
         try:
-            profile = self._store.get_profile(conversation.user_id)
             timezone = effective_timezone(profile, device_timezone)
             memory = await self._memory.begin(
                 conversation, timezone, llms.background, llms.hold_background
@@ -644,13 +670,15 @@ class ConversationEngine:
             if judged_apart is not None and not judged_apart.done():
                 judged_apart.cancel()
         now = self._clock()
-        cools = self._cools(conversation, judged)
+        cools = await asyncio.to_thread(self._cools, conversation, judged)
         if in_call is not None:
             out_of_line_before, hurt_before = in_call.out_of_line, in_call.hurts
         else:
             # As many as are weighed, so that whether she warns is told against the latest
             # before this one; out of line is counted in the latest with this one among them.
-            earlier = self._store.typed_turns(conversation.id, FED_UP_TURNS)
+            earlier = await asyncio.to_thread(
+                self._store.typed_turns, conversation.id, FED_UP_TURNS
+            )
             out_of_line_before = sum(t.out_of_line for t in earlier[-(FED_UP_TURNS - 1):])
             hurt_before = [t.hurt for t in earlier]
         ending = ends(judged, cools, out_of_line_before, hurt_before)
@@ -690,14 +718,14 @@ class ConversationEngine:
         # Offered on every turn, so that what goes before the history (the tools, with
         # many services) opens every turn's prompt alike, for the service to cache it.
         tools: list[Tool] = [RECALL_STORY_TOOL] if self._retrieval else []
-        parser = ReplyParser()
+        parser = JapaneseReply(lambda line: _unless_stopped(stop, rewrite_japanese, llms.chat, line))
         try:
             for step in range(MAX_TOOL_ROUNDS + 1):
                 # The last round offers the same tools, as some models drop what they thought
                 # once the tools change, but forbids calling them; so does a turn that
                 # already recalled an episode, its one round its last.
                 forbidden = step == MAX_TOOL_ROUNDS or retrieved.recalled
-                said = ""
+                first_segment = len(parser.complete)
                 calls: list[ToolCall] = []
                 reasoning: list[Reasoning] = []
                 stream = llms.chat.stream(prompt, tools, forbid_calls=forbidden)
@@ -709,8 +737,7 @@ class ConversationEngine:
                         if isinstance(item, Reasoning):
                             reasoning.append(item)
                             continue
-                        said += item
-                        for event in parser.feed(item):
+                        async for event in parser.feed(item):
                             if isinstance(event, PhotoTagged):
                                 if photo_asked and photo_asked.keeps_tag:
                                     yield self._begin_photo(
@@ -721,7 +748,7 @@ class ConversationEngine:
                 finally:
                     if (close := getattr(stream, "aclose", None)) is not None:
                         await close()  # a stream left part-way lets go of its connection
-                for event in parser.finish():
+                async for event in parser.finish():
                     if not isinstance(event, PhotoTagged):  # never: a tag closes as it is fed
                         yield event
                 # A call to a tool not offered, or made when forbidden, goes unanswered.
@@ -729,7 +756,14 @@ class ConversationEngine:
                     break
                 prompt = [
                     *prompt,
-                    ChatMessage("assistant", said, tuple(calls), reasoning=tuple(reasoning)),
+                    ChatMessage(
+                        "assistant",
+                        format_reply(
+                            parser.complete[first_segment:],
+                            photo.tag if photo.id is not None and first_segment == 0 else None,
+                        ),
+                        tuple(calls), reasoning=tuple(reasoning),
+                    ),
                 ]
                 last_round = step + 1 == MAX_TOOL_ROUNDS
                 for call in calls:
@@ -748,6 +782,7 @@ class ConversationEngine:
         )
         ends_conversation = typed is not None and ending is not None
         try:
+            # On the event loop: a cooldown it begins hangs up her calls with the user there.
             reply, affinity = self._record(
                 conversation, text, said_at, parser.complete, judged, affinity, typed,
                 ends_conversation, NewPhoto(photo.id, photo.tag) if photo.id else None,
@@ -755,8 +790,8 @@ class ConversationEngine:
         except ConversationEnded:  # elsewhere, as the turn was under way
             yield TurnRejected(ENDED)
             return
-        rewarded = self._happenings and self._happenings.turn_recorded(
-            conversation.user_id, conversation.character_id
+        rewarded = self._happenings and await asyncio.to_thread(
+            self._happenings.turn_recorded, conversation.user_id, conversation.character_id
         )
         if photo.id is not None and self._photos is not None:
             photo.recorded = True
@@ -764,7 +799,10 @@ class ConversationEngine:
         memory.write_down(history, text, reply, retrieved.query_vector)
         turn = sum(m.role == "user" for m in messages) + 1
         self._titles.after_turn(conversation, turn, llms.background, llms.hold_background)
-        ended = self._store.ended(conversation.id) if ends_conversation else None
+        ended = (
+            await asyncio.to_thread(self._store.ended, conversation.id)
+            if ends_conversation else None
+        )
         if ended is not None and ending is not None:
             for listener in self._ended_listeners:
                 listener(conversation.id, ending)
@@ -799,12 +837,17 @@ class ConversationEngine:
         Raises EmptyReply if the model says nothing she could say, and whatever the model
         raises."""
         character = self._characters[conversation.character_id]
-        record = self._store.record(conversation.id)
+        record, profile, affinity, last_contact = await asyncio.to_thread(
+            lambda: (
+                self._store.record(conversation.id),
+                self._store.get_profile(conversation.user_id),
+                self._affinity(conversation),
+                self._store.last_contact(conversation.user_id, conversation.character_id),
+            )
+        )
         messages = [entry for entry in record if isinstance(entry, Message)]
-        profile = self._store.get_profile(conversation.user_id)
         timezone = effective_timezone(profile, None)
         now = self._clock()
-        affinity = self._affinity(conversation)
         world_prompt = (
             self._world.prompt(character.name, local_date(now, timezone)) if self._world else None
         )
@@ -820,25 +863,46 @@ class ConversationEngine:
                 now_prompt(
                     profile, now, timezone, "apart",
                     affinity_prompt(affinity.tier, None) if affinity is not None else [],
-                    self._store.last_contact(conversation.user_id, conversation.character_id),
+                    last_contact,
                 ),
             ],
             [*([memories] if memories else []), REACH_OUT_RULES],
             WANTS_TO_REACH_OUT, None,
         )
-        parser = ReplyParser()
+        parser = JapaneseReply(lambda line: rewrite_japanese(llm, line))
         stream = llm.stream(prompt)
         try:
             async for item in stream:
                 if isinstance(item, str):
-                    parser.feed(item)  # a photo tag is dropped: she sends none
+                    async for _ in parser.feed(item):
+                        pass  # a photo tag is dropped: she sends none
         finally:
             if (close := getattr(stream, "aclose", None)) is not None:
                 await close()
-        parser.finish()
+        async for _ in parser.finish():
+            pass
         if not parser.complete:
             raise EmptyReply("对话模型没有返回任何内容")
         return parser.complete
+
+    def _read_before_asking(
+        self, conversation: Conversation, in_call: bool, own_image: ImageSettings | None
+    ) -> _BeforeAsking | None:
+        """What a turn of `conversation` reads before it is asked, `in_call` if it is taken
+        in one, bringing the user's `own_image` generation if any; None if she has ended
+        the conversation."""
+        if self._store.ended(conversation.id) is not None:
+            return None
+        character = self._characters[conversation.character_id]
+        return _BeforeAsking(
+            character,
+            self._store.record(conversation.id),
+            None if in_call
+            else self._store.last_contact(conversation.user_id, conversation.character_id),
+            self._affinity(conversation),
+            self._photo_eligibility(conversation, character, own_image),
+            self._store.get_profile(conversation.user_id),
+        )
 
     def _photo_eligibility(
         self,
@@ -947,17 +1011,17 @@ class ConversationEngine:
                 told = narration.get(message.id, "")
                 prompt.append(ChatMessage("user", f"{told}{message.text or ''}"))
             else:
-                prompt.append(ChatMessage("assistant", format_reply(
+                prompt.append(history_reply(
                     message.segments,
                     message.photo.tag if message.photo else None,
                     message.photo_failed,
-                )))
+                ))
         if history:  # what the next turn opens with too, for a service to cache
             prompt[-1] = replace(prompt[-1], cache_breakpoint=True)
         context = [*about_turn]
         if any(m.photo_failed for m in history):
             context.append(NOT_RECEIVED)
-        context += closing
+        context += [*closing, LANGUAGE_REMINDER]
         prompt.append(ChatMessage("system", "\n\n".join(context)))
         prompt.append(ChatMessage("user", f"{narration.get(None, '')}{text}"))
         return prompt

@@ -64,6 +64,7 @@ from eidolon.config import (
     LLMSettings,
     Service,
     SttKey,
+    WindowsSpeechSettings,
     SttProvider,
 )
 from eidolon.emotion import EmotionJudging
@@ -76,7 +77,7 @@ from eidolon.image_generation import (
 from eidolon.llm import ChatLLM, ChatMessage, LLMError, Streamed, Tool, TurnLLMs
 from eidolon.llm import listing
 from eidolon.llm.providers import check_chat_models, open_chat_models, open_llm
-from eidolon.proxy import OwnAddressed, ProxyRoutes
+from eidolon.proxy import POOL_LIMITS, OwnAddressed, ProxyRoutes
 from eidolon.usage import UsageKind
 
 log = logging.getLogger(__name__)
@@ -304,7 +305,7 @@ def _own_client(
     host `known_provider` knows; direct to every other one, which with `public_only` must
     be on the public internet, as `resolver` finds it. With `https_only`, every request
     goes over HTTPS."""
-    direct = httpx.AsyncHTTPTransport()
+    direct = httpx.AsyncHTTPTransport(limits=POOL_LIMITS)
     if public_only:
         pool = direct._pool  # httpx takes no network backend of its own
         assert isinstance(pool, httpcore.AsyncConnectionPool)
@@ -389,9 +390,9 @@ class DeployerKeys:
 
     chat_llm: ChatLLM
     memory_llm: ChatLLM
-    stt: SttKey | None = None
+    stt: SttKey | WindowsSpeechSettings | None = None
     """For whichever speech recognition the deployer chose (`STT_PROVIDER`)."""
-    tts: str | None = None
+    tts: str | WindowsSpeechSettings | None = None
     tts_model: FishAudioModel = DEFAULT_FISH_AUDIO_MODEL
     """What Fish Audio speaks with on the deployer's key."""
     emotions: EmotionJudging | None = None
@@ -445,8 +446,8 @@ class CallKeys:
     user's limit."""
 
     llms: TurnLLMs
-    stt: SttKey
-    tts: str
+    stt: SttKey | WindowsSpeechSettings
+    tts: str | WindowsSpeechSettings
     own: frozenset[Service]
     exempt: bool
     release: Callable[[], None] = field(default=_nothing, compare=False)

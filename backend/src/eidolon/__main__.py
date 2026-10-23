@@ -107,8 +107,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         return _serve()
+    if args.command == "speech":
+        return asyncio.run(_speech_check())
     if args.command == "story" and args.action == "sync":
         return asyncio.run(_sync_story(args))
+    if args.command == "story" and args.action == "import-gim":
+        return asyncio.run(_import_gim(args))
     if args.command == "story":
         return asyncio.run(_import_story(args))
     if args.command == "world":
@@ -149,10 +153,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
+async def _speech_check() -> int:
+    from eidolon.config import WindowsSpeechSettings
+    from eidolon.windows_speech import WindowsSpeech, WindowsSpeechError
+
+    try:
+        configured = WindowsSpeechSettings.from_env()
+        print("本机语音：" + ("windows" if configured else "未启用（仅检查组件）"))
+        local = WindowsSpeech(configured or WindowsSpeechSettings())
+        # Print inventory even if the selected voice/language is unavailable.
+        result = await local.installed()
+        for component in ("voices", "recognizers"):
+            print(component + ":")
+            for item in result[component]:
+                print(f"  {item['name']} ({item['language']})")
+        local.validate(result)
+        print(f"配置有效：识别 {local.settings.recognition_language}；"
+              f"合成 {local.settings.voice} ({local.settings.voice_language})，Windows 中性声音")
+        return 0
+    except (WindowsSpeechError, RuntimeError) as error:
+        print(error, file=sys.stderr)
+        return 1
+
+
+GRACEFUL_SHUTDOWN_SECONDS = 20
+"""How long requests may finish before the server stops, within Compose's grace."""
+
+
 def _serve() -> int:
     import uvicorn
     from loguru import logger
 
+    from eidolon import server_logs
     from eidolon.app import create_app
     from eidolon.assembly import build
 
@@ -161,15 +193,7 @@ def _serve() -> int:
     logger.remove()
     logger.add(sys.stderr, level="INFO")
 
-    # Which settings the admin console overrides, for a deployer wondering why `.env`'s
-    # did not take (ADR-0013), and what the backups begun from it did, which is not in
-    # `logs/db-backup.log`, and the photo tags the tag table does not know, for the deployer to
-    # add to the rewrite table; nothing configures the root logger to show any of them.
-    to_stderr = logging.StreamHandler()
-    to_stderr.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    for name in ["eidolon.live_config", "eidolon.backup", "eidolon.photo_prompt"]:
-        logging.getLogger(name).addHandler(to_stderr)
-        logging.getLogger(name).setLevel(logging.INFO)
+    server_logs.configure()
 
     try:  # missing settings, an unusable DashScope key or Cloudflare token, a broken
         # character configuration
@@ -191,6 +215,9 @@ def _serve() -> int:
         app,
         host=os.environ.get("HOST", "0.0.0.0"),
         port=int(os.environ.get("PORT", "8000")),
+        log_config=server_logs.uvicorn_log_config(),
+        # Calls are no requests: they are hung up after, as the backend closes.
+        timeout_graceful_shutdown=GRACEFUL_SHUTDOWN_SECONDS,
     )
     return 0
 
@@ -235,6 +262,45 @@ async def _check_chat_llm(settings: Settings) -> None:
         await check_chat_models(models, settings.chat_model)
     finally:
         await models.aclose()
+
+
+async def _import_gim(args: argparse.Namespace) -> int:
+    from eidolon.characters import load_characters
+    from eidolon.config import EmbeddingSettings
+    from eidolon.corpus import StoryCorpus
+    from eidolon.embedding import NoEmbedder, open_embedder
+    from eidolon.gim_story_import import import_gim_directory
+
+    online = None
+    try:
+        protected = [args.manifest, args.db or database_path_from_env()]
+        if args.index is not None:
+            protected.append(args.index)
+        if (args.report.resolve() in {p.resolve() for p in protected}
+                or args.report.suffix.lower() != ".json"
+                or args.report.resolve().is_relative_to(args.directory.resolve())):
+            raise RuntimeError("报告须为 CSV 根目录之外的独立 .json 文件，不得覆盖 manifest/index/数据库")
+        characters = load_characters(args.characters or characters_path_from_env())
+        settings = None if args.offline else EmbeddingSettings.from_env()
+        online = open_embedder(settings) if settings else None
+        corpus = StoryCorpus(args.db or database_path_from_env(), online or NoEmbedder())
+        try:
+            report = await import_gim_directory(
+                args.directory, corpus, characters.values(), manifest=args.manifest, index=args.index
+            )
+            report.write(args.report)
+        finally:
+            corpus.close()
+    except (OSError, RuntimeError, ValueError) as error:
+        print(error, file=sys.stderr)
+        return 1
+    finally:
+        if online is not None:
+            await online.aclose()
+    print(f"GIM：导入 {report.imported}，未变 {report.unchanged}，失败 {report.skipped_failures}，"
+          f"待核对 outcome {report.unknown_outcomes}，待向量化 {report.pending_passages}；"
+          f"报告 {args.report}")
+    return 1 if report.has_errors else 0
 
 
 async def _import_story(args: argparse.Namespace) -> int:
@@ -299,6 +365,9 @@ async def _sync_story(args: argparse.Namespace) -> int:
     story = args.story or story_path_from_env()
     if not story.is_dir():
         print(f"找不到 SCTranslationData 的剧情目录 {story}", file=sys.stderr)
+        return 1
+    if args.characters is None or args.db is None:
+        print("legacy SC 同步须显式指定 --characters 和全局 --db；GIM 使用 story import-gim", file=sys.stderr)
         return 1
     try:
         characters = load_characters(args.characters or characters_path_from_env())
@@ -374,6 +443,9 @@ async def _sync_story(args: argparse.Namespace) -> int:
 
 
 async def _sync_world(args: argparse.Namespace) -> int:
+    if args.characters is None:
+        print("legacy SC 世界同步须显式指定 --characters；不适用于 GIM 默认角色目录", file=sys.stderr)
+        return 1
     from datetime import date
 
     from eidolon import world_sync
@@ -962,6 +1034,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", metavar="命令")
     commands.add_parser("serve", help="启动服务（默认）")
+    speech = commands.add_parser("speech", help="检查 Windows 本机中性语音").add_subparsers(
+        dest="action", required=True
+    )
+    speech.add_parser("check", help="列出安装的声音/识别器，验证本机配置（不读取密钥）")
 
     user = commands.add_parser("user", help="管理用户").add_subparsers(
         dest="action", required=True, metavar="操作"
@@ -986,13 +1062,19 @@ def _parser() -> argparse.ArgumentParser:
     story = commands.add_parser("story", help="管理剧情库").add_subparsers(
         dest="action", required=True, metavar="操作"
     )
+    import_gim = story.add_parser("import-gim", help="导入本机学园 CSV；独立于 legacy SC 规则")
+    import_gim.add_argument("directory", type=Path, help="CSV 根目录；index 中路径相对此目录")
+    import_gim.add_argument("--index", type=Path, help="可选 adv_*.txt → CSV 路径 JSON")
+    import_gim.add_argument("--manifest", type=Path, required=True, help="来源、版本、使用条件和 outcome JSON")
+    import_gim.add_argument("--report", type=Path, required=True, help="CSV 根目录之外的审计报告 .json")
+    import_gim.add_argument("--offline", action="store_true", help="只存文本和目录，之后用 reembed 向量化")
     import_csv = story.add_parser(
-        "import-csv", help="导入 SCTranslationData 格式的剧情 CSV 目录（可重复执行）"
+        "import-csv", help="legacy SC：导入 SCTranslationData CSV（不适用于学园）"
     )
     import_csv.add_argument("directory", type=Path, help="剧情 CSV 所在目录，例如 data/story")
     import_json = story.add_parser(
         "import-json",
-        help="导入游戏原始剧本 JSON 目录，补全 SCTranslationData 缺少的剧情（可重复执行）",
+        help="legacy SC：导入原始剧本 JSON，补全 SCTranslationData（不适用于学园）",
     )
     import_json.add_argument(
         "directory",
@@ -1001,7 +1083,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     sync = story.add_parser(
         "sync",
-        help="导入 SCTranslationData 的汉化版，再从 ShinyColorsDB 镜像补齐缺少的卡牌剧情、培育剧情和活动剧情"
+        help="legacy SC（须显式 --characters 和全局 --db）：导入 SCTranslationData，再从 ShinyColorsDB 补齐剧情"
         "（可重复执行；镜像连不上时退出码为 2）",
     )
     sync.add_argument(
@@ -1025,7 +1107,7 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="活动名对照表（默认取环境变量 EIDOLON_EVENT_NAMES_PATH；默认的文件不存在时活动用占位名）",
     )
-    for command in (import_csv, import_json, sync):
+    for command in (import_gim, import_csv, import_json, sync):
         command.add_argument(
             "--characters",
             type=Path,

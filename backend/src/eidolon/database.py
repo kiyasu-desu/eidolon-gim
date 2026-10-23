@@ -93,6 +93,10 @@ is no one's, and the reset cards admins have given every user, which say nothing
 gave them or to whom, and the record of each backup run, which says nothing of anyone's."""
 
 
+HEALTH_READ_TIMEOUT = 2.0
+"""How long, in seconds, the health check waits to read the database."""
+
+
 def connect(path: Path) -> sqlite3.Connection:
     """A connection to the database at `path`, making the directory it is in if need be,
     usable from any thread and waiting up to 30 seconds for another writer."""
@@ -102,6 +106,9 @@ def connect(path: Path) -> sqlite3.Connection:
         # Readers need not wait for a writer: several modules, and the command line in
         # another process, each have a connection to this database.
         db.execute("PRAGMA journal_mode = WAL")
+        # In WAL mode a commit need not wait for the disk: losing power may lose the last
+        # commits, never corrupt the database.
+        db.execute("PRAGMA synchronous = NORMAL")
         # What is deleted is overwritten, not just freed: deleting a user is for good.
         db.execute("PRAGMA secure_delete = ON")
         db.execute("PRAGMA foreign_keys = ON")
@@ -109,6 +116,23 @@ def connect(path: Path) -> sqlite3.Connection:
         db.close()
         raise
     return db
+
+
+def readable(path: Path) -> bool:
+    """Whether the database at `path` can be read now, on a read-only connection of its
+    own, so as to wait on no module's lock, nor make a database where there is none; for
+    the health check."""
+    try:
+        db = sqlite3.connect(
+            f"{path.resolve().as_uri()}?mode=ro", uri=True, timeout=HEALTH_READ_TIMEOUT
+        )
+        try:
+            db.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchall()
+        finally:
+            db.close()
+    except sqlite3.Error:
+        return False
+    return True
 
 
 def delete_user_data(db: sqlite3.Connection, user_id: str) -> None:

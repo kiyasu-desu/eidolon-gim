@@ -1,13 +1,36 @@
+name: eidolon-gim
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
 services:
   backend:
     build: ./backend
     env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      EIDOLON_DATABASE_PATH: /data/eidolon-gim.db
+      EIDOLON_CHARACTERS_PATH: /characters/gim/characters.toml
+      # System.Speech 只能在 Windows 本机运行。
+      EIDOLON_LOCAL_SPEECH: ""
     volumes:
       - eidolon-data:/data
       - ./characters:/characters:ro
       - ./corpus:/corpus:ro
       - ./deploy:/deploy:ro # 活动名对照表 event-names.toml（同步时读取）
     restart: unless-stopped
+    logging: *logging
+    stop_grace_period: 30s
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=8)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build: ./frontend
@@ -15,10 +38,12 @@ services:
       BACKEND_URL: http://backend:8000
       EIDOLON_STAND_ASSETS_URL: ${EIDOLON_STAND_ASSETS_URL:-}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:${EIDOLON_FRONTEND_PORT:-3001}:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+    logging: *logging
 
 volumes:
   eidolon-data:

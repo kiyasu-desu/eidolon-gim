@@ -1,0 +1,25 @@
+# 读音配置：角色名、学园名在角色声音里的发音
+[[readings]]
+written = "月村手毬"
+kana = "つきむら てまり"
+phonemes = "tsU0ki1mu0ra0te0ma1ri1"
+
+[[readings]]
+written = "月村"
+kana = "つきむら"
+phonemes = "tsU0ki1mu0ra0"
+
+[[readings]]
+written = "手毬"
+kana = "てまり"
+phonemes = "te0ma1ri1"
+
+[[readings]]
+written = "初星学園"
+kana = "はつぼし がくえん"
+phonemes = "ha0tsu1bo0shi0ga1ku0e1N0"
+
+[[readings]]
+written = "初星"
+kana = "はつぼし"
+phonemes = "ha0tsu1bo0shi0"

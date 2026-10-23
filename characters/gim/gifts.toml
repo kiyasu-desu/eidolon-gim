@@ -1,0 +1,19 @@
+# 后端目前总会读取礼物目录，并要求三个稀有度各有一项。
+# 这些仅用于本地文字原型通过配置检查；运行时须设 EIDOLON_AFFINITY_AND_GIFTS=0。
+[[gifts]]
+id = "prototype-note"
+name = "原型占位便签"
+category = "trinket"
+rarity = "common"
+
+[[gifts]]
+id = "prototype-card"
+name = "原型占位卡片"
+category = "trinket"
+rarity = "uncommon"
+
+[[gifts]]
+id = "prototype-box"
+name = "原型占位盒子"
+category = "trinket"
+rarity = "rare"

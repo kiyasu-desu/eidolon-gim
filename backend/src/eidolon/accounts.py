@@ -14,6 +14,7 @@ with are kept on a ban list, only as keyed hashes (`identity_hash`), and can nei
 in nor be linked again.
 """
 
+import asyncio
 import hashlib
 import hmac
 from dataclasses import dataclass, field
@@ -40,7 +41,7 @@ def is_admin(store: Store, settings: Settings, user_id: str) -> bool:
 MIN_GITHUB_ACCOUNT_AGE = timedelta(days=365)
 """How old a GitHub account must be to sign in with."""
 
-Refusal = Literal["too_new", "email_unverified", "banned", "taken", "already_linked"]
+Refusal = Literal["too_new", "email_unverified", "banned", "taken", "already_linked", "not_allowed"]
 """Why an identity may not sign in, or be linked:
 
 - `too_new`: a GitHub account less than a year old
@@ -48,6 +49,7 @@ Refusal = Literal["too_new", "email_unverified", "banned", "taken", "already_lin
 - `banned`: it belongs to a banned user, or did to one since deleted
 - `taken`: (linking) it belongs to another user
 - `already_linked`: (linking) the user already signs in with another identity there
+- `not_allowed`: the deployment's identity allowlist does not include this identity
 """
 
 
@@ -65,6 +67,8 @@ class Accounts:
     calls: Calls
     secret_key: str | None = None
     """The deployment's, from which the key the ban list is hashed with is derived."""
+    allowed_identities: frozenset[tuple[str, str]] | None = None
+    """None permits public sign-in; otherwise every new identity must be listed."""
     _ban_key: bytes | None = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -112,14 +116,23 @@ class Accounts:
         list."""
         await self.calls.hang_up(user_id)
         await self.memories.forget(user_id)
+        # On a thread: overwriting all they had, and the log after, takes a while.
+        await asyncio.to_thread(self._delete_for_good, user_id)
+        await self.calls.hang_up(user_id)  # any placed while memory was settling
+
+    def _delete_for_good(self, user_id: str) -> None:
+        """Delete the user's data, putting a banned user's identities on the ban list."""
         banned = self.store.get_user(user_id).banned_at is not None
         self.store.delete_user(user_id, [
             identity_hash(self._ban_key, m.provider, m.subject)
             for m in self.store.sign_in_methods(user_id)
         ] if banned else None)
-        await self.calls.hang_up(user_id)  # any placed while memory was settling
 
     def _check(self, identity: Identity) -> None:
+        if self.allowed_identities is not None and (
+            identity.provider, identity.subject
+        ) not in self.allowed_identities:
+            raise SignInRefused("not_allowed")
         if self.store.is_banned_identity(
             identity_hash(self._ban_key, identity.provider, identity.subject)
         ):
@@ -131,6 +144,13 @@ class Accounts:
             raise SignInRefused("too_new")
         if identity.provider == "google" and not identity.email_verified:
             raise SignInRefused("email_unverified")
+
+    def may_access(self, user_id: str) -> bool:
+        """Recheck existing sessions too, including users with no linked OAuth identity."""
+        return self.allowed_identities is None or any(
+            (m.provider, m.subject) in self.allowed_identities
+            for m in self.store.sign_in_methods(user_id)
+        )
 
     def _method(self, identity: Identity) -> SignInMethod:
         return SignInMethod(

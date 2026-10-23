@@ -41,8 +41,8 @@ the client to tell what the request is billed for. A call abandoned part-way, as
 user leaves, is not a failure; an attempt the client made again (`retry`) is a call of
 its own, failed.
 
-Records are kept for 90 days (`KEPT`); older ones are deleted whenever a turn begins, as
-uses of the limit are. A deleted user's records stay, for the numbers not to change, but
+Records are kept for 90 days (`KEPT`); older ones are deleted as the backend tidies up
+(`housekeeping`), as uses of the limit are. A deleted user's records stay, for the numbers not to change, but
 no longer say whose they were (`database.ANONYMIZED_USER_DATA`).
 
 As each record and service call is written, it is also rolled up, in the same transaction,
@@ -692,11 +692,12 @@ class ActivityLog:
     ) -> Recording:
         """Open the record of a turn or call the user begins with `character_id`, on their
         own LLM or not and exempt from the limit or not: a turn's record keeps the
-        first, a call's the second (GLOSSARY.md「运行记录」). Forgets every record older
-        than `KEPT`."""
-        now = self._clock()
-        self._forget_before(now - KEPT)
-        return Recording(self, kind, user_id, character_id, now, own_llm, exempt)
+        first, a call's the second (GLOSSARY.md「运行记录」)."""
+        return Recording(self, kind, user_id, character_id, self._clock(), own_llm, exempt)
+
+    def forget_old(self) -> None:
+        """Delete every record and service call older than `KEPT`."""
+        self._forget_before(self._clock() - KEPT)
 
     def daily_task_done(self, user_id: str, task_id: str, at: datetime) -> None:
         """The user did the daily task `at`: recorded, with no character."""
@@ -870,8 +871,11 @@ class ActivityLog:
         )
 
     def close(self) -> None:
-        self._db.close()
-        self._reader.close()
+        """Close the connections once nothing on another thread is using them."""
+        with self._lock:
+            self._db.close()
+        with self._reading:
+            self._reader.close()
 
     def _write(self, recording: Recording) -> None:
         """Write a finished record with its service calls and, for a call, its turns."""

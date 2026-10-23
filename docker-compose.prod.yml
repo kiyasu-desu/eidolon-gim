@@ -1,10 +1,17 @@
-# 生产环境（VPS）：docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
-# 前端和后端用 CI 发布到 GHCR 的镜像，默认是 main 分支最新的一版；在 .env 里设 EIDOLON_IMAGE_TAG 可以固定到某一版
-# （例如 sha-29d651a）。改了代码想在服务器上直接构建时用 up -d --build。
-# 部署步骤见 docs/deploy.md。所有密钥都来自仓库根目录的 .env，不写进这个文件。
+# 学马生产环境（Linux VPS）：docker compose -f docker-compose.prod.yml up -d --build
+# 从当前源码构建，不能拉上游 SC 镜像替代 GIM。部署步骤见 docs/deploy-gim.md。
+# 所有密钥来自仓库根目录的 .env，不写进这个文件。
 #
 # 四个服务都用 host 网络：语音通话走 WebRTC（UDP），后端需要把本机的公网地址作为候选地址告诉浏览器，
 # coturn 也需要直接收发 UDP。前端和后端只监听 127.0.0.1，公网上只开放 Caddy（80、443）和 coturn（3478 与中继端口）。
+
+name: eidolon-gim
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
 
 services:
   caddy:
@@ -12,6 +19,7 @@ services:
     network_mode: host
     environment:
       EIDOLON_DOMAIN: ${EIDOLON_DOMAIN:?请在 .env 里填写 EIDOLON_DOMAIN}
+      EIDOLON_FRONTEND_PORT: ${EIDOLON_FRONTEND_PORT:-3001}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data # 证书
@@ -19,29 +27,37 @@ services:
     depends_on:
       - frontend
     restart: unless-stopped
+    logging: *logging
 
   frontend:
-    image: ghcr.io/sallyn0225/eidolon-sc-frontend:${EIDOLON_IMAGE_TAG:-main}
+    image: eidolon-gim-frontend:${EIDOLON_IMAGE_TAG:-local}
+    pull_policy: build
     build: ./frontend
     network_mode: host
     environment:
       HOSTNAME: 127.0.0.1
-      PORT: 3000
-      BACKEND_URL: http://127.0.0.1:8000
+      PORT: ${EIDOLON_FRONTEND_PORT:-3001}
+      BACKEND_URL: http://127.0.0.1:${EIDOLON_BACKEND_PORT:-8001}
       # 写进 CSP：页面只许从这里另外加载立绘、缩略图和招呼
       EIDOLON_STAND_ASSETS_URL: ${EIDOLON_STAND_ASSETS_URL:-}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+    logging: *logging
 
   backend:
-    image: ghcr.io/sallyn0225/eidolon-sc-backend:${EIDOLON_IMAGE_TAG:-main}
+    image: eidolon-gim-backend:${EIDOLON_IMAGE_TAG:-local}
+    pull_policy: build
     build: ./backend
     network_mode: host
     env_file: .env
     environment:
       HOST: 127.0.0.1
-      PORT: 8000
+      PORT: ${EIDOLON_BACKEND_PORT:-8001}
+      EIDOLON_DATABASE_PATH: /data/eidolon-gim.db
+      EIDOLON_CHARACTERS_PATH: /characters/gim/characters.toml
+      EIDOLON_LOCAL_SPEECH: ""
       # 浏览器和后端都用本机的 coturn 做 STUN；浏览器另外拿到 TURN 的临时凭据
       EIDOLON_ICE_SERVERS: ${EIDOLON_ICE_SERVERS:-stun:${EIDOLON_DOMAIN}:3478}
       EIDOLON_TURN_URLS: turn:${EIDOLON_DOMAIN}:3478?transport=udp,turn:${EIDOLON_DOMAIN}:3478?transport=tcp
@@ -52,6 +68,18 @@ services:
       - ./corpus:/corpus:ro # SCTranslationData 等剧情库的原始数据，导入和同步时读取（deploy/story-sync.sh 在主机上更新）
       - ./deploy:/deploy:ro # 活动名对照表 event-names.toml（同步时读取）
     restart: unless-stopped
+    logging: *logging
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['PORT'] + '/api/health', timeout=8)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   coturn:
     image: coturn/coturn:4.7
@@ -80,6 +108,7 @@ services:
       - --log-file=stdout
       - --simple-log
     restart: unless-stopped
+    logging: *logging
 
 volumes:
   eidolon-data:

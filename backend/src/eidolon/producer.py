@@ -96,7 +96,7 @@ def local_date(now: datetime, timezone: str) -> date:
 
 def producer_prompt(profile: ProducerProfile) -> str:
     """The prompt section about the user: who they are, the same from turn to turn."""
-    lines = ["# 制作人", "和你对话的是你的制作人，也就是 283 事务所的制作人。"]
+    lines = ["# 制作人", "和你对话的是你的制作人。"]
     if profile.form_of_address:
         lines.append(
             f"制作人希望你称呼对方为「{profile.form_of_address}」。这只是叫法，"
@@ -108,7 +108,7 @@ def producer_prompt(profile: ProducerProfile) -> str:
             "回忆原作剧情时，剧情中发生过的事保持原样，不要改写。"
         )
     else:
-        lines.append("制作人是男性，和原作一致。")
+        lines.append("制作人是男性。")
     if profile.birthday:
         lines.append(
             f"制作人的生日是{profile.birthday.month}月{profile.birthday.day}日，"

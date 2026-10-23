@@ -208,6 +208,7 @@ async def test_the_judge_model_retrieval_and_memory_read_it_as_her_latest_words(
     )
 
     await send_turn(client, conversation, "辛苦了")
+    await client.get("/api/memories")  # once what the turn writes down is written
 
     state = clients.judge.states[-1]
     assert state["上文"] == [

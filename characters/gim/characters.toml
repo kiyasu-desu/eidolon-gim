@@ -1,0 +1,21 @@
+# 月村手毬本地私用配置。启动时用 EIDOLON_CHARACTERS_PATH 选择本文件。
+# 已绑定 Fish Audio 音色和本地 stand_3d；模型与剧情资源不随源码分发。
+[[characters]]
+id = "temari"
+name = "月村手毬"
+name_zh = "月村手毬"
+name_kana = "つきむら てまり"
+name_romaji = "Tsukimura Temari"
+# CSV converter/source speaker names; official full name also appears with spaces.
+speakers = ["手毬", "月村手毬", "月村 手毬", "月村　手毬"]
+intro = "初星学园偶像科学生。擅长唱歌，努力朝顶级偶像迈进。"
+voice_id = "8911ac7b0b5e44f79dfd20709166dc78"
+greeting = "[shyly] ……私をプロデュースしたいんですか？後悔しても、知りませんよ"
+greeting_subtitle = "……你想做我的制作人？就算后悔，我可不管哦。"
+call_opener = "[softly] もしもし。……あ、プロデューサー？えっと、今、大丈夫？"
+call_opener_subtitle = "喂。……啊，制作人？那个，现在方便吗？"
+sheet = "sheets/temari.md"
+color = "#617da6" # 原型临时界面色，不声称是官方代表色。
+default_outfit = "stand_3d/ttmr-default"
+stand_model = "../../corpus/gim-assets/animation"
+liked_gifts = ["prototype-note"] # 后端要求该字段；原型关闭好感度与礼物。

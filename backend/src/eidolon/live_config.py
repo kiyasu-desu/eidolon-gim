@@ -631,6 +631,7 @@ LIMIT_LABELS = {
     "photos_per_hour": "每小时照片数",
     "call_minutes": "单次通话的时长上限（分钟）",
     "turns_per_call": "单次通话的回合上限",
+    "concurrent_calls": "同时进行的通话数上限",
     "history_turns": "带上的历史回合数",
 }
 """The limits, as the admin console names them; each a whole number, 0 for no limit."""
@@ -650,8 +651,9 @@ NO_EXEMPTING_KEYS = "免限额密钥至少要选一项；想取消限额，请�
 
 
 class _Limits(_Item):
-    """The limits per hour, a call's own limits and the turns each prompt carries, as
-    `.env` takes them (0 for none), and the exempting keys; not tried."""
+    """The limits per hour, a call's own limits, the calls there may be at once and the
+    turns each prompt carries, as `.env` takes them (0 for none), and the exempting keys;
+    not tried."""
 
     name = LIMITS
     fields = (*LIMIT_LABELS, *EXEMPTING_LABELS)
@@ -665,6 +667,7 @@ class _Limits(_Item):
             "photos_per_hour": limits.photos_per_hour or 0,
             "call_minutes": limits.call_minutes or 0,
             "turns_per_call": limits.turns_per_call or 0,
+            "concurrent_calls": limits.concurrent_calls or 0,
             "history_turns": self.c.settings.history_turns or 0,
         } | {field: s in exempting for s, field in EXEMPTING_FIELDS.items()}
 
@@ -988,7 +991,8 @@ class LiveConfig:
 
     @property
     def usage_limits(self) -> UsageLimits:
-        """The limits per hour and each call's own, in effect now; None for no limit."""
+        """The limits per hour, each call's own and on the calls at once, in effect now;
+        None for no limit."""
         values = self.effective(LIMITS)
         return UsageLimits(
             values["turns_per_hour"] or None,
@@ -996,6 +1000,7 @@ class LiveConfig:
             values["call_minutes"] or None,
             values["turns_per_call"] or None,
             values["photos_per_hour"] or None,
+            values["concurrent_calls"] or None,
         )
 
     @property
@@ -1038,9 +1043,9 @@ class LiveConfig:
             case "chat_llm" | "memory_llm":
                 return True
             case "tts":
-                return bool(self.effective(TTS)["api_key"])
+                return bool(self.effective(TTS)["api_key"] or self.settings.local_speech)
             case "stt":
-                return self.stt_key is not None
+                return self.stt_key is not None or self.settings.local_speech is not None
             case "judge":
                 return self._judge is not None
             case "embedding":
@@ -1155,7 +1160,8 @@ class LiveConfig:
             metered_llm(
                 memory.client, self._activity, llm_origin("memory_llm", memory.settings)
             ),
-            self.stt_key, tts["api_key"], tts["model"],
+            self.stt_key or self.settings.local_speech,
+            tts["api_key"] or self.settings.local_speech, tts["model"],
             emotions, hold_background=lambda: memory.again().release,
             call_llm=metered_llm(
                 chat.client.call, self._activity, llm_origin("chat_llm", chat.settings.call)

@@ -353,7 +353,7 @@ async def test_an_interruption_stops_the_reply_which_is_recorded_with_its_comple
     )
     messages = without_emotions(messages)
 
-    assert spoken_text == ["ほわっ", "今日"]
+    assert spoken_text == ["ほわっ"]  # the unvalidated partial segment never reaches speech
     assert kinds(messages) == ["user", "done", "ended"]  # it counts as a turn
     assert (messages[-2]["message"]["ja"], messages[-2]["message"]["zh"]) == ("ほわっ", "哇")
     assert await mano_call.record() == [
@@ -483,11 +483,12 @@ async def test_what_is_typed_before_the_character_speaks_joins_the_turn_and_stop
     assert said(messages) == ["早上好", "早上好\n在吗"]
     assert await mano_call.said() == ["早上好\n在吗", None]
     voiced = [type(f) for f in down if not isinstance(f, RTVIServerMessageFrame)]
-    assert voiced[:4] == [
-        LLMFullResponseStartFrame, SegmentTextFrame, LLMFullResponseEndFrame, InterruptionFrame
+    assert voiced[:3] == [
+        LLMFullResponseStartFrame, LLMFullResponseEndFrame, InterruptionFrame
     ]
+    # The cancelled prefix was never complete enough to validate and send to TTS.
     assert to_tts(down) == [
-        ("reply",), ("ほわっ", 1, 0), ("reply",), ("うん。", 2, 0), ("complete", 2, 0)
+        ("reply",), ("reply",), ("うん。", 2, 0), ("complete", 2, 0)
     ]
 
 

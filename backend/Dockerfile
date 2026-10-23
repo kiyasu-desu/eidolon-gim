@@ -13,8 +13,8 @@ COPY eval ./eval
 
 # On the PATH so that the admin can run `docker compose exec backend eidolon ...`.
 ENV PATH=/app/.venv/bin:$PATH \
-    EIDOLON_DATABASE_PATH=/data/eidolon.db \
-    EIDOLON_CHARACTERS_PATH=/characters/characters.toml \
+    EIDOLON_DATABASE_PATH=/data/eidolon-gim.db \
+    EIDOLON_CHARACTERS_PATH=/characters/gim/characters.toml \
     EIDOLON_STORY_PATH=/corpus/SCTranslationData/data/story \
     EIDOLON_MIRROR_CACHE_PATH=/data/mirror \
     EIDOLON_EVENT_NAMES_PATH=/deploy/event-names.toml

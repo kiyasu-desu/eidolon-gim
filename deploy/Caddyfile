@@ -16,5 +16,5 @@
 			header Content-Type application/json*
 		}
 	}
-	reverse_proxy 127.0.0.1:3000
+	reverse_proxy 127.0.0.1:{$EIDOLON_FRONTEND_PORT:3001}
 }

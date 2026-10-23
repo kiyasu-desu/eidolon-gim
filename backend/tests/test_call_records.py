@@ -9,7 +9,9 @@ has a backend of its own: the admin places the calls where that is asked."""
 
 import asyncio
 import sqlite3
+import threading
 from dataclasses import replace
+from typing import Any
 
 import httpx
 import pytest
@@ -48,6 +50,7 @@ from tests.test_call_turns import (  # noqa: F401
     spoken,
 )
 from tests.test_delete_account import user_id
+from tests.test_service_status import backend_of
 from tests.test_own_speech_keys import MY_FISH, MY_LLM, MY_SONIOX, limited, own_keys
 from tests.test_text_turn import start_conversation
 
@@ -214,6 +217,41 @@ async def test_a_database_from_before_calls_were_recorded_keeps_its_records_and_
     chat, stt = health(board, "chat_llm"), health(board, "stt")
     assert chat is not None and chat["latency_ms"]["p50"] == 800
     assert stt is not None and stt["calls"] == 1 and stt["latency_ms"]["p50"] is None
+
+
+async def test_a_call_cancelled_as_it_is_let_in_never_connected_and_takes_none_of_the_limit(
+    make_client: ClientFactory,
+    settings: Settings,
+    github: FakeIdentityProvider,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Let in on a thread, which goes on as the request is cancelled (the server shutting
+    down): what it let in is settled all the same."""
+    clock = FakeClock()
+    client = make_client(FakeLLM(), settings=limited(settings, calls_per_hour=1), clock=clock)
+    admin = await admin_client(make_client, github, clock)
+    conversation_id = await start_conversation(client)
+    backend = backend_of(client)
+    letting_in = threading.Event()
+    let_in = backend.admissions.call
+
+    def call(*args: Any) -> Any:
+        letting_in.set()
+        return let_in(*args)
+
+    monkeypatch.setattr(backend.admissions, "call", call)
+
+    async with open_browser() as browser:
+        with backend.usage._lock:  # pyright: ignore[reportPrivateUsage]  # a writer, as it were
+            offering = asyncio.create_task(browser.call(client, conversation_id=conversation_id))
+            await asyncio.to_thread(letting_in.wait, TIMEOUT)
+            offering.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await offering
+    board = await call_recorded(admin)
+
+    assert board["calls"]["by_result"]["not_connected"] == 1
+    assert backend.usage.last_day(user_id(settings.database_path, "producer")).total.calls == 0
 
 
 async def test_a_call_whose_speech_synthesis_fails_before_any_turn_never_connected(

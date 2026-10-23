@@ -101,7 +101,9 @@ class EmbeddedTexts:
         similarity; only those at the positions `among`, if given."""
         vectors = await self._load(scope, documents)
         positions = range(len(documents)) if among is None else among
-        best = nearest([vectors[i] for i in positions], query_vector, limit)
+        best = await asyncio.to_thread(
+            nearest, [vectors[i] for i in positions], query_vector, limit
+        )
         return [(positions[i], similarity) for i, similarity in best]
 
     async def embed_missing(

@@ -6,8 +6,8 @@ same, for the admin to see, but does not count towards the limit. An admin may s
 own limits, apart from the deployment's: a number, unlimited, or 0, which leaves them the
 exempt ones only.
 Each use is kept in the database, next to the
-user it belongs to, for a day; whoever's they are, uses older than that are deleted
-whenever anyone takes one."""
+user it belongs to, for a day; whoever's they are, uses older than that are deleted as the
+backend tidies up (`housekeeping`)."""
 
 import threading
 from collections.abc import Callable
@@ -162,8 +162,6 @@ class UsageLimiter:
         user's own, if an admin set one, else the deployment's."""
         now = self._clock()
         with self._lock, self._db:
-            # Everyone's, so that a user who does not come back leaves none behind.
-            self._db.execute("DELETE FROM usage WHERE at <= ?", ((now - KEPT).timestamp(),))
             if not exempt:
                 self._refuse_over(user_id, kind, now)
             cursor = self._db.execute(
@@ -172,6 +170,14 @@ class UsageLimiter:
             )
         assert cursor.lastrowid is not None
         return Use(self, cursor.lastrowid)
+
+    def forget_old(self) -> None:
+        """Delete everyone's uses older than `KEPT`, so that a user who does not come back
+        leaves none behind."""
+        with self._lock, self._db:
+            self._db.execute(
+                "DELETE FROM usage WHERE at <= ?", ((self._clock() - KEPT).timestamp(),)
+            )
 
     def check(self, user_id: str, kind: UsageKind) -> None:
         """Raise OverLimit, as `take` would, if the user has no `kind` left this hour that
@@ -213,7 +219,7 @@ class UsageLimiter:
         """The user's uses in the last day, by hour, for the admin to look over."""
         with self._lock:
             rows = self._db.execute(
-                "SELECT kind, at, exempt FROM usage WHERE user_id = ? AND at >= ? ORDER BY at",
+                "SELECT kind, at, exempt FROM usage WHERE user_id = ? AND at > ? ORDER BY at",
                 (user_id, (self._clock() - KEPT).timestamp()),
             ).fetchall()
         hours: dict[datetime, list[tuple[UsageKind, bool]]] = {}
@@ -226,7 +232,9 @@ class UsageLimiter:
         )
 
     def close(self) -> None:
-        self._db.close()
+        """Close the connection once nothing on another thread is using it."""
+        with self._lock:
+            self._db.close()
 
     def _refuse_over(self, user_id: str, kind: UsageKind, now: datetime) -> None:
         """Raise OverLimit if the last hour already holds as many of the user's counting

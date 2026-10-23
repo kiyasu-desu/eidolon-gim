@@ -86,6 +86,10 @@ def session_user(request: Request) -> User | None:
     session = backend.store.use_session(token, backend.clock()) if token else None
     if session is None:
         return None
+    if not backend.accounts.may_access(session.user.id):
+        if token:
+            backend.store.end_session(token)
+        return None
     if session.renewed:
         request.state.renewed_session = token
     return session.user

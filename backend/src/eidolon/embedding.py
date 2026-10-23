@@ -89,7 +89,7 @@ class EmbeddingError(ServiceError):
 
 
 class NoEmbedder:
-    """For reading the story corpus without searching it or adding to it."""
+    """No service: StoryCorpus can retain pending text and catalog, without vectors."""
 
     model = "none"
 

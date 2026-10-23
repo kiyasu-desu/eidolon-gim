@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Literal
 
 from eidolon.database import connect
-from eidolon.embedding import Document, Embedder, nearest, to_blob
+from eidolon.embedding import Document, Embedder, NoEmbedder, nearest, to_blob
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS episodes (
@@ -70,7 +70,7 @@ REEMBED_BATCH = 200
 """How many passages (or memories) `eidolon reembed` embeds before committing them."""
 
 
-ImportFormat = Literal["csv", "json"]
+ImportFormat = Literal["csv", "json", "gim-csv", "gim-conditional-csv"]
 """`csv` for SCTranslationData, `json` for the game's own scripts."""
 
 
@@ -136,16 +136,23 @@ class StoryCorpus:
                 )
 
     async def save(self, episodes: list[Episode]) -> int:
-        """Insert or replace these episodes; returns how many passages had to be embedded."""
+        """Save episodes; NoEmbedder retains pending text without making fake vectors.
+
+        Pending passages use an empty model/blob, are excluded from search, and can
+        later be embedded by `embed_missing` with a configured embedder.
+        """
         passages = {e.id: _passages(e) if e.cast else [] for e in episodes}
         titles = {t: passage_title(e.source, e.title) for e in episodes for t in passages[e.id]}
-        known = self._known_vectors(list(passages))
+        offline = isinstance(self._embedder, NoEmbedder)
+        known = self._known_vectors(list(passages), offline=offline)
         missing = sorted(titles.keys() - known.keys())
-        if missing:
+        if missing and not offline:
             vectors = await self._embedder.embed_documents(
                 [Document(t, titles[t]) for t in missing]
             )
-            known.update(zip(missing, (to_blob(v) for v in vectors), strict=True))
+            known.update(zip(
+                missing, ((self._embedder.model, to_blob(v)) for v in vectors), strict=True
+            ))
 
         now = datetime.now(UTC).isoformat()
         with self._lock, self._db:
@@ -176,11 +183,11 @@ class StoryCorpus:
                     "INSERT INTO episode_passages (episode_id, seq, text, model, embedding)"
                     " VALUES (?, ?, ?, ?, ?)",
                     [
-                        (episode.id, i, text, self._embedder.model, known[text])
+                        (episode.id, i, text, *known.get(text, ("", b"")))
                         for i, text in enumerate(passages[episode.id])
                     ],
                 )
-        return len(missing)
+        return 0 if offline else len(missing)
 
     def remove(self, episode_id: str) -> bool:
         """Remove an episode if present; returns whether it was."""
@@ -252,6 +259,8 @@ class StoryCorpus:
 
     async def search(self, query: str, character_id: str, limit: int = 5) -> list[Passage]:
         """The passages most similar to `query`, from episodes `character_id` appears in."""
+        if isinstance(self._embedder, NoEmbedder):
+            return []
         return self.search_by_vector(await self._embedder.embed_query(query), character_id, limit)
 
     def search_by_vector(
@@ -262,7 +271,7 @@ class StoryCorpus:
             rows = self._db.execute(
                 "SELECT p.episode_id, p.text, p.embedding FROM episode_passages p"
                 " JOIN episode_cast c ON c.episode_id = p.episode_id"
-                " WHERE c.character_id = ? AND p.model = ?",
+                " WHERE c.character_id = ? AND p.model = ? AND length(p.embedding) > 0",
                 (character_id, self._embedder.model),
             ).fetchall()
         best = nearest([r["embedding"] for r in rows], query_vector, limit)
@@ -281,8 +290,13 @@ class StoryCorpus:
         """How many passages have no vector from this corpus's embedder, and so cannot be
         found: those embedded before the embedding service, model or dimensions changed."""
         with self._lock:
+            if isinstance(self._embedder, NoEmbedder):
+                return self._db.execute(
+                    "SELECT count(*) FROM episode_passages WHERE length(embedding) = 0"
+                ).fetchone()[0]
             return self._db.execute(
-                "SELECT count(*) FROM episode_passages WHERE model != ?", (self._embedder.model,)
+                "SELECT count(*) FROM episode_passages WHERE model != ? OR length(embedding) = 0",
+                (self._embedder.model,)
             ).fetchone()[0]
 
     async def embed_missing(
@@ -301,7 +315,8 @@ class StoryCorpus:
                 rows = self._db.execute(
                     "SELECT p.episode_id, p.seq, p.text, e.source, e.title"
                     " FROM episode_passages p JOIN episodes e ON e.id = p.episode_id"
-                    " WHERE p.model != ? AND (p.episode_id, p.seq) > (?, ?)"
+                    " WHERE (p.model != ? OR length(p.embedding) = 0)"
+                    " AND (p.episode_id, p.seq) > (?, ?)"
                     " ORDER BY p.episode_id, p.seq LIMIT ?",
                     (model, *after, batch),
                 ).fetchall()
@@ -327,17 +342,23 @@ class StoryCorpus:
     def close(self) -> None:
         self._db.close()
 
-    def _known_vectors(self, episode_ids: list[str]) -> dict[str, bytes]:
-        """Vectors already stored for these episodes' passages, by passage text."""
+    def _known_vectors(
+        self, episode_ids: list[str], *, offline: bool
+    ) -> dict[str, tuple[str, bytes]]:
+        """Keep each vector's model; an offline edit preserves unchanged passages.
+
+        Online imports reuse only their configured model. Offline imports have no
+        replacement model, so retain the existing model instead of discarding it.
+        """
         with self._lock:
             known = {}
             for episode_id in episode_ids:
                 for row in self._db.execute(
-                    "SELECT text, embedding FROM episode_passages"
-                    " WHERE episode_id = ? AND model = ?",
-                    (episode_id, self._embedder.model),
+                    "SELECT text, model, embedding FROM episode_passages"
+                    " WHERE episode_id = ? AND (model = ? OR ?) AND length(embedding) > 0",
+                    (episode_id, self._embedder.model, offline),
                 ):
-                    known[row["text"]] = row["embedding"]
+                    known[row["text"]] = (row["model"], row["embedding"])
             return known
 
     def _delete(self, episode_id: str) -> bool:

@@ -152,6 +152,7 @@ class LimitsInput(BaseModel):
     photos_per_hour: Any
     call_minutes: Any
     turns_per_call: Any
+    concurrent_calls: Any
     history_turns: Any
     exempting_llm: Any
     exempting_tts: Any

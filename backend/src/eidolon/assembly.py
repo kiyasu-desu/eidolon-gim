@@ -25,6 +25,7 @@ closes only what `build` made, in the order that lets what is still running fini
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import httpx
@@ -41,6 +42,8 @@ from eidolon.gift_catalog import Gift, check_liked_gifts, gifts_path, load_gift_
 from eidolon.gifts import Gifts
 from eidolon.happenings import Happenings
 from eidolon.hot_words import hot_words
+from eidolon.housekeeping import keep_tidy
+from eidolon.loop_lag import watch_the_loop
 from eidolon.randomness import Random, secure_random
 from eidolon.clock import Clock, utc_now
 from eidolon.config import DEFAULT_BAILIAN_STT_MODEL, Settings
@@ -78,6 +81,11 @@ from eidolon.world import World, load_world, world_path
 log = logging.getLogger(__name__)
 
 Closer = Callable[[], Awaitable[None] | None]
+
+THREADS = 32
+"""How many threads the event loop's work waits on at once (`asyncio.to_thread`): the
+database's, mostly, for every turn, and a backup or data package taking minutes too. More
+than the default, a few on a small server, so that those do not keep turns waiting."""
 
 
 @dataclass
@@ -135,21 +143,40 @@ class Backend:
     _probing: asyncio.Task[None] | None = field(default=None, repr=False)
     _reaching_out: asyncio.Task[None] | None = field(default=None, repr=False)
 
+    _tidying: asyncio.Task[None] | None = field(default=None, repr=False)
+    _watching: asyncio.Task[None] | None = field(default=None, repr=False)
+
     async def start(self) -> None:
         """What is done as the server starts, on its event loop: try the overrides of the
         configuration, falling back to `.env` where one fails; keep the price catalogs
         fresh from now on, fetching them in the background, try the services without
-        calls for their status, and have characters reach out once their time comes."""
+        calls for their status, have characters reach out once their time comes, tidy
+        aged records in the background, and watch event loop latency."""
+        asyncio.get_running_loop().set_default_executor(
+            ThreadPoolExecutor(THREADS, thread_name_prefix="eidolon")
+        )
         await self.config.start()
+        if self.config.settings.local_speech is not None:
+            from eidolon.windows_speech import WindowsSpeech
+
+            await WindowsSpeech(self.config.settings.local_speech).check()
         self._keeping_fresh = asyncio.create_task(self.prices.catalog.keep_fresh())
         self._probing = asyncio.create_task(self.service_status.keep_probing())
         self._reaching_out = asyncio.create_task(self.reach_outs.keep_reaching_out())
+        self._tidying = asyncio.create_task(keep_tidy(self.usage.forget_old, self.activity.forget_old))
+        self._watching = asyncio.create_task(watch_the_loop(lambda: self.calls.in_progress))
 
     async def aclose(self) -> None:
-        """Close what `build` opened, last opened first."""
-        for task in (self._keeping_fresh, self._probing, self._reaching_out):
-            if task is not None:
-                task.cancel()
+        """Wait for background work, then close what `build` opened, last opened first."""
+        tasks = [
+            task for task in (
+                self._keeping_fresh, self._probing, self._reaching_out, self._tidying,
+                self._watching,
+            ) if task is not None
+        ]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         for close in reversed(self._closers):
             result = close()
             if result is not None:
@@ -375,7 +402,10 @@ def build(
         speech=speech,
         own_keys=own_keys,
         admissions=admissions,
-        accounts=Accounts(store, clock, memories, calls, settings.secret_key),
+        accounts=Accounts(
+            store, clock, memories, calls, settings.secret_key,
+            settings.allowed_identities or None,
+        ),
         identity_providers=identity_providers,
         activity=activity,
         config=config,

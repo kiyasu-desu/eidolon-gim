@@ -196,6 +196,8 @@ class Pricing:
         return self._found[key]
 
     def _find(self, provider: str, model: str, unit: str) -> Found | None:
+        if provider == "windows-system-speech" and unit in ("seconds", "bytes", "characters"):
+            return Found(Price(0, None, "CNY", GATHERED), "preset")
         names = dict.fromkeys([model, _undimensioned(model)])
         for name in names:
             if (price := self._overrides.get((provider, name, unit))) is not None:

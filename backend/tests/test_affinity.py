@@ -145,11 +145,13 @@ async def test_reading_it_needs_a_signed_in_user_and_a_character(make_client: Cl
 
 
 @pytest.mark.parametrize("judge", [FAKE_JUDGE, None])
-async def test_unset_in_env_it_is_on_with_the_judge_model_and_off_without(
+@pytest.mark.parametrize("explicit", [None, "1"])
+async def test_gim_default_is_off_and_explicit_opt_in_still_requires_judge(
     make_client: ClientFactory,
     settings: Settings,
     monkeypatch: pytest.MonkeyPatch,
     judge: JevSettings | None,
+    explicit: str | None,
 ):
     for name in ("EIDOLON_AFFINITY_AND_GIFTS", "JUDGE_PROVIDER", "JEV_API_KEY", "JEV_MODEL",
                  "JEV_BASE_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"):
@@ -157,6 +159,8 @@ async def test_unset_in_env_it_is_on_with_the_judge_model_and_off_without(
     monkeypatch.setenv("CHAT_LLM_BASE_URL", "https://llm.example.com/v1")
     monkeypatch.setenv("CHAT_LLM_API_KEY", "sk-deployer")
     monkeypatch.setenv("CHAT_LLM_MODEL", "deployer-model")
+    if explicit is not None:
+        monkeypatch.setenv("EIDOLON_AFFINITY_AND_GIFTS", explicit)
     if judge is not None:
         monkeypatch.setenv("JEV_API_KEY", judge.api_key)
     env = Settings.from_env()
@@ -168,7 +172,7 @@ async def test_unset_in_env_it_is_on_with_the_judge_model_and_off_without(
     affinity = (await status(client)).json()
     gifts = (await client.get("/api/gifts")).json()
 
-    if judge is None:
+    if judge is None or explicit is None:
         assert (affinity, gifts["open"]) == (None, False)
     else:
         assert (affinity, gifts["open"]) == ({"tier": "trust", "cooldown_until": None}, True)

@@ -16,7 +16,7 @@ from eidolon.config import Settings
 from eidolon.engine import MAX_INPUT_LENGTH
 from eidolon.llm import ToolCall
 from eidolon.own_keys import BroughtKeys
-from eidolon.reply_format import SegmentComplete, SpeechDelta
+from eidolon.reply_format import Segment, SegmentComplete, SpeechDelta
 from eidolon.store import Conversation, Store
 from tests.fakes import (
     HANG,
@@ -118,6 +118,130 @@ async def test_a_turn_opens_with_what_the_user_said_and_closes_with_the_recorded
     assert events[0]["text"] == "早上好"
     assert events[-1]["message"]["ja"] == "ほわっ、"
     assert turns.record() == [("user", "早上好", None), ("character", None, "ほわっ、")]
+
+
+async def test_chinese_dialogue_is_rewritten_before_speech_recording_and_the_next_turn(turns: Turns):
+    llm = FakeLLM(
+        ["<ja>[shyly] えっ……那个，甜花", "，听到这话，脸就有点热……</ja><zh>甜花脸有点热。</zh>"],
+        ["<ja>[shyly] えっ……甜花、顔が熱くなった……</ja>"],
+        ["<ja>うん……</ja><zh>嗯……</zh>"],
+    )
+    events = await turns.take(llm, "继续聊吧", in_house=True)
+
+    assert types(events)[-1] == "done"
+    assert events[-1]["message"]["ja"] == "えっ……甜花、顔が熱くなった……"
+    speech = "".join(e["text"] for e in events if e["type"] == "speech-delta")
+    assert speech == "[shyly]えっ……甜花、顔が熱くなった……"
+    assert turns.record()[-1][2] == "[shyly] えっ……甜花、顔が熱くなった……"
+    await turns.take(llm, "嗯")
+    assert len(llm.prompts) == 3
+    assert llm.tools[1] == []
+    assert any("<ja>[shyly] えっ……甜花、顔が熱くなった……</ja>" in m.content
+               for m in llm.prompts[2] if m.role == "assistant")
+    assert not any("那个，甜花，听到这话" in m.content for m in llm.prompts[2])
+
+
+async def test_legacy_chinese_is_only_context_not_an_assistant_example(turns: Turns, settings: Settings):
+    old = "那个……甜花，明天也会去……"
+    store = Store(settings.database_path)
+    try:
+        store.add_turn(turns.conversation.id, "明天见", [Segment(old, "明天也会去。")])
+        llm = FakeLLM(["<ja>また明日……</ja><zh>明天见……</zh>"])
+        events = await turns.take(llm, "记得约定吗")
+
+        assert events[-1]["type"] == "done"
+        assert len(llm.prompts) == 1  # old mistakes do not cause a translation request every turn
+        assert any(m.role == "system" and "previous_dialogue_meaning" in m.content
+                   and "明天也会去" in m.content for m in llm.prompts[0])
+        assert not any(m.role == "assistant" and old in m.content for m in llm.prompts[0])
+        assert store.list_messages(turns.conversation.id)[1].ja == old
+    finally:
+        store.close()
+
+
+async def test_correction_failure_never_speaks_or_records_the_rejected_chinese(turns: Turns):
+    llm = FakeLLM(
+        ["<ja>你好</ja><zh>你好</zh>"], ["<ja>还是中文</ja>"], ["<ja>还是中文</ja>"],
+    )
+    events = await turns.take(llm, "你好", in_house=True)
+    assert types(events) == ["user", "error"]
+    assert len(llm.prompts) == 3
+    assert turns.record() == []
+
+
+async def test_a_corrected_tool_round_does_not_feed_the_original_chinese_back_to_the_model(turns: Turns):
+    llm = FakeLLM(
+        ["<ja>我想回忆一下</ja><zh>我想回忆一下。</zh>",
+         ToolCall("recall", "recall_story", {"query": "公園"})],
+        ["<ja>思い出してみるね。</ja>"],
+        ["<ja>覚えてるよ。</ja><zh>记得哦。</zh>"],
+    )
+    events = await turns.take(
+        llm, "还记得公园吗", retrieval_judge=FakeJudge(answer="nothing"),
+        embedder=FakeEmbedder(), reranker=FakeReranker(), background_llm=FakeBackgroundLLM(),
+    )
+    assert events[-1]["type"] == "done"
+    assert len(llm.prompts) == 3
+    recalled = next(m for m in llm.prompts[2] if m.tool_calls)
+    assert recalled.content == "<ja>思い出してみるね。</ja><zh>我想回忆一下。</zh>"
+    assert recalled.tool_calls[0].id == "recall"
+
+
+async def test_reach_outs_use_the_same_language_check(settings: Settings, turns: Turns):
+    llm = FakeLLM(
+        ["<ja>今天也会好好练习</ja><zh>今天也会好好练习。</zh>"],
+        ["<ja>今日も頑張るね。</ja>"],
+    )
+    backend = build_faked(settings, llm, clock=lambda: NOW)
+    try:
+        segments = await backend.engine.reach_out(turns.conversation, llm)
+        assert segments == [Segment("今日も頑張るね。", "今天也会好好练习。")]
+        assert len(llm.prompts) == 2
+    finally:
+        await backend.aclose()
+
+
+async def test_stopping_during_correction_keeps_only_earlier_complete_segments(
+    settings: Settings, turns: Turns,
+):
+    closed = asyncio.Event()
+
+    class TrackedLLM(FakeLLM):
+        async def stream_with(self, key, messages, tools=(), *, forbid_calls=False):
+            correction = bool(self.prompts)
+            try:
+                async for part in super().stream_with(key, messages, tools, forbid_calls=forbid_calls):
+                    yield part
+            finally:
+                if correction:
+                    closed.set()
+
+    llm = TrackedLLM(
+        ["<ja>うん。</ja><zh>嗯。</zh><ja>你好</ja><zh>你好</zh>"], [HANG],
+    )
+    backend = build_faked(settings, llm, clock=lambda: NOW)
+    stop = asyncio.Event()
+    events = []
+
+    async def take():
+        llms = backend.own_keys.for_turn(BroughtKeys()).llms
+        async for event in backend.engine.turn(turns.conversation, "你好", llms, stop=stop):
+            events.append(asdict(event))
+
+    task = asyncio.create_task(take())
+    try:
+        async with asyncio.timeout(2):
+            while len(llm.prompts) < 2:
+                await asyncio.sleep(0)
+            stop.set()
+            await task
+        await asyncio.wait_for(closed.wait(), timeout=1)
+        assert events[-1]["type"] == "done"
+        assert events[-1]["message"]["ja"] == "うん。"
+        assert turns.record()[-1][2] == "うん。"
+    finally:
+        task.cancel()
+        await backend.aclose()
 
 
 async def test_a_segment_is_complete_once_its_subtitle_closes_the_next_opens_or_the_model_stops(

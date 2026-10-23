@@ -218,11 +218,22 @@ def probes(
 
     async def tts() -> None:
         values = config.effective(TTS)
+        if not values["api_key"] and config.settings.local_speech is not None:
+            from eidolon.windows_speech import WindowsSpeech
+
+            local = WindowsSpeech(config.settings.local_speech)
+            await local.synthesize("はい", 16000)
+            return
         await speech.voice_a_word(values["api_key"], values["model"], voice_id)
 
     async def stt() -> None:
         key = config.stt_key
         if key is None:
+            if config.settings.local_speech is not None:
+                from eidolon.windows_speech import WindowsSpeech
+
+                await WindowsSpeech(config.settings.local_speech).check()
+                return
             raise RuntimeError("没有语音识别的 key")
         await speech.check_stt(key.provider, key.api_key, own=False)
 

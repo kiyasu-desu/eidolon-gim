@@ -146,15 +146,16 @@ def test_a_users_own_limits_kept_before_photos_were_limited_follow_the_deploymen
         usage.close()
 
 
-def test_any_user_checking_their_usage_forgets_everyones_uses_over_a_day_old(
+def test_forgetting_old_uses_forgets_everyones_over_a_day_old(
     deployment: Deployment, usage: UsageLimiter
 ):
     usage.take(deployment.friend, "turn")  # and the friend never comes back
     deployment.clock.advance(hours=12)
     usage.take(deployment.friend, "call")
     deployment.clock.advance(hours=12, minutes=1)
-
     usage.take(deployment.user, "turn")
+
+    usage.forget_old()
 
     with sqlite3.connect(deployment.path) as db:
         kept = db.execute("SELECT user_id, kind FROM usage ORDER BY at").fetchall()
