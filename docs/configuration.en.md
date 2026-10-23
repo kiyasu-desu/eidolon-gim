@@ -412,6 +412,7 @@ Anyone can sign in with Google or GitHub, with no invitation or approval ([ADR-0
 - **Sign-in methods**: On the settings page's 「登录与数据」 (Sign-in and data) tab, users can link another sign-in method; identities with the same email are never merged automatically. A session doesn't expire as long as it is used within 30 days. Users can sign out of the current device or of all devices.
 - **Deleting data**: 「删除我的全部数据」 (Delete all my data), after a second confirmation, deletes memories, conversations, the producer profile, sign-in methods and usage limit counts for good, and signs the user out on all devices. Copies in the daily encrypted backups disappear within 30 days at most ([ADR-0012](adr/0012-encrypted-offsite-backups-with-bounded-retention.md)).
 - **Dev login**: For local development, set `EIDOLON_DEV_LOGIN=1`, and the sign-in panel gains 「开发登录」 (Dev login), which signs in directly by name. A public deployment with `EIDOLON_DOMAIN` set refuses to start if it detects this switch.
+- **Personal deployment**: Set `EIDOLON_PRIVATE_MODE=1` and list allowed stable OAuth subjects in `EIDOLON_ALLOWED_IDENTITIES`, e.g. `github:12345,google:subject` (not usernames or email addresses). Private mode refuses to start with an empty list. A nonempty list always restricts sign-in, linking and existing sessions, even without private mode. Any listed identity already linked to a user grants access; new identities must also be listed before linking. Disable `EIDOLON_DEV_LOGIN`. `EIDOLON_ADMINS` separately controls admin access. After changing the list and recreating the backend, a user with no remaining allowed identity loses access on their next request.
 
 So that no single user drains the deployer's API credits, the following limits apply by default (0 means unlimited). They can also be changed in the admin console, and turns, calls and photos per hour can be set for an individual user:
 
@@ -422,6 +423,7 @@ So that no single user drains the deployer's API credits, the following limits a
 | Photos per hour | 5 | `EIDOLON_PHOTOS_PER_HOUR` |
 | Duration per call | 10 minutes | `EIDOLON_CALL_MINUTES` |
 | Turns per call | 40 | `EIDOLON_TURNS_PER_CALL` |
+| Calls at once | 10 | `EIDOLON_CONCURRENT_CALLS` |
 | History turns sent per turn | 20 | `EIDOLON_HISTORY_TURNS` |
 
 - **How it counts**: Per user, whichever sign-in method or device they use. Turns that fail because a service erred, and calls that never connected, don't count; ones the user leaves midway still count. Photos are counted across text turns and calls alike, by whose money each one costs: photos not sent don't count, nor ones on the user's own image generation; a photo on the deployer's image generation counts even in a turn on the user's own LLM.
@@ -431,6 +433,7 @@ So that no single user drains the deployer's API credits, the following limits a
   - **Admin console**: Three switches in the 「限额」 (Usage limits) card on the config page, which take precedence over `.env`. They take effect from the next turn and call; a call in progress keeps the rule it started with.
   - **Example**: With only the LLM picked, people without keys try it out within the limits; people who bring their own LLM call without limits, and the deployer pays for speech synthesis and recognition. The per-call duration and turn caps still apply.
 - **Over the limit**: Requests over the usage limit get a 429 with the time usage resumes, and the frontend tells the user when they can use it again.
+- **Calls at once**: Counted across all users, exempt calls included, from dialing until the call is over. A new call when they are full gets a 503, the frontend says too many people are calling, and it doesn't count. Each user has one call at a time: placing another hangs up the earlier one once it is let through. Every call's audio is handled in one backend process; the default of 10 is sized for a 2-core server.
 - **History turns**: Each turn, the chat model reads only the most recent turns; earlier content comes back through memory and retrieval. The conversation record itself is kept in full.
 
 Admins can also manage users from the command line on the server, with the same effect as the admin console:

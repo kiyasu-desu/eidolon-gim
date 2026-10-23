@@ -1,5 +1,7 @@
 # 部署到 VPS
 
+> **Eidolon-GIM 请先读 [学马部署说明](deploy-gim.md)。** 下文保留上游 OAuth、备份等参考资料；SC 剧情同步、媒体和上游镜像命令不适用于当前学马版本。当前 Compose 从本项目源码构建，项目名/数据库独立，入口默认3001。
+
 生产环境用 `docker-compose.prod.yml`，和本地开发用的 `docker-compose.yml` 分开。它包含四个服务：
 
 - **caddy**：HTTPS 入口。自动向 Let's Encrypt 申请、续期证书，HTTP 自动跳转到 HTTPS（浏览器只有在 HTTPS 下才允许使用麦克风）。
