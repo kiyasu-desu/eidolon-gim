@@ -669,6 +669,10 @@ export class LiveConversation {
           this.apply({ type: "event", event: event.event });
           this.ports.onListChanged();
         }
+        // The server can finish before startCall resolves (or while the ringback holds
+        // it). No later disconnect is guaranteed: retire this attempt now so its promise
+        // cannot turn the end card back into a connected call.
+        if (this.state.call.phase === "dialing") this.ended(this.endedBy);
         return;
       case "user":
         return this.applyTurnEvent(event, { hearing: "", stand }, () => ({

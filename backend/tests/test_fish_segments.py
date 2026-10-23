@@ -346,21 +346,23 @@ async def test_a_session_fish_audio_closes_early_is_logged_without_the_reason_it
 async def test_a_segment_no_connection_voices_is_not_announced():
     fish = await run(
         *reply(1, ["ほわっ。"], ["今日も。", "ね。"]),
-        fish=FakeFish(refused=(2, 3, 4)),  # every connection the second segment tries
+        fish=FakeFish(refused=(2, 3)),  # the next segment's opening and its one retry
     )
 
-    assert fish.log.count("refused") == 3
+    assert fish.log.count("refused") == 2
     assert heard(fish) == ["playing 1/0", "audio ほわっ。"]
 
 
-async def test_a_segment_is_announced_once_a_connection_voices_it():
+async def test_a_transient_connection_failure_retries_without_losing_the_segment():
     fish = await run(
         *reply(1, ["ほわっ。"], ["今日も。", "ね。"]),
-        fish=FakeFish(refused=(2, 3)),  # the second segment's connection, tried again
+        fish=FakeFish(refused=(2,)),  # the second segment's connection, tried again
     )
 
-    assert fish.log.count("refused") == 2  # 今日も is lost
-    assert heard(fish) == ["playing 1/0", "audio ほわっ。", "playing 1/1", "audio ね。"]
+    assert fish.log.count("refused") == 1
+    assert heard(fish) == [
+        "playing 1/0", "audio ほわっ。", "playing 1/1", "audio 今日も。", "audio ね。",
+    ]
 
 
 async def test_an_interruption_stops_her_at_once_and_drops_the_spare_connection_too():

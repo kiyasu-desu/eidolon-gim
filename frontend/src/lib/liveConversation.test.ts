@@ -310,6 +310,34 @@ describe("LiveConversation: a call", () => {
     expect(live.snapshot().call).toMatchObject({ phase: "ended", end: { reason: "not_connected", counts: false } });
   });
 
+  it("keeps an early backend end when connecting finishes later, and ignores it after redialing", async () => {
+    const { live, attempts, tones } = await conversation();
+    const calling = live.startCall();
+    const { handlers } = attempts[0];
+    handlers.onEvent({ type: "ended", reason: "not_connected", message: "语音服务故障", counts: false });
+    handlers.onDropped();
+    expect(live.snapshot()).toMatchObject({
+      call: { phase: "ended", dial: 1, seconds: null, end: { reason: "not_connected", counts: false } },
+      layer: { call: { phase: "ended" }, collapsed: false },
+    });
+    expect(tones.calls).toEqual(["ring", "hangUp"]);
+
+    const redialing = live.startCall();
+    const call = new FakeCall();
+    attempts[0].connect(call);
+    await calling;
+    expect(live.snapshot().call).toEqual({ phase: "dialing", dial: 2 });
+    expect(call.hangUps).toBe(1);
+
+    attempts[1].connect(new FakeCall());
+    await redialing;
+    expect(live.snapshot().call).toMatchObject({ phase: "connected", dial: 2 });
+    const redialed = live.snapshot();
+    handlers.onEvent({ type: "ended", reason: "not_connected", message: "迟到的结束", counts: false });
+    handlers.onDropped();
+    expect(live.snapshot()).toBe(redialed);
+  });
+
   it("ends with the backend's reason and word on the limit, taking back the reply cut off", async () => {
     const { live, attempts } = await conversation({ messages: history });
     await connected(live, attempts);
@@ -1535,6 +1563,22 @@ describe("LiveConversation: the ringback rung once in full", () => {
     expect(call.hangUps).toBe(1);
     expect(call.micEnabled).toEqual([false]);
     expect(tones.calls).toEqual(["ring", "hangUp"]);
+  });
+
+  it("ends at once on the backend's end while held for the ringback, without waiting for a drop", async () => {
+    const { live, attempts, tones, call, calling } = await heldCall();
+
+    attempts[0].handlers.onEvent({ type: "ended", reason: "not_connected", message: "语音服务故障", counts: false });
+    await calling;
+
+    expect(live.snapshot().call).toMatchObject({
+      phase: "ended", dial: 1, seconds: null, end: { reason: "not_connected", counts: false },
+    });
+    expect(call.hangUps).toBe(1);
+    expect(call.micEnabled).toEqual([false]);
+    expect(tones.calls).toEqual(["ring", "hangUp"]);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(live.snapshot().call.phase).toBe("ended");
   });
 
   it("ends, never having connected, when it drops while it rings on", async () => {

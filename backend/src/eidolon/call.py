@@ -416,6 +416,10 @@ FINISH_TIMEOUT = 10.0
 Japanese: to send the rest of its audio, some seconds of it at most. A session that takes
 longer is given up, and the rest of the segment with it."""
 
+FISH_CONNECT_TIMEOUT = 10.0
+"""The most seconds to open a Fish connection and start its session, per attempt.
+One transient failure is retried before the voice service is declared unusable."""
+
 
 class FishTTS(InterruptsFirst, ProxiedWebsocket, FishAudioTTSService):
     """Fish Audio, speaking as the character a segment at a time.
@@ -542,7 +546,8 @@ class FishTTS(InterruptsFirst, ProxiedWebsocket, FishAudioTTSService):
         await self._close_session()
         self._keep_spare()
         spare = self._spare
-        assert spare is not None
+        if spare is None:  # the service has already become unusable
+            return
         await asyncio.wait([spare])
         if self._spare is not spare or spare.cancelled():  # dropped meanwhile
             return
@@ -600,6 +605,8 @@ class FishTTS(InterruptsFirst, ProxiedWebsocket, FishAudioTTSService):
     def _keep_spare(self) -> None:
         """Have a connection open, or opening, for the next segment to start on, in place
         of one that could not be opened or has closed since."""
+        if not self.is_usable:
+            return
         spare = self._spare
         if spare is not None and not spare.done():
             return
@@ -611,7 +618,8 @@ class FishTTS(InterruptsFirst, ProxiedWebsocket, FishAudioTTSService):
 
     async def _open(self) -> ClientConnection | None:
         """A new connection to Fish Audio, its session started, ready for the text to
-        voice; None if it could not be opened, the error having been reported."""
+        voice. Retry one transient failure, then report the service as unusable so
+        the worker ends the call; None after failure, the error having been reported."""
         headers = {"Authorization": f"Bearer {self._api_key}"}
         model = assert_given(self._settings.model)
         if model is not None:
@@ -634,26 +642,36 @@ class FishTTS(InterruptsFirst, ProxiedWebsocket, FishAudioTTSService):
             request["top_p"] = self._settings.top_p
         if self._dictionary is not None:
             request["pronunciation_dictionary"] = self._dictionary
-        websocket: ClientConnection | None = None
-        try:
-            websocket = await self._websocket_connect(self._base_url, additional_headers=headers)
-            await websocket.send(ormsgpack.packb({"event": "start", "request": request}))
-        except asyncio.CancelledError:
-            if websocket is not None:
-                websocket.transport.abort()
-            raise
-        except Exception as e:
-            await self.push_error(error_msg=f"Unknown error occurred: {e}", exception=e)
-            if websocket is not None:
-                websocket.transport.abort()
-            return None
-        return websocket
+        for attempt in range(2):
+            websocket: ClientConnection | None = None
+            try:
+                async with asyncio.timeout(FISH_CONNECT_TIMEOUT):
+                    websocket = await self._websocket_connect(
+                        self._base_url, additional_headers=headers,
+                    )
+                    await websocket.send(ormsgpack.packb({"event": "start", "request": request}))
+            except asyncio.CancelledError:
+                if websocket is not None:
+                    websocket.transport.abort()
+                raise
+            except Exception as e:
+                if websocket is not None:
+                    websocket.transport.abort()
+                await self.push_error(
+                    error_msg=f"Fish Audio connection failed: {e}", exception=e,
+                    force_treat_as_permanent=attempt == 1,
+                )
+                if not self.is_usable:  # permanent errors need no retry
+                    return None
+            else:
+                return websocket
+        return None
 
     async def _connect(self) -> None:
         """Open the connection the next segment is to start on."""
         self._keep_spare()
-        assert self._spare is not None
-        await asyncio.wait([self._spare])
+        if self._spare is not None:
+            await asyncio.wait([self._spare])
 
     async def _disconnect(self) -> None:
         """Drop the connections: the segment being voiced, and the next one's."""
