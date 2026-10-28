@@ -33,6 +33,7 @@ jobs:
       # --locked：uv.lock 和 pyproject.toml 对不上时失败
       - run: uv sync --locked
       - run: uv run ruff check
+      - run: uv run ruff check --config pyproject.toml ../scripts/stand3d ../scripts/check-stand3d.py
       - run: uv run pyright
       # 单个测试 2 分钟还没结束时打印所有线程的栈，挂住时能看出卡在哪里
       - run: uv run pytest -o faulthandler_timeout=120
@@ -56,6 +57,28 @@ jobs:
       - run: sh scripts/check-discipline.sh
       # next build 由下面的镜像构建跑
 
+  stand3d:
+    name: Stand3D pipeline (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.11"
+          enable-cache: false
+      # stdlib + Node syntax only: no Unity, browser, npm install, private assets or secrets.
+      - run: uv run --no-project --python 3.11 python scripts/check-stand3d.py
+
   shellcheck:
     runs-on: ubuntu-latest
     steps:
@@ -65,7 +88,7 @@ jobs:
       - run: sh scripts/check-scratch.sh
 
   image:
-    needs: [backend, frontend, shellcheck]
+    needs: [backend, frontend, stand3d, shellcheck]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -86,7 +109,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/sallyn0225/eidolon-sc-${{ matrix.service }}
+          images: ghcr.io/${{ github.repository }}-${{ matrix.service }}
           tags: |
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}

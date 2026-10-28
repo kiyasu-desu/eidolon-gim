@@ -50,6 +50,7 @@ frontend_sources=$(printf '%s\n' "$changed" | grep -E '^frontend/src/.*\.(ts|tsx
 done)
 backend_changed=$(printf '%s\n' "$changed" | grep -E '^backend/' | head -n 1)
 frontend_changed=$(printf '%s\n' "$changed" | grep -E '^frontend/' | head -n 1)
+stand3d_changed=$(printf '%s\n' "$changed" | grep -E '^(scripts/stand3d/|scripts/check-stand3d\.py$|\.github/workflows/ci\.yml$)' | head -n 1)
 
 if [ "$list_only" = 1 ]; then
   printf '基点 %s\n后端测试：\n%s\n枢纽模块（只按名字找测试）：%s\n前端改过的源文件（vitest related）：\n%s\n' \
@@ -76,6 +77,10 @@ if [ -n "$frontend_changed" ]; then
     # shellcheck disable=SC2086 # 源文件名不带空格，按行拆成参数
     (cd frontend && run npx vitest related --run --passWithNoTests $frontend_sources && exit "$failed") || failed=1
   fi
+fi
+if [ -n "$stand3d_changed" ]; then
+  run uv run --no-project --python 3.11 python scripts/check-stand3d.py
+  (cd backend && run uv run ruff check --config pyproject.toml ../scripts/stand3d ../scripts/check-stand3d.py && exit "$failed") || failed=1
 fi
 
 if [ "$failed" = 0 ]; then

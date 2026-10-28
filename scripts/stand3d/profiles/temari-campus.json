@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "name": "temari-campus-casl",
+  "assets": {
+    "path": "corpus/gim-assets/animation",
+    "files": {
+      "model.json": "937679a3ee0b85f71f4794431f93b050d47d9c4a5c61409f132aec7fe7b15b4a",
+      "animations.json": "9cf824dbda7c8a75b6d4c0bbf6090baeecf1651eb9ef6a62e971310d3c9c7eda",
+      "textures/body_-2962961393340051219.png": "667d4bc23bba1aa7ab741b61ae2e161a43c77527aa5c469c22154fc6f039c9df",
+      "textures/body_-4980005007440121534.png": "1cdafb9861cfca75e5ef64af3c355bf88fe183ef36bd46e399e36030fb510cb4",
+      "textures/body_-7574493742632659139.png": "213cd8cfba7707fa24891565b8c290af70bfcb1d23376b5a7a8f0b7e8953c4aa",
+      "textures/body_-940541964123150780.png": "9b367b0ca7b0e63f2a5468df53e057298e78dd18ff177b257e07278c85a402c3",
+      "textures/body_6390500206521979662.png": "6f10680980f704ae8fe1cfcd34a67c66b78362895369010f17f9414d0825196f",
+      "textures/face_-28177240035380805.png": "9a72581451ad41054a2a994388e8c43c034146c4de7861db47cdabd996e92f19",
+      "textures/face_-5401918308508716004.png": "4263c7cccf23c30073fb422375aea31f0e6768dd5f555f9485d0597f802c92f0",
+      "textures/face_-5700094556672890681.png": "da99f959619a797d5a37a455019769eb2a66a2221fcff3068f51aafe04aad4ff",
+      "textures/face_-6201984105047270387.png": "d07fa10023270c554cbba75faa356c1539085aba56906903289bdcfffcfc13d4",
+      "textures/face_-940541964123150780.png": "9b367b0ca7b0e63f2a5468df53e057298e78dd18ff177b257e07278c85a402c3",
+      "textures/face_201512868541796279.png": "5adee5bf1f357d17722a588f6bba52babaae3a243bb71e9f676e2001a4ecf4df",
+      "textures/face_4408300311583683993.png": "49dc2da407488493c33a2650be332fd8fe7c4aecc16813cdb43da58131f940ce",
+      "textures/face_6055997204077952385.png": "cb4f7aaf5abf824fa05b66c1592aa37183a1ce9bae987063afe14d2310aec3c1",
+      "textures/face_7436790961199638483.png": "e516f0876c6e59a8b3533473c9e1e2a4e3fd58fab2055a40a0306ff0bea35da6",
+      "textures/gt-fixture-0.rgba32f.bin": "7666d609fdec8fce80fc7823b6226a0dfe5bd2465859add0c970426ab71f2caa",
+      "textures/gt-fixture-1.rgba32f.bin": "ca74943b1518445bba35a212e85ce8d1838e0cbe07ee82f0bd7fd4eebc96b856",
+      "textures/hair_-1418409107402206261.png": "abd8aa862841cfc000cae54f472df252b9eb0620c5d72fb99180fc2bdca2c1e8",
+      "textures/hair_-8224830607236905513.png": "4c13b4b5b21b82ea47f2d3204f788c2c69ef1de442ea3b1a22eea0ac22d2db9a",
+      "textures/hair_-940541964123150780.png": "9b367b0ca7b0e63f2a5468df53e057298e78dd18ff177b257e07278c85a402c3",
+      "textures/hair_136519438722633774.png": "591d106f19d4fe9a967d98362662b5d92052b47375395f20ae503de6bfe6bfe5",
+      "textures/hair_1985819878573671636.png": "73aa5f72787c6f30f8ae98b953ab0d8a568a907a340a26625c204543666f3ecf",
+      "textures/hair_388670066188822588.png": "5b004024a90f7a4f0a9aef9411429987e55060f75ea1783180f0923974b9470a",
+      "textures/hair_4840883809251512730.png": "f27f37727ccaefe81f2676f513a112ec3a188e6389461f66f1144686c3602fa1",
+      "textures/hair_8115340486366113023.png": "10bd986eb527d302739410ecc87c155b94b199468061b2b63820a5b5b473e23e",
+      "textures/reflection-body.rgb9e5.bin": "eb82f19a66069e74bca25b60e32411667ba27f0bd77f986adfbea8533f29450d",
+      "textures/reflection-eye.rgb9e5.bin": "09f4ae72f04258af2a3e1bb989a9580ed1777f412839b88a718ad2af116aeef9"
+    }
+  },
+  "reference": {
+    "path": "corpus/gim-assets/unity-reference/project-2022-compat/Assets/StreamingAssets/Reference/reference.json",
+    "sha256": "b0c8c73450fe57d5836f2cf0eb9da125ef88f597b0dcdd295dbae6f26adf7ee0"
+  },
+  "avatarProfile": {
+    "path": "corpus/gim-assets/avatar-implementation-audit/original-campus-avatar-profile.json",
+    "sha256": "bea5e6c6867a939a4df1893dae37e352825e3b05f899b94bf102683fd9ae31d7"
+  },
+  "clips": [
+    {
+      "name": "mot_all_chr_ttmr_idle-001_in_b",
+      "path": "corpus/gim-assets/animation/mot_all_chr_ttmr_idle-001_in.unity3d",
+      "sha256": "e87b7751391e1107e453459a9140cd5c11361f0d01c7df3ab178b87769fa4f80"
+    },
+    {
+      "name": "mot_all_chr_ttmr_idle-001_pose_b",
+      "path": "corpus/gim-assets/animation/mot_all_chr_ttmr_idle-001_pose.unity3d",
+      "sha256": "f51760de747e948941c6304a9bddfd263495d4607576159a01d4c4eed26e8840"
+    },
+    {
+      "name": "mot_lesson_chr_cmmn_cmmn-vi-idle-ac-001_lp_b",
+      "path": "corpus/gim-assets/animation/mot_lesson_chr_cmmn_cmmn-vi-idle-ac-001_lp.unity3d",
+      "sha256": "335c89da07170ed562f27574d28898403af6022a8d9744c4fc96a3828fed0b05"
+    },
+    {
+      "name": "mot_all_chr_cmmn_talk-003_in_b",
+      "path": "corpus/gim-assets/unity-reference/motion/bundles/mot_all_chr_cmmn_talk-003_in.unity3d",
+      "sha256": "23a3591ad017101f00479fc087a227d9ffaf0fc6615a87704c08b0bfb82fac72"
+    },
+    {
+      "name": "mot_all_chr_cmmn_talk-008_in_b",
+      "path": "corpus/gim-assets/unity-reference/talk-variations/bundles/mot_all_chr_cmmn_talk-008_in.unity3d",
+      "sha256": "9ef7c27fb7b4faef119c3bda8e0f6046d83fcb4a6da331a494c70352dfbe6be8"
+    },
+    {
+      "name": "mot_all_chr_cmmn_talk-009_in_b",
+      "path": "corpus/gim-assets/unity-reference/talk-variations/bundles/mot_all_chr_cmmn_talk-009_in.unity3d",
+      "sha256": "bb17a6e3cc14181919576e57f127b292b31e8ffbb45fbe32cc50c44041a25014"
+    }
+  ],
+  "unity": {
+    "editorVersion": "2022.3.62f3c1",
+    "resourceVersion": "6000.0.77f1",
+    "sampleRate": 30,
+    "sameVersionCheck": {
+      "status": "skipped",
+      "reason": "Exact Unity 6000.0.77f1 unavailable; user chose to skip same-version validation."
+    }
+  },
+  "calibration": {
+    "portrait": {
+      "name": "eidolon_ttmr_portrait-idle_b",
+      "base": "mot_all_chr_ttmr_idle-001_pose_b",
+      "layer": "mot_lesson_chr_cmmn_cmmn-vi-idle-ac-001_lp_b",
+      "spineWeight": 0.3,
+      "neckHeadWeight": 0.12
+    },
+    "holds": {
+      "duration": 20.6,
+      "sampleRate": 5,
+      "spineWeight": 0.5,
+      "neckHeadWeight": 0.5,
+      "pinnedGestures": [
+        "mot_all_chr_cmmn_talk-003_in_b"
+      ]
+    },
+    "entranceGuards": [
+      {
+        "name": "mot_all_chr_cmmn_talk-009_in_b",
+        "holdUntil": 0.45
+      }
+    ]
+  },
+  "thresholds": {
+    "handEdges": 0,
+    "proxyMm": 5,
+    "clothNearSurfaceMm": 7,
+    "holdSeamWristMm": 2,
+    "quaternionNormError": 0.0001,
+    "pauseSkinMm": 0.01
+  },
+  "approvedBakeCache": {
+    "path": "corpus/gim-assets/unity-reference/avatar-rebuild",
+    "files": {
+      "request.json": "a23e4c6902e1fd6ca47b8ef6ccfaddc657a9c6d1053504938e6b3619e029eb47",
+      "avatar-rebuild-report.json": "0acdcdfad7e5acc6cc3a45d7fadc9fa18ef66fcf757b593db07da697815a53c4",
+      "campus/mot_all_chr_ttmr_idle-001_in_b.json": "6ba54c7b2ad1a0f4e50f242cc7c44471a076b551edc2bbedc040b231000630a6",
+      "campus/mot_all_chr_ttmr_idle-001_pose_b.json": "d9f8b3028e09dd5c7acd53a1a2cf6d510f5c09ae80be2ecbd0ba9a7d97859cd3",
+      "campus/mot_lesson_chr_cmmn_cmmn-vi-idle-ac-001_lp_b.json": "54120c4af80f312da4fa272be084e26d6f51ed8583046325a8ca59600105cff5",
+      "campus/mot_all_chr_cmmn_talk-003_in_b.json": "d79bcc0330248515905e555fcfd0d00440d8d505c1bae6227e44e201e04e5a63",
+      "campus/mot_all_chr_cmmn_talk-008_in_b.json": "ae28d25ad42a1a91341df8615be0308b68ca31209e12ca91068c33fc066dc1cb",
+      "campus/mot_all_chr_cmmn_talk-009_in_b.json": "120ea792d95d008680e6aa2acd2e6a2000acdbbba3d262fefbd5debe14fb210a",
+      "avatars/Temari-campus.asset": "a424e440f1b4141d8303af3649061f90b9c1572e0cbde2b0b905a2bbb610e443"
+    }
+  }
+}

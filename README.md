@@ -2,6 +2,8 @@
 
 和《学园偶像大师》的月村手毬进行日文回复、中文字幕的本地文字对话和语音通话。当前默认只有手毬，使用原创短人设、无 `world.json`，好感度和礼物默认关闭；剧情和模型等本机资源不随源码分发。
 
+3D 素材的重建、烘焙、制作校准、验收与候选／回退打包，见[模型处理流水线](docs/stand3d-pipeline.md)。
+
 本项目基于 [Sallyn0225/eidolon-sc](https://github.com/Sallyn0225/eidolon-sc)，保留其 [AGPL-3.0-or-later](LICENSE)、[许可说明](LICENSING.md) 及第三方来源。非官方粉丝项目，与万代南梦宫及《偶像大师》权利方无关。上游截图、英文/日文 README 与部署文档可能描述 SC 功能；本地 GIM 状态以本文和 [coordination](coordination/PROJECT-STATUS.md) 为准。
 
 ## 当前交付
