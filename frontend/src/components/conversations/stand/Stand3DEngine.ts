@@ -1,6 +1,6 @@
 // Three.js WebGL 3D stand engine for the call layer. Reuses the verified inverse-bind
-// recovery, Head submodule attachment, Humanoid + 2-bone IK retargeting, conservative Hips
-// cloth constraints, and palmar/opposition finger retargeting from `.scratch/temari-animation/viewer.js`.
+// recovery and Head submodule attachment. Uses Unity-baked body motion when present;
+// retains approximate Humanoid/IK playback for older private asset schemas.
 
 import * as THREE from "three";
 import type { Outfit } from "@/lib/api";
@@ -14,6 +14,25 @@ import {
 } from "@/lib/stand3d";
 import { FrameGate, MAX_PIXEL_RATIO, pixelRatio } from "@/lib/standFrames";
 import { StandUnavailable, type Framing } from "./StandEngine";
+import { Stand3DSwing, type SwingSetting } from "./Stand3DSwing";
+import { createActorLighting, configureActorRim, loadActorMaterials, type ActorRimSettings, type ActorLighting, type Stand3DMaterialSource } from "./Stand3DMaterial";
+import {createActorOutlineMaterial,type ActorOutlineSettings} from "./Stand3DOutline";
+import {Stand3DActorShadow,validActorShadowSettings,type ActorShadowSettings} from "./Stand3DActorShadow";
+import { blendActorFace, sampleActorFace } from "./Stand3DFace";
+import { Stand3DBodyMotion, type SkeletalMotion } from "./Stand3DBodyMotion";
+import { Stand3DSecondary, type SecondaryMotion } from "./Stand3DSecondary";
+import { Stand3DCollision } from "./Stand3DCollision";
+import { Stand3DGesture } from "./Stand3DGesture";
+import { Stand3DHandContact } from "./Stand3DHandContact";
+import { Stand3DSlide } from "./Stand3DSlide";
+import { cameraFaceWeights, type FaceCorrection } from "./Stand3DFaceCorrection";
+import { Stand3DColorPipeline, type ActorColorWorkflow } from "./Stand3DColorPipeline";
+import { Stand3DBlink, type BlinkTiming } from "./Stand3DBlink";
+import { Stand3DQuartzHair, type QuartzHairDriver } from "./Stand3DQuartzHair";
+import type { ActorEnvironment } from "./Stand3DEnvironment";
+import { loadActorColorLUT, type ActorColorLUT } from "./Stand3DColorLUT";
+import { Stand3DExpression, type FacePresets } from "./Stand3DExpression";
+import { Stand3DHandClearance, type HandClearanceSettings } from "./Stand3DHandClearance";
 
 type Vec3 = { x: number; y: number; z: number };
 type Quat4 = { x: number; y: number; z: number; w: number };
@@ -29,12 +48,7 @@ type BoneEntry = {
   };
 };
 
-type MaterialEntry = {
-  name: string;
-  baseMap: string;
-  scale: { x: number; y: number };
-  offset: { x: number; y: number };
-};
+type MaterialEntry = Stand3DMaterialSource;
 
 type BlendShapeVertex = {
   vertIndex: number;
@@ -51,6 +65,10 @@ type MeshEntry = {
   part: string;
   vertices: [number, number, number][];
   uv: [number, number][];
+  normals?: [number, number, number][];
+  outlineNormals?: [number, number, number][];
+  colors?: [number, number, number, number][];
+  colorFormat?: "unorm8" | "float";
   boneIndices: [number, number, number, number][];
   boneWeights: [number, number, number, number][];
   indices: number[];
@@ -68,9 +86,23 @@ type ModelData = {
   bones: Record<string, BoneEntry>;
   materials: Record<string, MaterialEntry>;
   meshes: MeshEntry[];
+  hairPhysics?: { version: number; bones: SwingSetting[] };
+  secondaryMotion?: SecondaryMotion;
+  faceCorrection?: FaceCorrection;
+  faceBehavior?: {version:number;blink:BlinkTiming};
+  quartzHair?: {version:number;drivers:QuartzHairDriver[]};
+  environment?: ActorEnvironment;
+  colorLUT?: ActorColorLUT;
+  facePresets?: FacePresets;
+  handClearance?: HandClearanceSettings;
+  outline?:ActorOutlineSettings;
+  actorShadow?:ActorShadowSettings;
+  rim?:ActorRimSettings;
 };
 
 type ClipTrack = {
+  shapeName?: string;
+  shapeScale?: number;
   binding: {
     typeID: number;
     attribute: number;
@@ -85,6 +117,9 @@ type AnimationClipData = {
   times: number[];
   sourceLoop: boolean;
   tracks: ClipTrack[];
+  skeletal?: SkeletalMotion;
+  role?: string;
+  holdClipName?: string;
 };
 
 type AnimationData = {
@@ -111,12 +146,29 @@ type LoadedRig = {
   clothBind: Map<THREE.Bone, THREE.Matrix4>;
   fingerRig: Record<string, FingerJointRig>;
   meshes: THREE.SkinnedMesh[];
+  outlines?:THREE.SkinnedMesh[];
+  outlineMaterials?:THREE.Material[];
+  actorShadow?:Stand3DActorShadow;
   textures: THREE.Texture[];
   materials: THREE.Material[];
   faceMesh: THREE.SkinnedMesh | null;
   faceSource: MeshEntry | null;
   shapeByName: Map<string, BlendShapeEntry>;
   clips: AnimationClipData[];
+  swing: Stand3DSwing;
+  bodyMotion: Stand3DBodyMotion;
+  secondary: Stand3DSecondary;
+  collision: Stand3DCollision;
+  bodySwing: Stand3DSwing;
+  gesture: Stand3DGesture<AnimationClipData>;
+  activeBodyClip: string | null;
+  handContact: Stand3DHandContact;
+  handClearance: Stand3DHandClearance;
+  slide: Stand3DSlide;
+  faceCorrection?: FaceCorrection;
+  blink: Stand3DBlink;
+  expression: Stand3DExpression;
+  quartzHair: Stand3DQuartzHair;
 };
 
 export type Stand3DDebugInfo = {
@@ -131,6 +183,32 @@ export type Stand3DDebugInfo = {
   reducedMotion: boolean;
   frameCount: number;
   meshCount: number;
+  physicsSegments: number;
+  shadedMaterials: number;
+  facialTracks: number;
+  bakedBodyBones: number;
+  auxiliaryBones: number;
+  hairRootDrivers: number;
+  clothSegments: number;
+  collisionBodies: number;
+  clothPenetration: number;
+  bodyClipName: string | null;
+  handGoals: number;
+  handPenetrationBefore: number;
+  handPenetrationAfter: number;
+  slideSegments: number;
+  collisionChains: number;
+  chainPenetration: number;
+  slideOffset: number;
+  colorWorkflow: ActorColorWorkflow;
+  hdrColorBuffer: boolean;
+  reflectionCubes: number;
+  colorLUTEnabled: boolean;
+  sourceFacePresets: number;
+  handClearanceGoals: number;
+  handClearanceShift: number;
+  dynamicLineSegments: number;
+  dynamicLinePenetration: number;
 };
 
 export type Stand3DCanvas = HTMLCanvasElement & {
@@ -165,6 +243,8 @@ export class Stand3DEngine {
   private readonly camera = new THREE.PerspectiveCamera(26, 1, 0.01, 30);
   private readonly listeners = new AbortController();
   private readonly gate = new FrameGate();
+  private actorLighting = createActorLighting();
+  private readonly colorPipeline: Stand3DColorPipeline;
 
   private rig: LoadedRig | null = null;
   private direction: StandDirection = CALM;
@@ -185,6 +265,7 @@ export class Stand3DEngine {
     canvas: HTMLCanvasElement,
     public framing: Framing,
     private readonly maxPixelRatio: number = MAX_PIXEL_RATIO,
+    colorWorkflow: ActorColorWorkflow = "linear",
   ) {
     this.canvas = canvas as Stand3DCanvas;
     const signal = this.listeners.signal;
@@ -211,6 +292,7 @@ export class Stand3DEngine {
       this.renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
+        premultipliedAlpha: true,
         antialias: true,
         powerPreference: "high-performance",
       });
@@ -221,26 +303,66 @@ export class Stand3DEngine {
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x000000, 0);
+    this.colorPipeline = new Stand3DColorPipeline(this.renderer, colorWorkflow);
 
-    this.canvas.__stand3d = () => ({
-      loaded: this.rig !== null,
-      outfitUrl: this.rig?.url ?? null,
-      clipName: this.rig ? (selectStand3DClip(this.rig.clips, this.reducedMotion)?.name ?? null) : null,
-      clipTime: this.poseState.clipTime,
-      mouthOpen: this.poseState.mouthOpen,
-      mood: this.direction.mood,
-      framing: this.framing,
-      paused: this.paused,
-      reducedMotion: this.reducedMotion,
-      frameCount: this.frameCount,
-      meshCount: this.rig?.meshes.length ?? 0,
-    });
+    this.canvas.__stand3d = () => {
+      const rig = this.rig;
+      const clip = rig ? selectStand3DClip(rig.clips, this.reducedMotion) : null;
+      const face = rig?.clips.find((c) => c.name === clip?.name.replace(/_b$/, "_f"));
+      return {
+        loaded: rig !== null,
+        outfitUrl: rig?.url ?? null,
+        clipName: clip?.name ?? null,
+        clipTime: this.poseState.clipTime,
+        mouthOpen: this.poseState.mouthOpen,
+        mood: this.direction.mood,
+        framing: this.framing,
+        paused: this.paused,
+        reducedMotion: this.reducedMotion,
+        frameCount: this.frameCount,
+        meshCount: rig?.meshes.length ?? 0,
+        outlineMeshes: rig?.outlines?.length ?? 0,
+        actorSelfShadow:rig?.actorShadow?.enabled??false,
+        actorShadowFailure:rig?.actorShadow?.failure??null,
+        actorRimStrength:this.actorLighting.actorRimStrength.value,
+        physicsSegments: rig?.swing.segmentCount ?? 0,
+        shadedMaterials: rig?.materials.filter((m) => m instanceof THREE.ShaderMaterial).length ?? 0,
+        facialTracks: face?.tracks.filter((t) => t.shapeName).length ?? 0,
+        bakedBodyBones: clip?.skeletal?.version === 1 ? clip.skeletal.tracks.length : 0,
+        auxiliaryBones: rig?.secondary.count ?? 0,
+        hairRootDrivers: rig?.quartzHair.count ?? 0,
+        reflectionCubes: rig?.textures.filter(texture=>texture instanceof THREE.CubeTexture).length ?? 0,
+        clothSegments: rig?.bodySwing.segmentCount ?? 0,
+        collisionBodies: rig?.collision.count ?? 0,
+        clothPenetration: rig?.bodySwing.maxPenetration ?? 0,
+        bodyClipName: rig?.activeBodyClip ?? null,
+        handGoals: rig?.handContact.count ?? 0,
+        handPenetrationBefore: rig?.handContact.maxBefore ?? 0,
+        handPenetrationAfter: rig?.handContact.maxAfter ?? 0,
+        slideSegments: (rig?.bodySwing.slideCount ?? 0)+(rig?.slide.count ?? 0),
+        collisionChains: (rig?.bodySwing.chainCount ?? 0)+(rig?.swing.chainCount ?? 0),
+        chainPenetration: Math.max(rig?.bodySwing.maxEdgePenetration ?? 0,rig?.swing.maxEdgePenetration ?? 0),
+        slideOffset: rig?.slide.maxOffset ?? 0,
+        colorWorkflow: this.colorPipeline.mode,
+        hdrColorBuffer: this.colorPipeline.hdr,
+        colorLUTEnabled: this.colorPipeline.colorLUTEnabled,
+        sourceFacePresets: rig?.expression.count ?? 0,
+        handClearanceGoals: rig?.handClearance.count ?? 0,
+        handClearanceShift: rig?.handClearance.maxCorrection ?? 0,
+        dynamicLineSegments: (rig?.bodySwing.lineCount ?? 0)+(rig?.swing.lineCount ?? 0),
+        clothClearanceJoints: rig?.bodySwing.clearanceCount ?? 0,
+        speakingGestureClips: rig?.gesture.count ?? 0,
+        speakingHoldClips: rig?.gesture.holdCount ?? 0,
+        dynamicLinePenetration: Math.max(rig?.bodySwing.maxLinePenetration ?? 0,rig?.swing.maxLinePenetration ?? 0),
+      };
+    };
   }
 
   direct(direction: StandDirection, reducedMotion: boolean): void {
     const motionChanged = this.reducedMotion !== reducedMotion;
     this.direction = direction;
     this.reducedMotion = reducedMotion;
+    if (motionChanged) { this.rig?.swing.reset(); this.rig?.bodySwing.reset(); this.rig?.slide.reset(); }
     if (this.rig && (motionChanged || this.paused || this.still)) {
       this.draw(this.rig, 0);
     }
@@ -252,6 +374,8 @@ export class Stand3DEngine {
 
   setPaused(paused: boolean): void {
     this.paused = paused;
+    // Freeze the existing solve, including contact calibration and velocities.
+    // start() clears the wall-clock reference so resume cannot accumulate time.
     if (paused) this.stop();
     else this.start();
   }
@@ -262,8 +386,10 @@ export class Stand3DEngine {
     if (this.rig?.url === url) return;
 
     const [modelRes, animRes] = await Promise.all([
-      fetch(resolveAssetUrl(url, "model.json")),
-      fetch(resolveAssetUrl(url, "animations.json")),
+      // Metadata carries versioned material/face bindings. Revalidate its ETag
+      // so an old day-long cache cannot hide a newly deployed rendering upgrade.
+      fetch(resolveAssetUrl(url, "model.json"), { cache: "no-cache" }),
+      fetch(resolveAssetUrl(url, "animations.json"), { cache: "no-cache" }),
     ]);
     if (!modelRes.ok || !animRes.ok) {
       throw new Error(`3D 立绘素材 ${modelRes.status}/${animRes.status}`);
@@ -275,16 +401,34 @@ export class Stand3DEngine {
 
     if (this.disposed || ticket !== this.loads) return;
 
-    const built = await this.buildRig(url, modelData, animData);
+    // Each pending outfit owns its globals. A failed LUT request or an obsolete
+    // load must not replace the displayed outfit's uniforms with disposed maps.
+    const lighting = createActorLighting();
+    const built = await this.buildRig(url, modelData, animData, lighting);
+    if (this.disposed || ticket !== this.loads) {
+      this.disposeRig(built);
+      return;
+    }
+    let colorLUT: THREE.Data3DTexture | null;
+    try {
+      colorLUT = await loadActorColorLUT(modelData.colorLUT, path => resolveAssetUrl(url, path));
+      if (colorLUT) built.textures.push(colorLUT);
+    } catch (error) {
+      this.disposeRig(built);
+      throw error;
+    }
     if (this.disposed || ticket !== this.loads) {
       this.disposeRig(built);
       return;
     }
 
+    this.colorPipeline.setColorLUT(null);
     if (this.rig) {
       this.disposeRig(this.rig);
     }
     this.rig = built;
+    this.actorLighting = lighting;
+    this.colorPipeline.setColorLUT(colorLUT, modelData.colorLUT?.exposure ?? 1);
     this.poseState = createStand3DPoseState();
     this.lastShapeSignature = "";
     this.scene.add(built.root);
@@ -303,6 +447,7 @@ export class Stand3DEngine {
       this.disposeRig(this.rig);
       this.rig = null;
     }
+    this.colorPipeline.dispose();
     this.renderer.dispose();
   }
 
@@ -352,15 +497,24 @@ export class Stand3DEngine {
       clip?.sourceLoop ?? false,
     );
 
-    this.applyPose(rig, clip, this.poseState);
-    this.renderer.render(this.scene, this.camera);
+    const body = rig.gesture.step(clip, this.poseState.clipTime, this.direction.speaking, step, this.reducedMotion);
+    rig.activeBodyClip = body.clip?.name ?? null;
+    const idleFace = clip ? rig.clips.find(c => c.name === clip.name.replace(/_b$/, "_f")) ?? null : null;
+    this.applyPose(rig, body.clip, { ...this.poseState, clipTime: body.time }, step, { clip: idleFace, time: this.poseState.clipTime });
+    this.presentScene();
     this.frameCount++;
+  }
+
+  private presentScene(): void {
+    if(this.rig?.actorShadow)this.rig.actorShadow.render(this.renderer,this.scene,this.camera,this.rig.meshes,this.rig.outlines??[]);
+    this.colorPipeline.render(this.scene, this.camera);
   }
 
   private async buildRig(
     outfitUrl: string,
     data: ModelData,
     animationData: AnimationData,
+    lighting: ActorLighting,
   ): Promise<LoadedRig> {
     const root = new THREE.Group();
     const bones: Record<string, THREE.Bone> = {};
@@ -494,37 +648,14 @@ export class Stand3DEngine {
       }
     }
 
-    const loader = new THREE.TextureLoader();
-    const textures: THREE.Texture[] = [];
-    const materials: THREE.Material[] = [];
-    const matMap: Record<string, THREE.Material> = {};
-
-    await Promise.all(
-      Object.entries(data.materials).map(async ([key, m]) => {
-        const tex = await loader.loadAsync(resolveAssetUrl(outfitUrl, m.baseMap));
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(m.scale.x, m.scale.y);
-        tex.offset.set(m.offset.x, m.offset.y);
-        tex.anisotropy = 4;
-        textures.push(tex);
-
-        const isEyeHighlight = m.name === "m_ehl";
-        const mat = new THREE.MeshBasicMaterial({
-          map: tex,
-          side: THREE.DoubleSide,
-          alphaTest: isEyeHighlight ? 0.01 : 0,
-          transparent: isEyeHighlight,
-          depthWrite: !isEyeHighlight,
-          blending: isEyeHighlight ? THREE.AdditiveBlending : THREE.NormalBlending,
-        });
-        materials.push(mat);
-        matMap[key] = mat;
-      }),
+    const { textures, materials, map: matMap } = await loadActorMaterials(
+      data.materials, (path) => resolveAssetUrl(outfitUrl, path), lighting, this.colorPipeline.mode === "linear", data.environment,
     );
+    configureActorRim(lighting,data.rim);
 
     const meshes: THREE.SkinnedMesh[] = [];
+    const outlines:THREE.SkinnedMesh[]=[],outlineMaterials:THREE.Material[]=[],outlineMap=new Map<string,THREE.Material|null>();
+    let hiddenOutline:THREE.Material|null=null;
     let faceMesh: THREE.SkinnedMesh | null = null;
     let faceSource: MeshEntry | null = null;
     const shapeByName = new Map<string, BlendShapeEntry>();
@@ -539,6 +670,9 @@ export class Stand3DEngine {
         ),
       );
       geometry.setAttribute("uv", new THREE.Float32BufferAttribute(m.uv.flat(), 2));
+      geometry.setAttribute("actorMask", new THREE.Float32BufferAttribute(
+        m.colors?.flatMap((color) => color.map((v) => m.colorFormat === "unorm8" ? v / 255 : v)) ?? new Array(m.vertices.length * 4).fill(0), 4,
+      ));
       geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(m.boneIndices.flat(), 4));
       geometry.setAttribute(
         "skinWeight",
@@ -556,7 +690,9 @@ export class Stand3DEngine {
         indices.push(m.indices[i], m.indices[i + 2], m.indices[i + 1]);
       }
       geometry.setIndex(indices);
-      geometry.computeVertexNormals();
+      if (m.normals?.length === m.vertices.length) {
+        geometry.setAttribute("normal", new THREE.Float32BufferAttribute(m.normals.flatMap((n) => [-n[0], n[1], n[2]]), 3));
+      } else geometry.computeVertexNormals();
       m.groups.forEach((group, i) => geometry.addGroup(group.start, group.count, i));
 
       const refs = m.renderer.m_Bones ?? m.renderer.bones ?? [];
@@ -574,6 +710,18 @@ export class Stand3DEngine {
       root.add(mesh);
       mesh.bind(skeleton, new THREE.Matrix4());
       meshes.push(mesh);
+      if(data.outline?.version===1&&m.outlineNormals?.length===m.vertices.length&&m.colors?.some(c=>((m.colorFormat==='unorm8'?c[2]:Math.round(c[2]*255))%16)>0)){
+        geometry.setAttribute('actorOutlineNormal',new THREE.Float32BufferAttribute(m.outlineNormals.flatMap(n=>[-n[0],n[1],n[2]]),3));
+        const pass=m.groups.map(g=>{
+          if(!outlineMap.has(g.material)){const mat=createActorOutlineMaterial(data.materials[g.material],lighting,data.outline!);outlineMap.set(g.material,mat);if(mat)outlineMaterials.push(mat)}
+          return outlineMap.get(g.material)??null;
+        });
+        if(pass.some(Boolean)){
+          if(pass.some(m=>!m)&&!hiddenOutline){hiddenOutline=new THREE.MeshBasicMaterial();hiddenOutline.visible=false;outlineMaterials.push(hiddenOutline)}
+          const shell=new THREE.SkinnedMesh(geometry,pass.map(m=>m??hiddenOutline!));shell.name=m.name+':outline';shell.frustumCulled=false;shell.renderOrder=10000;
+          root.add(shell);shell.bind(skeleton,mesh.bindMatrix.clone());outlines.push(shell);
+        }
+      }
 
       if (m.part === "face") {
         faceMesh = mesh;
@@ -584,6 +732,17 @@ export class Stand3DEngine {
       }
     }
 
+    const secondary = data.secondaryMotion?.version === 1 && animationData.clips.some(c => c.skeletal?.version === 1)
+      ? data.secondaryMotion : null;
+    const speakingClips=secondary?animationData.clips.filter(c=>c.role==="speakingGesture"&&c.skeletal?.version===1):[];
+    const speakingHolds=new Map<AnimationClipData,AnimationClipData>();
+    for(const source of speakingClips){const hold=animationData.clips.find(c=>c.name===source.holdClipName&&c.role==='speakingHold'&&c.skeletal?.version===1);if(hold)speakingHolds.set(source,hold);}
+    const collision = new Stand3DCollision(secondary?.colliders ?? [], bones);
+    const weighted = new Set<string>();
+    for(const source of data.meshes.filter(m=>m.part==="body")) {
+      const references=source.renderer.m_Bones??source.renderer.bones??[];
+      source.boneIndices.forEach((indices,i)=>indices.forEach((index,j)=>{if(source.boneWeights[i][j]>0&&references[index])weighted.add(`body:${references[index].m_PathID}`)}));
+    }
     return {
       url: outfitUrl,
       root,
@@ -593,12 +752,29 @@ export class Stand3DEngine {
       clothBind,
       fingerRig,
       meshes,
+      outlines,
+      outlineMaterials,
+      actorShadow:validActorShadowSettings(data.actorShadow)&&this.colorPipeline.mode==='linear'?new Stand3DActorShadow(data.actorShadow,lighting):undefined,
       textures,
       materials,
       faceMesh,
       faceSource,
       shapeByName,
       clips: animationData.clips ?? [],
+      swing: new Stand3DSwing(data.hairPhysics?.version === 1 ? data.hairPhysics.bones : [], bones, secondary ? collision : undefined, secondary?.hairChains),
+      bodyMotion: new Stand3DBodyMotion(bones),
+      secondary: new Stand3DSecondary(secondary?.auxiliary ?? [], bones),
+      expression: new Stand3DExpression(data.facePresets),
+      quartzHair: new Stand3DQuartzHair(data.quartzHair?.version === 1 ? data.quartzHair.drivers : [],bones,bodyBones.Head,bodyBones.Neck),
+      collision,
+      bodySwing: new Stand3DSwing(secondary?.body ?? [], bones, secondary ? collision : undefined, secondary?.bodyChains,secondary?.clothClearance),
+      gesture: new Stand3DGesture(speakingClips[0]??null,speakingClips.slice(1),speakingHolds),
+      activeBodyClip: null,
+      handContact: new Stand3DHandContact(secondary?.hands, bones),
+      handClearance: new Stand3DHandClearance(data.handClearance, bones),
+      slide: new Stand3DSlide(secondary?.body ?? [],bones,weighted),
+      faceCorrection: data.faceCorrection,
+      blink: new Stand3DBlink(data.faceBehavior?.version===1?data.faceBehavior.blink:null),
     };
   }
 
@@ -606,6 +782,8 @@ export class Stand3DEngine {
     rig: LoadedRig,
     clip: AnimationClipData | null,
     pose: Stand3DPoseState,
+    step = 0,
+    fallbackFace?: { clip: AnimationClipData | null; time: number },
   ): void {
     for (const [bone, r] of rig.rest) {
       bone.position.copy(r.position);
@@ -613,7 +791,17 @@ export class Stand3DEngine {
       bone.scale.copy(r.scale);
     }
 
-    if (clip && clip.times.length > 0) {
+    const baked = rig.bodyMotion.apply(clip, pose.clipTime, step, this.reducedMotion);
+    if (baked) {
+      rig.handContact.apply();
+      rig.handClearance.apply(clip,step,this.reducedMotion,pose.clipTime);
+      rig.handContact.measure();
+      rig.secondary.apply();
+      // The legacy Hips pin moves every coat joint and changes segment lengths.
+      // Native-length chain dynamics instead retain each joint's bind translation.
+      if (!rig.secondary.count) this.constrainCloth(rig);
+    }
+    if (!baked && clip && clip.times.length > 0) {
       const clampedTime = THREE.MathUtils.clamp(pose.clipTime, 0, clip.duration);
       const frame = Math.min(clampedTime * clip.sampleRate, clip.times.length - 1);
       const i = Math.floor(frame);
@@ -636,10 +824,27 @@ export class Stand3DEngine {
       this.rotateBone(rig.bodyBones, "Neck", pose.headPitchDeg * 0.35, pose.headYawDeg * 0.35, 0);
       this.rotateBone(rig.bodyBones, "Head", pose.headPitchDeg * 0.65, pose.headYawDeg * 0.65, 0);
     }
+    if (rig.bodyBones.Head) {
+      rig.bodyBones.Head.updateWorldMatrix(true,false);
+      this.camera.updateMatrixWorld(true);
+      this.actorLighting.actorHeadRightView.value.set(1,0,0)
+        .applyQuaternion(rig.bodyBones.Head.getWorldQuaternion(new THREE.Quaternion()))
+        .transformDirection(this.camera.matrixWorldInverse);
+    }
 
-    this.applyFaceShapes(rig, pose);
+    const faceClip = clip ? rig.clips.find((c) => c.name === clip.name.replace(/_b$/, "_f")) ?? null : null;
+    const nativeFace=sampleActorFace(faceClip ?? fallbackFace?.clip ?? null, faceClip ? pose.clipTime : fallbackFace?.time ?? pose.clipTime);
+    const authoredBlink=Math.max(nativeFace['b_eye.eye_001']??0,pose.shapeWeights['b_eye.eye_001']??0);
+    const automaticBlink=rig.blink.step(step,authoredBlink,this.reducedMotion);
+    nativeFace['b_eye.eye_001']=Math.max(nativeFace['b_eye.eye_001']??0,automaticBlink);
+    this.applyFaceShapes(rig, pose, nativeFace, step);
 
+    rig.quartzHair.apply();
     rig.root.updateMatrixWorld(true);
+    rig.collision.capture();
+    rig.bodySwing.update(step, !this.reducedMotion,clip?.name);
+    rig.slide.update(step, !this.reducedMotion);
+    rig.swing.update(step, !this.reducedMotion);
     for (const mesh of rig.meshes) {
       mesh.skeleton.update();
     }
@@ -781,6 +986,12 @@ export class Stand3DEngine {
       );
     }
 
+    this.constrainCloth(rig);
+  }
+
+  private constrainCloth(rig: LoadedRig): void {
+    const hips = rig.bodyBones.Hips;
+    if (!hips) return;
     rig.root.updateMatrixWorld(true);
     for (const [bone, relative] of rig.clothBind) {
       if (!bone.parent) continue;
@@ -815,18 +1026,16 @@ export class Stand3DEngine {
     }
   }
 
-  private applyFaceShapes(rig: LoadedRig, pose: Stand3DPoseState): void {
+  private applyFaceShapes(rig: LoadedRig, pose: Stand3DPoseState, native: Record<string, number> = {}, step = 0): void {
     const { faceMesh, faceSource, shapeByName } = rig;
     if (!faceMesh || !faceSource) return;
 
     const active: Array<[BlendShapeEntry, number]> = [];
-    if (pose.mouthOpen > 1e-3) {
-      const mouthShape = shapeByName.get("b_mouth.mouth_001");
-      if (mouthShape) active.push([mouthShape, pose.mouthOpen]);
-    }
-    const mouthAttenuation = 1 - pose.mouthOpen * 0.7;
-    for (const [name, rawWeight] of Object.entries(pose.shapeWeights)) {
-      const weight = name.startsWith("b_mouth.") ? rawWeight * mouthAttenuation : rawWeight;
+    const source=rig.expression.enabled?{...native,"b_eye.eye_001":Math.max(native["b_eye.eye_001"]??0,pose.shapeWeights["b_eye.eye_001"]??0)}:native;
+    const expression=rig.expression.apply(source,this.direction.mood,step,this.reducedMotion);
+    const weights = { ...blendActorFace(expression, rig.expression.enabled?{}:pose.shapeWeights, pose.mouthOpen), ...cameraFaceWeights(rig.faceCorrection,rig.bones,this.camera) };
+    this.actorLighting.actorBlink.value = weights["b_eye.eye_001"] ?? 0;
+    for (const [name, weight] of Object.entries(weights)) {
       if (weight > 1e-3) {
         const shape = shapeByName.get(name);
         if (shape) active.push([shape, weight]);
@@ -857,17 +1066,23 @@ export class Stand3DEngine {
       }
     }
     posAttr.needsUpdate = true;
-    faceMesh.geometry.computeVertexNormals();
+    // Source facial shapes contain position deltas only. Preserve the authored
+    // normal field, as in the verified Unity reference (null normal deltas).
+    // Legacy assets without normals still need geometric reconstruction.
+    if (faceSource.normals?.length !== baseVertices.length) faceMesh.geometry.computeVertexNormals();
   }
 
   private disposeRig(rig: LoadedRig): void {
     this.scene.remove(rig.root);
+    rig.actorShadow?.dispose();
     for (const mesh of rig.meshes) {
       mesh.geometry.dispose();
+      mesh.skeleton?.dispose();
     }
     for (const mat of rig.materials) {
       mat.dispose();
     }
+    for(const mat of rig.outlineMaterials??[])mat.dispose();
     for (const tex of rig.textures) {
       tex.dispose();
     }

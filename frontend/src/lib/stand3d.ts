@@ -12,6 +12,7 @@ export type Stand3DClipInfo = {
   name: string;
   duration: number;
   sourceLoop: boolean;
+  role?: string;
 };
 
 export type Stand3DCameraFrame = {
@@ -93,6 +94,7 @@ export function selectStand3DClip<T extends Stand3DClipInfo>(
     );
   }
   return (
+    bodyClips.find((clip) => clip.role === "portraitIdle" && clip.sourceLoop) ??
     bodyClips.find((clip) => clip.sourceLoop) ??
     bodyClips[bodyClips.length - 1]
   );

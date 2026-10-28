@@ -178,7 +178,7 @@ DeviceTimezone = Annotated[str | None, Header(alias="X-Timezone")]
 """The time zone the browser detected; the producer profile's own time zone overrides it."""
 
 
-_STAND_3D_ASSET = re.compile(r"(model\.json|animations\.json|textures/[A-Za-z0-9_.-]+\.png)")
+_STAND_3D_ASSET = re.compile(r"(model\.json|animations\.json|textures/[A-Za-z0-9_.-]+\.(?:png|bin))")
 
 
 def _stand(character: Character, assets_url: str | None) -> dict | None:
@@ -537,7 +537,7 @@ def create_app(backend: Backend) -> FastAPI:
 
     @app.get("/api/characters/{character_id}/stand/{asset_path:path}")
     def character_stand_asset(character_id: str, asset_path: str, request: Request) -> Response:
-        """A 3D stand asset (`model.json`, `animations.json`, or `textures/*.png`) from her
+        """A 3D stand asset (JSON, PNG textures, or binary reflection textures) from her
         local `stand_model` directory, cached and revalidated like her avatar."""
         character = characters.get(character_id)
         if (

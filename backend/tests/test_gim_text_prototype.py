@@ -65,6 +65,7 @@ async def test_temari_exposes_her_3d_stand_without_an_enza_id_and_serves_model_a
     (model_dir / "model.json").write_text('{"meshes":[]}', encoding="utf-8")
     (model_dir / "animations.json").write_text('{"clips":[]}', encoding="utf-8")
     (model_dir / "textures" / "t_face.png").write_bytes(b"\x89PNG\r\n\x1a\nface")
+    (model_dir / "textures" / "reflection-body.rgb9e5.bin").write_bytes(b"\x00\x01\x02\x03")
     (model_dir / "secret.txt").write_text("do not serve", encoding="utf-8")
 
     chars = CharacterConfig(tmp_path / "chars").add(
@@ -118,6 +119,10 @@ async def test_temari_exposes_her_3d_stand_without_an_enza_id_and_serves_model_a
     assert tex_res.status_code == 200
     assert tex_res.content == b"\x89PNG\r\n\x1a\nface"
     assert tex_res.headers["content-type"] == "image/png"
+    reflection_res = await client.get("/api/characters/temari/stand/textures/reflection-body.rgb9e5.bin")
+    assert reflection_res.status_code == 200
+    assert reflection_res.content == b"\x00\x01\x02\x03"
+    assert reflection_res.headers["content-type"] == "application/octet-stream"
 
     assert (await client.get("/api/characters/temari/stand/secret.txt")).status_code == 404
     assert (await client.get("/api/characters/temari/stand/textures/missing.png")).status_code == 404

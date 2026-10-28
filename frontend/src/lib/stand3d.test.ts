@@ -48,6 +48,12 @@ describe("framing her 3D stand in the call layer", () => {
 });
 
 describe("selecting her 3D idle clip", () => {
+  it("prefers an explicit calibrated portrait idle without replacing reduced motion or legacy selection",()=>{
+    const portrait={name:"eidolon_ttmr_portrait-idle_b",duration:20,sourceLoop:true,role:"portraitIdle"};
+    expect(selectStand3DClip([...TEMARI_CLIPS,portrait],false)).toBe(portrait);
+    expect(selectStand3DClip([...TEMARI_CLIPS,portrait],true)?.name).toBe('mot_all_chr_ttmr_idle-001_pose_b');
+    expect(selectStand3DClip(TEMARI_CLIPS,false)?.name).toBe('mot_lesson_chr_cmmn_cmmn-vi-idle-ac-001_lp_b');
+  });
   it("plays the looping body idle clip in normal motion and holds her static pose in reduced motion", () => {
     expect(selectStand3DClip(TEMARI_CLIPS, false)?.name).toBe(
       "mot_lesson_chr_cmmn_cmmn-vi-idle-ac-001_lp_b",
