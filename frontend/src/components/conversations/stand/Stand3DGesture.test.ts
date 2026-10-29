@@ -3,6 +3,18 @@ import { Stand3DGesture } from "./Stand3DGesture";
 const idle={name:"idle",duration:20,sourceLoop:true};
 const talk={name:"talk",duration:1.8,sourceLoop:false};
 describe("speech body gesture",()=>{
+ it("changes held poses sparingly during a long continuous reply without repeating entrances in a loop",()=>{
+  const next={...talk,name:'next'},hold={name:'hold',duration:20.6,sourceLoop:true},nextHold={...hold,name:'next-hold'};
+  const g=new Stand3DGesture(talk,[next],new Map([[talk,hold],[next,nextHold]]));
+  const sequence=[];let previous=null;
+  for(let frame=0;frame<45*60;frame++){
+   const current=g.step(idle,frame/60,true,1/60,false).clip;
+   if(current!==previous){sequence.push({clip:current,time:frame/60});previous=current;}
+  }
+  expect(sequence.slice(0,4).map(s=>s.clip)).toEqual([talk,hold,next,nextHold]);
+  expect(sequence[2].time).toBeGreaterThanOrEqual(10);
+  expect(sequence.length).toBeLessThanOrEqual(8);
+ });
  it("accepts the next gesture at the nominal cooldown boundary across display rates",()=>{
   for(const fps of [30,60,120]){const next={...talk,name:'next'},g=new Stand3DGesture(talk,[next]);g.step(idle,0,true,0,false);for(let f=1;f<8*fps;f++)g.step(idle,f/fps,false,1/fps,false);expect(g.step(idle,8,true,1/fps,false).clip).toBe(next)}
  });

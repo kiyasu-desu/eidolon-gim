@@ -65,6 +65,23 @@ describe("selecting her 3D idle clip", () => {
 });
 
 describe("directing her 3D pose during a call", () => {
+  it("keeps listening movements subtle, varied, paused with the render clock and absent under reduced motion", () => {
+    let state = createStand3DPoseState();
+    const listening = { ...CALM, looking: true };
+    const yaw: number[] = [];
+    for (let frame = 0; frame < 12 * 60; frame++) {
+      state = stepStand3DPose(state, listening, 1 / 60, false, 20, true);
+      yaw.push(state.headYawDeg);
+      expect(Math.abs(state.headYawDeg)).toBeLessThan(1);
+      expect(Math.abs(state.headPitchDeg - state.gazeWeight * 2.5)).toBeLessThan(1);
+    }
+    expect(Math.max(...yaw) - Math.min(...yaw)).toBeGreaterThan(.4);
+    const paused = stepStand3DPose(state, listening, 0, false, 20, true);
+    expect(paused.headYawDeg).toBe(state.headYawDeg);
+    expect(paused.headPitchDeg).toBe(state.headPitchDeg);
+    const reduced = stepStand3DPose(state, listening, 1 / 60, true, 20, true);
+    expect(reduced.headYawDeg).toBe(0);
+  });
   it("wraps the idle loop time and freezes body time under reduced motion", () => {
     let state = createStand3DPoseState();
     state = stepStand3DPose(state, CALM, 21.0, false, 20.0, true);

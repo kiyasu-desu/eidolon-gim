@@ -1,6 +1,7 @@
 type Clip = { duration: number; sourceLoop: boolean };
 const SPEECH_GAP_SECONDS = 0.6;
 const TIME_EPSILON = 1e-9;
+const MIN_HOLD_SECONDS = 10;
 
 // Rotate approved original entrance gestures on speech starts, with a cooldown for short
 // sentence/audio events. An optional, separately authored hold loop can follow
@@ -36,7 +37,12 @@ export class Stand3DGesture<T extends Clip> {
         this.quiet+=delta;
         if(this.quiet+TIME_EPSILON>=SPEECH_GAP_SECONDS){this.elapsed=null;this.active=null;this.quiet=0;}
       }
-      if(speaking&&start&&!this.active&&this.clock+TIME_EPSILON>=this.nextAllowed&&this.talks.length){
+      // A long reply can move into another approved pose, with generous, varying holds.
+      // Never replay a one-shot entrance as a loop, or interrupt it before its hold.
+      const heldLongEnough=this.active!==null&&this.holds.has(this.active)&&this.elapsed!==null
+        &&this.elapsed>=this.active.duration+MIN_HOLD_SECONDS+((this.cursor-1)%3)*2;
+      const renew=speaking&&this.talks.length>1&&heldLongEnough;
+      if(speaking&&((start&&!this.active)||renew)&&this.clock+TIME_EPSILON>=this.nextAllowed&&this.talks.length){
         this.active=this.talks[this.cursor%this.talks.length];
         this.cursor++;
         this.elapsed=0;

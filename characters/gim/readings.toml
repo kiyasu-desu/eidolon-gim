@@ -1,4 +1,13 @@
-# 读音配置：角色名、学园名在角色声音里的发音
+# GIM 读音：保留显示文本，只向 Fish Audio 提供正确读法。
+# 官方姓名来源：https://gakuen.idolmaster-official.jp/idol/
+# 剧情角色賀陽燐羽的读法核对：https://bgm.tv/character/168342
+# まりちゃん：本地剧情 adv_cidol-ttmr-3-016_01，美鈴对手毬的称呼。
+# りんちゃん：同篇剧情，美鈴对燐羽的称呼。
+# ことねちゃん：adv_cidol-ttmr-3-000_02，ことね的自称。
+# 爱称的使用者与对象见 sheets/temari.md；不把普通词「広」「燕」「雨夜」强制作为人名。
+# 裸「ことね」已是正确假名，不覆盖「そういうことね」等普通表达。
+# 音素由现有 reading_draft.to_phonemes 生成；原有手工校准条目保持不变。
+
 [[readings]]
 written = "月村手毬"
 kana = "つきむら てまり"
@@ -23,3 +32,533 @@ phonemes = "ha0tsu1bo0shi0ga1ku0e1N0"
 written = "初星"
 kana = "はつぼし"
 phonemes = "ha0tsu1bo0shi0"
+
+[[readings]]
+written = "月村 手毬"
+kana = "つきむら てまり"
+phonemes = "tsU0ki1mu0ra0te0ma1ri1"
+
+[[readings]]
+written = "月村　手毬"
+kana = "つきむら てまり"
+phonemes = "tsU0ki1mu0ra0te0ma1ri1"
+
+[[readings]]
+written = "花海咲季"
+kana = "はなみ さき"
+phonemes = "ha0na1mi1sa1ki0"
+
+[[readings]]
+written = "花海 咲季"
+kana = "はなみ さき"
+phonemes = "ha0na1mi1sa1ki0"
+
+[[readings]]
+written = "花海　咲季"
+kana = "はなみ さき"
+phonemes = "ha0na1mi1sa1ki0"
+
+[[readings]]
+written = "花海"
+kana = "はなみ"
+phonemes = "ha0na1mi1"
+
+[[readings]]
+written = "咲季"
+kana = "さき"
+phonemes = "sa1ki0"
+
+[[readings]]
+written = "藤田ことね"
+kana = "ふじた ことね"
+phonemes = "fu1ji0ta0ko1to0ne0"
+
+[[readings]]
+written = "藤田 ことね"
+kana = "ふじた ことね"
+phonemes = "fu1ji0ta0ko1to0ne0"
+
+[[readings]]
+written = "藤田　ことね"
+kana = "ふじた ことね"
+phonemes = "fu1ji0ta0ko1to0ne0"
+
+[[readings]]
+written = "藤田"
+kana = "ふじた"
+phonemes = "fu1ji0ta0"
+
+[[readings]]
+written = "有村麻央"
+kana = "ありむら まお"
+phonemes = "a0ri1mu0ra0ma1o0"
+
+[[readings]]
+written = "有村 麻央"
+kana = "ありむら まお"
+phonemes = "a0ri1mu0ra0ma1o0"
+
+[[readings]]
+written = "有村　麻央"
+kana = "ありむら まお"
+phonemes = "a0ri1mu0ra0ma1o0"
+
+[[readings]]
+written = "有村"
+kana = "ありむら"
+phonemes = "a0ri1mu0ra0"
+
+[[readings]]
+written = "麻央"
+kana = "まお"
+phonemes = "ma1o0"
+
+[[readings]]
+written = "葛城リーリヤ"
+kana = "かつらぎ りーりや"
+phonemes = "ka0tsu1ra1gi0ri1i0ri0ya0"
+
+[[readings]]
+written = "葛城 リーリヤ"
+kana = "かつらぎ りーりや"
+phonemes = "ka0tsu1ra1gi0ri1i0ri0ya0"
+
+[[readings]]
+written = "葛城　リーリヤ"
+kana = "かつらぎ りーりや"
+phonemes = "ka0tsu1ra1gi0ri1i0ri0ya0"
+
+[[readings]]
+written = "葛城"
+kana = "かつらぎ"
+phonemes = "ka0tsu1ra1gi0"
+
+[[readings]]
+written = "リーリヤ"
+kana = "りーりや"
+phonemes = "ri1i0ri0ya0"
+
+[[readings]]
+written = "倉本千奈"
+kana = "くらもと ちな"
+phonemes = "ku0ra1mo0to0chi1na0"
+
+[[readings]]
+written = "倉本 千奈"
+kana = "くらもと ちな"
+phonemes = "ku0ra1mo0to0chi1na0"
+
+[[readings]]
+written = "倉本　千奈"
+kana = "くらもと ちな"
+phonemes = "ku0ra1mo0to0chi1na0"
+
+[[readings]]
+written = "倉本"
+kana = "くらもと"
+phonemes = "ku0ra1mo0to0"
+
+[[readings]]
+written = "千奈"
+kana = "ちな"
+phonemes = "chi1na0"
+
+[[readings]]
+written = "紫雲清夏"
+kana = "しうん すみか"
+phonemes = "shiu1N0su1mi0ka0"
+
+[[readings]]
+written = "紫雲 清夏"
+kana = "しうん すみか"
+phonemes = "shiu1N0su1mi0ka0"
+
+[[readings]]
+written = "紫雲　清夏"
+kana = "しうん すみか"
+phonemes = "shiu1N0su1mi0ka0"
+
+[[readings]]
+written = "紫雲"
+kana = "しうん"
+phonemes = "shiu1N0"
+
+[[readings]]
+written = "清夏"
+kana = "すみか"
+phonemes = "su1mi0ka0"
+
+[[readings]]
+written = "篠澤広"
+kana = "しのさわ ひろ"
+phonemes = "shi1no0sa0wa1hi1ro0"
+
+[[readings]]
+written = "篠澤 広"
+kana = "しのさわ ひろ"
+phonemes = "shi1no0sa0wa1hi1ro0"
+
+[[readings]]
+written = "篠澤　広"
+kana = "しのさわ ひろ"
+phonemes = "shi1no0sa0wa1hi1ro0"
+
+[[readings]]
+written = "篠澤"
+kana = "しのさわ"
+phonemes = "shi1no0sa0wa1"
+
+[[readings]]
+written = "広さん"
+kana = "ひろさん"
+phonemes = "hi0ro1sa0N0"
+
+[[readings]]
+written = "広ちゃん"
+kana = "ひろちゃん"
+phonemes = "hi1ro0cha0N0"
+
+[[readings]]
+written = "広先輩"
+kana = "ひろせんぱい"
+phonemes = "hi0ro1se1N0pa0i0"
+
+[[readings]]
+written = "姫崎莉波"
+kana = "ひめさき りなみ"
+phonemes = "hi1me0sa1ki0ri0na1mi1"
+
+[[readings]]
+written = "姫崎 莉波"
+kana = "ひめさき りなみ"
+phonemes = "hi1me0sa1ki0ri0na1mi1"
+
+[[readings]]
+written = "姫崎　莉波"
+kana = "ひめさき りなみ"
+phonemes = "hi1me0sa1ki0ri0na1mi1"
+
+[[readings]]
+written = "姫崎"
+kana = "ひめさき"
+phonemes = "hi1me0sa1ki0"
+
+[[readings]]
+written = "莉波"
+kana = "りなみ"
+phonemes = "ri0na1mi1"
+
+[[readings]]
+written = "花海佑芽"
+kana = "はなみ うめ"
+phonemes = "ha0na1mi1u0me1"
+
+[[readings]]
+written = "花海 佑芽"
+kana = "はなみ うめ"
+phonemes = "ha0na1mi1u0me1"
+
+[[readings]]
+written = "花海　佑芽"
+kana = "はなみ うめ"
+phonemes = "ha0na1mi1u0me1"
+
+[[readings]]
+written = "佑芽"
+kana = "うめ"
+phonemes = "u0me1"
+
+[[readings]]
+written = "秦谷美鈴"
+kana = "はたや みすず"
+phonemes = "ha1ta0ya0mi1su0zu0"
+
+[[readings]]
+written = "秦谷 美鈴"
+kana = "はたや みすず"
+phonemes = "ha1ta0ya0mi1su0zu0"
+
+[[readings]]
+written = "秦谷　美鈴"
+kana = "はたや みすず"
+phonemes = "ha1ta0ya0mi1su0zu0"
+
+[[readings]]
+written = "秦谷"
+kana = "はたや"
+phonemes = "ha1ta0ya0"
+
+[[readings]]
+written = "美鈴"
+kana = "みすず"
+phonemes = "mi1su0zu0"
+
+[[readings]]
+written = "十王星南"
+kana = "じゅうおう せな"
+phonemes = "ju0u1o1o1se1na0"
+
+[[readings]]
+written = "十王 星南"
+kana = "じゅうおう せな"
+phonemes = "ju0u1o1o1se1na0"
+
+[[readings]]
+written = "十王　星南"
+kana = "じゅうおう せな"
+phonemes = "ju0u1o1o1se1na0"
+
+[[readings]]
+written = "十王"
+kana = "じゅうおう"
+phonemes = "ju0u1o1o1"
+
+[[readings]]
+written = "星南"
+kana = "せな"
+phonemes = "se1na0"
+
+[[readings]]
+written = "雨夜燕"
+kana = "あまや つばめ"
+phonemes = "ama1ya0tsu0ba1me1"
+
+[[readings]]
+written = "雨夜 燕"
+kana = "あまや つばめ"
+phonemes = "ama1ya0tsu0ba1me1"
+
+[[readings]]
+written = "雨夜　燕"
+kana = "あまや つばめ"
+phonemes = "ama1ya0tsu0ba1me1"
+
+[[readings]]
+written = "燕さん"
+kana = "つばめさん"
+phonemes = "tsu0ba1me1sa0N0"
+
+[[readings]]
+written = "燕ちゃん"
+kana = "つばめちゃん"
+phonemes = "tsu0ba1me1cha1N0"
+
+[[readings]]
+written = "燕先輩"
+kana = "つばめせんぱい"
+phonemes = "tsu0ba1me1se1N0pa0i0"
+
+[[readings]]
+written = "十王邦夫"
+kana = "じゅうおう くにお"
+phonemes = "ju0u1o1o1ku0ni1o1"
+
+[[readings]]
+written = "十王 邦夫"
+kana = "じゅうおう くにお"
+phonemes = "ju0u1o1o1ku0ni1o1"
+
+[[readings]]
+written = "十王　邦夫"
+kana = "じゅうおう くにお"
+phonemes = "ju0u1o1o1ku0ni1o1"
+
+[[readings]]
+written = "邦夫"
+kana = "くにお"
+phonemes = "ku0ni1o1"
+
+[[readings]]
+written = "根緒亜紗里"
+kana = "ねお あさり"
+phonemes = "ne0o1a0sa1ri1"
+
+[[readings]]
+written = "根緒 亜紗里"
+kana = "ねお あさり"
+phonemes = "ne0o1a0sa1ri1"
+
+[[readings]]
+written = "根緒　亜紗里"
+kana = "ねお あさり"
+phonemes = "ne0o1a0sa1ri1"
+
+[[readings]]
+written = "根緒"
+kana = "ねお"
+phonemes = "ne0o1"
+
+[[readings]]
+written = "亜紗里"
+kana = "あさり"
+phonemes = "a0sa1ri1"
+
+[[readings]]
+written = "まりちゃん"
+kana = "まりちゃん"
+phonemes = "ma1ri0cha1N0"
+
+[[readings]]
+written = "ことねちゃん"
+kana = "ことねちゃん"
+phonemes = "koto1ne0cha1N0"
+
+[[readings]]
+written = "初星学园"
+kana = "はつぼし がくえん"
+phonemes = "ha0tsu1bo0shi0ga1ku0e1N0"
+
+[[readings]]
+written = "仓本千奈"
+kana = "くらもと ちな"
+phonemes = "ku0ra1mo0to0chi1na0"
+
+[[readings]]
+written = "仓本 千奈"
+kana = "くらもと ちな"
+phonemes = "ku0ra1mo0to0chi1na0"
+
+[[readings]]
+written = "仓本　千奈"
+kana = "くらもと ちな"
+phonemes = "ku0ra1mo0to0chi1na0"
+
+[[readings]]
+written = "仓本"
+kana = "くらもと"
+phonemes = "ku0ra1mo0to0"
+
+[[readings]]
+written = "篠泽广"
+kana = "しのさわ ひろ"
+phonemes = "shi1no0sa0wa1hi1ro0"
+
+[[readings]]
+written = "篠泽 广"
+kana = "しのさわ ひろ"
+phonemes = "shi1no0sa0wa1hi1ro0"
+
+[[readings]]
+written = "篠泽　广"
+kana = "しのさわ ひろ"
+phonemes = "shi1no0sa0wa1hi1ro0"
+
+[[readings]]
+written = "篠泽"
+kana = "しのさわ"
+phonemes = "shi1no0sa0wa1"
+
+[[readings]]
+written = "广さん"
+kana = "ひろさん"
+phonemes = "hi0ro1sa0N0"
+
+[[readings]]
+written = "广ちゃん"
+kana = "ひろちゃん"
+phonemes = "hi1ro0cha0N0"
+
+[[readings]]
+written = "广先輩"
+kana = "ひろせんぱい"
+phonemes = "hi0ro1se1N0pa0i0"
+
+[[readings]]
+written = "秦谷美铃"
+kana = "はたや みすず"
+phonemes = "ha1ta0ya0mi1su0zu0"
+
+[[readings]]
+written = "秦谷 美铃"
+kana = "はたや みすず"
+phonemes = "ha1ta0ya0mi1su0zu0"
+
+[[readings]]
+written = "秦谷　美铃"
+kana = "はたや みすず"
+phonemes = "ha1ta0ya0mi1su0zu0"
+
+[[readings]]
+written = "美铃"
+kana = "みすず"
+phonemes = "mi1su0zu0"
+
+[[readings]]
+written = "根緒亚纱里"
+kana = "ねお あさり"
+phonemes = "ne0o1a0sa1ri1"
+
+[[readings]]
+written = "根緒 亚纱里"
+kana = "ねお あさり"
+phonemes = "ne0o1a0sa1ri1"
+
+[[readings]]
+written = "根緒　亚纱里"
+kana = "ねお あさり"
+phonemes = "ne0o1a0sa1ri1"
+
+[[readings]]
+written = "亚纱里"
+kana = "あさり"
+phonemes = "a0sa1ri1"
+
+[[readings]]
+written = "賀陽燐羽"
+kana = "かや りんは"
+phonemes = "ka1ya0ri1N0ha0"
+
+[[readings]]
+written = "賀陽 燐羽"
+kana = "かや りんは"
+phonemes = "ka1ya0ri1N0ha0"
+
+[[readings]]
+written = "賀陽　燐羽"
+kana = "かや りんは"
+phonemes = "ka1ya0ri1N0ha0"
+
+[[readings]]
+written = "賀陽"
+kana = "かや"
+phonemes = "ka1ya0"
+
+[[readings]]
+written = "燐羽"
+kana = "りんは"
+phonemes = "ri1N0ha0"
+
+[[readings]]
+written = "りんちゃん"
+kana = "りんちゃん"
+phonemes = "ri1N0cha0N0"
+
+[[readings]]
+written = "贺阳燐羽"
+kana = "かや りんは"
+phonemes = "ka1ya0ri1N0ha0"
+
+[[readings]]
+written = "贺阳 燐羽"
+kana = "かや りんは"
+phonemes = "ka1ya0ri1N0ha0"
+
+[[readings]]
+written = "贺阳　燐羽"
+kana = "かや りんは"
+phonemes = "ka1ya0ri1N0ha0"
+
+[[readings]]
+written = "贺阳"
+kana = "かや"
+phonemes = "ka1ya0"
+
+[[readings]]
+written = "ことねさん"
+kana = "ことねさん"
+phonemes = "koto0ne1sa0N0"
+
+[[readings]]
+written = "ことね先輩"
+kana = "ことねせんぱい"
+phonemes = "koto0ne1se1N0pa0i0"

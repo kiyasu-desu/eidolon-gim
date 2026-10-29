@@ -23,6 +23,8 @@ export type Stand3DCameraFrame = {
 
 export type Stand3DPoseState = {
   clipTime: number;
+  attentionTime: number;
+  attentionWeight: number;
   speakingPhase: number;
   mouthOpen: number;
   gazeWeight: number;
@@ -107,6 +109,8 @@ export function createStand3DPoseState(): Stand3DPoseState {
   }
   return {
     clipTime: 0,
+    attentionTime: 0,
+    attentionWeight: 0,
     speakingPhase: 0,
     mouthOpen: 0,
     gazeWeight: 0,
@@ -188,11 +192,20 @@ export function stepStand3DPose(
     }
   }
 
-  const headPitchDeg = gazeWeight * 2.5 + nodPitch;
-  const headYawDeg = nodYaw;
+  // A small, smooth listening/speaking response, separate from the repeating idle clip.
+  // Only the render clock advances it: pausing never introduces a new head pose.
+  const attentionTime = prev.attentionTime + (isReducedMotion ? 0 : clampedDt);
+  const attentionTarget = direction.looking ? 1 : direction.speaking ? 0.45 : 0;
+  const attentionWeight = isReducedMotion ? 0 : moveToward(prev.attentionWeight, attentionTarget, clampedDt / 0.8);
+  const attentivePitch = attentionWeight * (Math.sin(attentionTime * 0.71) * 0.45 + Math.sin(attentionTime * 0.31) * 0.2);
+  const attentiveYaw = attentionWeight * (Math.sin(attentionTime * 0.43) * 0.6 + Math.sin(attentionTime * 0.83) * 0.2);
+  const headPitchDeg = gazeWeight * 2.5 + nodPitch + attentivePitch;
+  const headYawDeg = nodYaw + attentiveYaw;
 
   return {
     clipTime,
+    attentionTime,
+    attentionWeight,
     speakingPhase,
     mouthOpen,
     gazeWeight,
