@@ -21,9 +21,10 @@ from tests.conftest import (
     google_identity,
     sign_in_with,
 )
-from tests.fakes import START, FakeClock, FakeIdentityProvider, FakeLLM
+from tests.fakes import START, FakeClock, FakeIdentityProvider, FakeLLM, FakeLLMService
 from tests.test_delete_account import memory_client, use_everything
 from tests.test_shared_memory import CAT
+from tests.test_text_turn import send_turn
 
 ADMIN = ("github", "9001")
 
@@ -221,7 +222,7 @@ async def test_a_banned_user_signing_in_is_told_whom_to_contact(
 
 
 async def test_nothing_the_user_said_or_had_remembered_or_their_profile_shows(
-    make_client: ClientFactory, github: FakeIdentityProvider
+    make_client: ClientFactory, github: FakeIdentityProvider, own_llm: FakeLLMService
 ):
     admin = await admin_client(make_client, github)
     producer = memory_client(make_client)
@@ -229,6 +230,17 @@ async def test_nothing_the_user_said_or_had_remembered_or_their_profile_shows(
     conversation = (await producer.get(
         "/api/conversations", params={"character_id": "sora"}
     )).json()[0]["id"]
+    # Exercise an actual own key. Unlike four digits, this marker cannot occur in
+    # a random hexadecimal user ID and masquerade as a credential disclosure.
+    key_tail = "Z9!~"
+    private_key = f"sk-test-admin-privacy-{key_tail}"
+    own_llm.llm = FakeLLM(["<ja>はいっ</ja><zh>好的</zh>"])
+    events = await send_turn(producer, conversation, "继续聊聊", own_llm={
+        "protocol": "chat-completions", "base_url": "https://llm.example.com/v1",
+        "api_key": private_key, "model": "privacy-test-model",
+    })
+    assert events[-1]["type"] == "done"
+    assert own_llm.opened[-1].api_key == private_key
     producer_id = (await find(admin, "producer"))["id"]
 
     shown = [
@@ -239,5 +251,5 @@ async def test_nothing_the_user_said_or_had_remembered_or_their_profile_shows(
     ]
 
     for text in shown:
-        for content in (CAT, "我家的猫叫小白哦", "はいっ", "好的", "小林", conversation, "5678"):
+        for content in (CAT, "我家的猫叫小白哦", "はいっ", "好的", "小林", conversation, key_tail):
             assert content not in text, content
