@@ -13,7 +13,7 @@
 
 ## CI 和 draft PR
 
-- `ci.yml` 只在 PR 和 main 上触发。功能分支的第一张票提交后就推到 origin，开 draft PR（`gh pr create --draft`）。用户说「先不开 PR」指的是正式 PR，draft 照开。
+- `ci.yml` 在PR、main、codex/gim-release及v*标签上触发，具体见[发布说明](../releasing.md)。按用户本轮授权提交、推送和创建draft PR；用户要求不开PR时也不创建draft，除非其明确区分两者。先确认对应提交的CI入口再安排交付。
 - 之后每张票（连同审查后的修复）推一次。推完不等 CI，接着做下一张。
 - 下一次推送之前，先用 `gh run list --branch <分支> --limit 1` 看上一个 run：还在跑就等它跑完（新推送会取消 PR 上正在跑的 run，`cancel-in-progress`），红了用 `gh run view <run> --log-failed` 看失败，单独提交修复，提交说明写明修的是哪张票，然后再推这一张。
 - 一波的最后一张推送后等 CI 跑完，绿了再列人工验证清单。

@@ -7,41 +7,43 @@
 前端跑构建版，不跑 `next dev`（dev 模式会卡）：
 
 ```sh
-# 后端（:8000），.env 里要有 EIDOLON_DEV_LOGIN=1
-cd backend && uv run --quiet --env-file=../.env eidolon serve
-# 前端（:3000），在 frontend/ 下，先 npm run build
-BACKEND_URL=http://localhost:8000 EIDOLON_STAND_ASSETS_URL=<同 .env> npm run start
+# 后端（:8001），只对本次隔离验收启用开发登录
+cd backend && HOST=127.0.0.1 PORT=8001 EIDOLON_DEV_LOGIN=1 uv run --quiet --env-file=../.env eidolon serve
+# 前端（:3001），在 frontend/ 下，先 npm run build
+BACKEND_URL=http://127.0.0.1:8001 PORT=3001 npm run start -- --hostname 127.0.0.1
 ```
 
-两个都放后台跑。`EIDOLON_STAND_ASSETS_URL` 不带就看不到立绘（CSP 只许从这个地址加载）。停服务时，结束后台任务不够：`next start` 的子进程还占着 :3000，重新构建后它会继续服务旧页面。要按端口找到进程再结束（PowerShell：`Get-NetTCPConnection -LocalPort 3000 -State Listen` 拿 `OwningProcess`，再 `Stop-Process`），:8000 同理。改了前端代码要先停 :3000，再 `npm run build`，再起。
+两个都在后台运行，使用隔离数据库和空闲端口，避免占用已有服务。PowerShell逐项设置环境变量的写法见[README](../../README.md)。本地模型由同源接口和 `EIDOLON_MODEL_ROOT` 提供；只有额外资源域名才需配置 `EIDOLON_STAND_ASSETS_URL` 并核对CSP。
+
+停服务时确认 `next start` 的子进程也结束；用 `Get-NetTCPConnection -LocalPort 3001 -State Listen` 查进程，并核实其命令行属于本次验收后再停止，8001同理。重新构建前先停止本次旧前端。
 
 耗时长的活（`next build`、Playwright、后端完整 pytest）不要和别的 agent 同时跑，否则会卡住，一次只跑一个。
 
 ## 登录
 
-用开发登录按名字登录。本地库里 `Sallyn` 是管理者。请求要带 `Origin`，后端会检查：
+只在隔离本地库中使用专用测试账户；管理者权限按本次隔离配置设置，不假定已有用户身份。请求带 `Origin`：
 
 ```ts
-await context.request.post(`${origin}/api/auth/dev-login`, { data: { name: "Sallyn" }, headers: { origin } });
+await context.request.post(`${origin}/api/auth/dev-login`, { data: { name: "gim-accept" }, headers: { origin } });
 ```
 
 `frontend/scripts/screenshots.mts` 的 `signIn` 也是这么写的。
 
 ## 好感度和礼物
 
-开关默认开，本地 `.env` 配了判断模型、没设 `EIDOLON_AFFINITY_AND_GIFTS`，照常起后端就是开的。要看「未开放」时只在这次起的后端上关掉，不改 `.env`、不在后台改配置：
+GIM默认关闭好感度和礼物，普通验收保持关闭。只有任务明确测试通用礼物能力时才在隔离配置中单独开启；不要修改正在使用的 `.env` 或生产后台。要显式验证关闭状态：
 
 ```sh
 cd backend && EIDOLON_AFFINITY_AND_GIFTS=0 uv run --quiet --env-file=../.env eidolon serve
 ```
 
-要的状态（背包里有几件、某位角色在冷却中、某一档）不靠抽奖和对话凑，造一个专用的开发登录用户（例如 `gift-accept`），同意条款（`POST /api/account/consent`，`{"agree_to_terms": true, "at_least_13": true}`），读一次 `/api/gifts` 让它建好行，再直接往 `backend/data/eidolon.db` 写：
+测试礼物状态时创建专用账户（例如 `gift-accept`），同意条款（`POST /api/account/consent`，`{"agree_to_terms": true, "at_least_13": true}`），读一次 `/api/gifts` 建立行，然后只向本次 `EIDOLON_DATABASE_PATH` 指定的隔离库写入：
 
-- 背包：`INSERT INTO gift_backpacks VALUES ('<user_id>', '<礼物 id>', <件数>)`，礼物 id 和名字在 `characters/gifts.toml`
+- 背包：`INSERT INTO gift_backpacks VALUES ('<user_id>', '<礼物 id>', <件数>)`，礼物id和名字在本次角色目录的 `gifts.toml`
 - 抽奖次数：`UPDATE gift_balances SET draws = <n> WHERE user_id = '<user_id>'`
 - 好感度：`INSERT OR REPLACE INTO affinities (user_id, character_id, value, updated_at, cooling) VALUES ('<user_id>', '<角色 id>', <0–100>, '<ISO 时刻>', <冷却中 1，否则 0>)`
 
-`user_id` 从 `GET /api/account` 拿。验完以这个用户登录调 `POST /api/account/delete`（`{"confirm": true}`），它的一切一起删掉，Sallyn 的数据不动。
+`user_id` 从 `GET /api/account` 获取。验完核对当前账户确为专用测试账户，再调 `POST /api/account/delete`（`{"confirm": true}`）；已有真实账户和数据保留。
 
 ## 通话
 
@@ -54,17 +56,21 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport, permissions: ["microphone"] });
 ```
 
-- 本地后端接得通，几秒到十几秒后变成「通话中」。但 Fish 直连不通，后端要走本机代理，否则接通了也没声音，日志里会有 `FishTTS … timed out during opening handshake`。语音服务不读 `HTTPS_PROXY`，只在这次起的后端上带上代理，不改 `.env`（地址取本机 `HTTPS_PROXY` 的值）：
+- 真实服务测试需等WebRTC接通并收到实际回复音频。若当前网络下Fish握手超时，按实际网络配置本次后端代理；语音服务不直接读取 `HTTPS_PROXY`。示例地址只作占位，不改已有 `.env`：
 
   ```sh
   cd backend && EIDOLON_PROXY_URL=http://127.0.0.1:10808 EIDOLON_PROXY_SERVICES=judge,tts uv run --quiet --env-file=../.env eidolon serve
   ```
 
-  假麦克风只发提示音，听不出她的声音。要听声音，让用户在本机浏览器里打开 :3000 自己打。
+  假麦克风接通不等于真人STT已验收。可用通话中打字触发真实LLM／TTS，并检查接收音频；人的听感和真人麦克风识别单独记录。主观试听可在本机3001入口进行。
 - 页首电话键在对话打开前是禁用的，先等它可点再点：
 
   ```ts
-  await page.waitForFunction(() => !document.querySelector('button[aria-label="和櫻木真乃通话"]')?.hasAttribute("data-disabled"));
+  await page.getByRole("button", { name: "和月村手毬通话", exact: true }).waitFor();
+  await page.waitForFunction(() => {
+    const button = document.querySelector('button[aria-label="和月村手毬通话"]');
+    return button && !button.hasAttribute("data-disabled") && !button.hasAttribute("disabled");
+  });
   ```
 
 - 通话层滑上来要 410ms，量位置、截图前先等一下。
