@@ -70,12 +70,15 @@ class ReleaseTree(unittest.TestCase):
 
     def test_private_paths_cannot_be_approved_as_binary_assets(self):
         data = b"not a source model\x00"
-        for path in (".env", "corpus/raw.csv", ".scratch/report.txt", "backend/data/user.sqlite", "frontend/hero.glb"):
+        for path in (
+            ".env", "corpus/raw.csv", ".scratch/report.txt", "backend/data/user.sqlite",
+            "frontend/hero.glb", "backend/raw.csv", "frontend/adv_original.txt",
+        ):
             self.stage(path, data)
             self.policy["binary_assets"][path] = hashlib.sha256(data).hexdigest()
         self.save_policy()
         errors = release.check(self.root)["errors"]
-        self.assertEqual(len(errors), 5)
+        self.assertEqual(len(errors), 7)
         self.assertTrue(all(e["reason"] == "local/private resource path" for e in errors))
 
     def test_pins_ui_media_and_rejects_new_payloads_and_changed_assets(self):

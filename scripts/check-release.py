@@ -19,7 +19,7 @@ POLICY = "release-policy.json"
 PRIVATE_ROOTS = (".scratch", "coordination", "corpus", "logs", "docs/research", "backend/data")
 PRIVATE_PARTS = {".git", "__pycache__", "node_modules", ".venv", ".next", ".cache", "screenshots"}
 PRIVATE_SUFFIXES = {
-    ".db", ".sqlite", ".sqlite3", ".log", ".dmp", ".dump", ".pyc", ".pyo", ".har",
+    ".db", ".sqlite", ".sqlite3", ".csv", ".tsv", ".log", ".dmp", ".dump", ".pyc", ".pyo", ".har",
     ".glb", ".gltf", ".fbx", ".vrm", ".blend", ".obj", ".mtl", ".asset", ".anim",
     ".unity", ".unity3d", ".bundle", ".ab", ".bin", ".bvh", ".vmd", ".usdz",
     ".zip", ".7z", ".rar", ".tar", ".gz", ".webm", ".mp4", ".mov", ".wav", ".flac",
@@ -99,6 +99,7 @@ def private_path(path: str) -> bool:
         or p.suffix.lower() in PRIVATE_SUFFIXES
         or re.search(r"\.(?:db|sqlite|sqlite3)-(?:wal|shm|journal)$", path, re.I) is not None
         or p.name in {"model.json", "animations.json", "Avatar.asset"}
+        or re.fullmatch(r"adv_[A-Za-z0-9_-]+\.(?:txt|json)", p.name, re.I) is not None
     )
 
 
