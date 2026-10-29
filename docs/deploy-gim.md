@@ -45,7 +45,7 @@ docker compose exec backend python -c "import urllib.request; print(urllib.reque
 
 ## Linux 服务器（生产部署）
 
-生产部署采用本地预先构建并导出镜像、打包应用与过滤数据、上传远端服务器并执行导入与恢复的幂等流水线。除外部模型与语音配置外，核心运行环境配置如下：
+首次部署准备独立用户库和可选资源；升级已有站点时保留线上数据卷与配置。前后端镜像来自同一源码提交，可以使用CI发布的本项目GHCR镜像，也可以从该提交本地构建后导出／加载。每次记录完整提交、镜像摘要和revision标签，核对方法见[发布说明](releasing.md)。除外部模型与语音配置外，核心运行环境配置如下：
 
 ```dotenv
 EIDOLON_DOMAIN=gim.example.com
@@ -65,16 +65,28 @@ GOOGLE_CLIENT_SECRET=<Google OAuth Client Secret>
 
 1. **OAuth 与回调**：Google OAuth 回调路径为 `https://gim.example.com/api/auth/google/callback`。可与同机参考项目复用同一 OAuth 客户端（在 Google Cloud Console 中追加 Authorized redirect URIs）。
 2. **私密模式与白名单**：生产开启 `EIDOLON_PRIVATE_MODE=1` 时，未在 `EIDOLON_ALLOWED_IDENTITIES` 白名单中的陌生用户登录后会被拒绝（返回 403）；未登录访问 `/api/account` 返回 401；`EIDOLON_DEV_LOGIN` 与域名互斥，生产构建访问 `/api/auth/dev-login` 恒为 404。
-3. **数据卷恢复**：在首次部署或数据迁移时，通过备份归档将清洗后的 SQLite 数据库导入独立数据卷 `eidolon-gim_eidolon-data`，并校验 `PRAGMA integrity_check` 为 `ok`，绑定主账号的 Google `sub`，保留历史对话记录。
+3. **数据卷与备份**：首次部署或明确的数据迁移可从一致性备份恢复到独立卷 `eidolon-gim_eidolon-data`，核对完整性和OAuth绑定。已有站点升级先备份应用配置、用户库和独立剧情库，保留原数据；不要以本地数据库覆盖生产。应用回退不自动恢复旧数据库，以免丢失上线后新增对话。
 4. **服务共存部署命令**：
    ```sh
-   # 校验配置
-   docker compose -f docker-compose.prod.yml config --quiet
-   # 仅启动 backend 与 frontend 容器（pull_policy: never，使用已加载的镜像构建标签）
-   docker compose -f docker-compose.prod.yml up -d --build backend frontend
-   # 查看状态
-   docker compose -f docker-compose.prod.yml ps
+   # 共存环境使用部署者自己的覆盖文件和环境配置。
+   # 覆盖文件需选择该提交的镜像（推荐固定摘要）、pull_policy: never，
+   # 并将共用Caddy/coturn放入standalone profile，保留外部数据卷。
+   sh .env.server-compose.sh config --quiet
+   sh .env.server-compose.sh up -d --no-build --wait --wait-timeout 150 backend frontend
+   sh .env.server-compose.sh ps
    ```
+
+   `.env.server-compose.sh` 是部署者创建的本机文件，不随源码分发，内容示例：
+
+   ```sh
+   #!/bin/sh
+   set -eu
+   cd "$(dirname "$0")"
+   exec docker compose --env-file .env.server-runtime -p eidolon-gim \
+     -f docker-compose.prod.yml -f .env.server-compose.yml "$@"
+   ```
+
+   在独立服务器从源码构建时可使用基础 `docker-compose.prod.yml`；同机共存环境须带覆盖文件，避免启动第二套Caddy/coturn。生产运行不依赖本地分支名称，依赖的是经过核对的提交、配置与镜像。
 
 ## 线上验收基准
 
@@ -86,7 +98,11 @@ GOOGLE_CLIENT_SECRET=<Google OAuth Client Secret>
 4. **外部服务全链路探测**：通过后端执行 `/api/service-status`，验证 7 项服务状态全为 `ok`：
    - `chat_llm` / `memory_llm` / `tts` / `stt` / `judge` / `embedding` / `rerank`
 5. **手毬 3D 资产可达性**：
-   - `GET /api/characters/temari/stand/model.json` -> 200 OK（约 20.3MB）
-   - `GET /api/characters/temari/stand/animations.json` -> 200 OK（约 3.8MB）
+   - `GET /api/characters/temari/stand/model.json` -> 200 OK
+   - `GET /api/characters/temari/stand/animations.json` -> 200 OK
    - `GET /api/characters/temari/stand/textures/*.png` -> 200 OK
-6. **宿主隔离性**：确认宿主机原有 既有容器保持持续正常运行，无端口或卷冲突。
+   - 以本次模型包清单核对文件数量、大小和SHA，不依赖早期版本的固定大小。
+6. **宿主隔离性**：确认宿主原有容器的ID、启动时间及健康保持，无端口或卷冲突。
+7. **业务与数据**：运行行为变动后验证真实文字回复、桌面／手机通话及控制；核对原账户、OAuth、对话、消息和记忆保留，用户库与剧情库完整性均为ok。假麦克风、服务探测和人对声音的试听分别记录。
+
+一期交付与待启动的下一阶段目标见[项目路线图](project-roadmap.md)。周期备份、依赖审计和后续体验改进需各自验收，不能由一次部署成功推断完成。

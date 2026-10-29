@@ -4,14 +4,14 @@
 
 3D 素材的重建、烘焙、制作校准、验收与候选／回退打包，见[模型处理流水线](docs/stand3d-pipeline.md)。 模型／剧情的可选挂载及旧库迁移见[本地资源包](docs/local-resource-packs.md)。
 
-本项目基于 [Sallyn0225/eidolon-sc](https://github.com/Sallyn0225/eidolon-sc)，保留其 [AGPL-3.0-or-later](LICENSE)、[许可说明](LICENSING.md) 及第三方来源。非官方粉丝项目，与万代南梦宫及《偶像大师》权利方无关。当前已移除旧作品角色、媒体和同步工具；本地状态见 coordination（本地记录，不随源码发布）。
+本项目基于 [Sallyn0225/eidolon-sc](https://github.com/Sallyn0225/eidolon-sc)，保留其 [AGPL-3.0-or-later](LICENSE)、[许可说明](LICENSING.md) 及第三方来源。非官方粉丝项目，与万代南梦宫及《偶像大师》权利方无关。当前已移除旧作品角色、媒体和同步工具；阶段目标见[项目路线图](docs/project-roadmap.md)；具体部署记录留在各环境，不随源码发布。
 
 ## 当前交付
 
 - 单角色文字聊天、双向记录与刷新恢复已做过真实模型和构建版浏览器验收；角色由 AI 扮演，不保证原作一致性。
-- 学马本机剧情来源 214 份已完成准入审计及分支还原：**79 篇正式经历、129 篇条件反应资料入库，6 篇明确失败排除**。当前独立剧情库有 340 个有效向量；条件资料不当作已确认经历。402 行转换截断已修复。长句语音回顾漏召回已修复，五类真实 WebRTC 场景通过；这是有限用例结果。见 分支报告（本地记录，不随源码发布）、语音复验（本地记录，不随源码发布） 与 当前状态（本地记录，不随源码发布）。
-- Windows 中性语音及 Fish Audio 手毬音色已完成本地真实通话验收，百炼 STT 已接入。3D 模型、Avatar 重建、原动作烘焙、制作待机与讲话校准已完成本地交付；模型包可独立启停。渲染与辅助物理包含近似实现，完整原生物理及 Unity 6000 同版本验证不在已完成范围。
-- 生产构建已升级至 Next.js 16.4.3（0 依赖安全漏洞），并在 Linux VPS 完成与既有参考项目同机共存的部署验收（入口由部署者配置，启用 Google OAuth 白名单私密访问，全量 7 项模型服务探测全部 ok，详见 [部署说明](docs/deploy-gim.md)）。游戏剧情、译文、图像、模型、录音的使用条件需分别确认，代码许可不授予这些素材的权利。
+- 学马本机剧情来源 214 份已完成准入审计及分支还原：**79 篇正式经历、129 篇条件反应资料入库，6 篇明确失败排除**。当前独立剧情库有 340 个有效向量；条件资料不当作已确认经历。402 行转换截断已修复。长句语音回顾漏召回已修复，五类真实 WebRTC 场景通过；这是有限用例结果。导入与检索边界见[GIM剧情导入](docs/gim-story-import.md)。
+- Windows 中性语音及 Fish Audio 手毬音色已完成本地真实通话验收，百炼 STT 已接入。3D 模型、Avatar 重建、原动作烘焙、制作待机与讲话校准已完成本地交付；模型包可独立启停；已加入姓名纠音、有依据的爱称及长回复动作轮换。渲染与辅助物理包含近似实现，完整原生物理及 Unity 6000 同版本验证不在已完成范围。
+- 生产构建使用 Next.js 16.4.3，并在 Linux VPS 完成与既有参考项目同机共存的部署验收（入口由部署者配置，启用 Google OAuth 白名单私密访问，全量 7 项模型服务探测全部 ok，详见 [部署说明](docs/deploy-gim.md)）。游戏剧情、译文、图像、模型、录音的使用条件需分别确认，代码许可不授予这些素材的权利。
 
 ## 本机运行
 
@@ -80,7 +80,7 @@ uv run --frozen --env-file=../.env eidolon story import-gim ../corpus/gim-local/
 
 manifest 需记录来源 URL、固定版本、使用条件，以及每个 `adv_*.txt` 的 `canon / conditional / failure / unknown` outcome。人工核对的正式经历及带来源证据、逐条条件标签的条件资料可入库；失败与待核对条目跳过。普通 CSV 已丢失的分支目标不会推测恢复，条件资料须从原始 ADV 解析并单独核验。详细格式、错误处理与重跑说明见 [GIM 剧情导入](docs/gim-story-import.md)。
 
-没有 embedding key 也能离线导入和查看目录；待向量化文本不参与向量搜索。之后配置 embedding 服务，运行 `uv run --env-file=../.env eidolon reembed`，使用库中的文本补齐向量。实际对话检索还需要重排和判断模型，见 [配置指南](docs/configuration.md)。当前本机已配置 Jev，并完成文字及真实语音 RAG 的本地浏览器验收，见 语音复验报告（本地记录，不随源码发布）。
+没有 embedding key 也能离线导入和查看目录；待向量化文本不参与向量搜索。之后配置 embedding 服务，运行 `uv run --env-file=../.env eidolon reembed`，使用库中的文本补齐向量。实际对话检索还需要重排和判断模型，见[配置指南](docs/configuration.md)。已有文字及真实语音RAG的有限浏览器验收；各部署环境仍需核对自己的服务配置与检索质量。
 
 当前仅保留学马本地导入和资源迁移；没有自动下载或定时同步剧情的任务。
 
@@ -92,7 +92,7 @@ manifest 需记录来源 URL、固定版本、使用条件，以及每个 `adv_*
 
 后端针对性检查：`cd backend` 后执行 `uv run pytest tests/test_gim_story_import.py -q`、`uv run pyright`、`uv run ruff check src tests`。前端遵循 [frontend/AGENTS.md](frontend/AGENTS.md) 与 [DESIGN.md](DESIGN.md)。
 
-人物事实来源：[官方月村手毬人物页](https://gakuen.idolmaster-official.jp/idol/temari/)。数据格式研究参考 [imas-tools 原文项目](https://github.com/imas-tools/gakuen-adapted-stories) 与 [译文项目](https://github.com/imas-tools/gakuen-adapted-translation-data)；公开仓库不等于剧情或译文获授权。本仓库未包含这些原作正文。详细来源及未确认条件见 coordination/SOURCES.md（本地记录，不随源码发布）。上游及第三方署名见 [LICENSING.md](LICENSING.md)，历史架构见 [docs/adr](docs/adr/)。
+人物事实来源：[官方月村手毬人物页](https://gakuen.idolmaster-official.jp/idol/temari/)。数据格式研究参考 [imas-tools 原文项目](https://github.com/imas-tools/gakuen-adapted-stories) 与 [译文项目](https://github.com/imas-tools/gakuen-adapted-translation-data)；公开仓库不等于剧情或译文获授权。本仓库未包含这些原作正文。部署者单独保存私有资源的来源与使用条件记录。上游及第三方署名见[LICENSING.md](LICENSING.md)，历史架构见[docs/adr](docs/adr/)。
 
 旧作品专属内容的移除范围见 [ADR-0029](docs/adr/0029-remove-sc-specific-content.md)。运行 `python scripts/check-gim-scope.py` 检查旧资源、同步适配器及运行引用是否重新进入源码；CI 后端任务执行同一检查。此检查不清理 Git 历史或本地私有备份。
 
