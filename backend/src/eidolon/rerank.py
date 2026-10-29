@@ -45,7 +45,7 @@ KNOWN_THRESHOLDS: dict[str, RerankThresholds] = {
     # reranker; with her reply 10 do and all score 0.33 or more, while 0.4 would drop three
     # (both 1stLIVE days at 0.33 and 0.35, her father's change of heart at 0.36), so 0.3
     # stays. What her reply lets in besides is the rest of its topic (the other bento, other
-    # illumination STARS events) above 0.9, and, when the user changes the subject, the old
+    # event fixtures) above 0.9, and, when the user changes the subject, the old
     # one (the owl episodes when asked her birthday) at 0.99: no threshold separates either.
     "Qwen/Qwen3-Reranker-0.6B": RerankThresholds(references=0.3, memories=0.01),
     # From the same set. 4B scores near misses (another year's Christmas, another bento)

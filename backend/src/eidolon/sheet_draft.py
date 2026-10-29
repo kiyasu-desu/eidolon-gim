@@ -178,7 +178,7 @@ def _batches(texts: Sequence[str], budget: int) -> list[str]:
 
 def _notes_instructions(character: Character, kind: str) -> str:
     return f"""\
-你在为《偶像大师 闪耀色彩》的偶像{character.name}整理人设素材。下面是她出场的一部分{kind}。
+你在为《学园偶像大师》的偶像{character.name}整理人设素材。下面是她出场的一部分{kind}。
 用中文记下能看出她是什么样的人的要点：身份和经历、自称、对制作人和其他人物的称呼、口癖和说话方式、\
 她和组合伙伴之间的称呼和相处方式、性格和价值观、她绝不会做或说的事。
 称呼、自称和口癖要照原文写出日语，并尽量注明出自哪段剧情。只写素材里看得到的内容，不要推测。
@@ -188,7 +188,7 @@ def _notes_instructions(character: Character, kind: str) -> str:
 def _draft_instructions(character: Character, kind: str) -> str:
     sections = "\n".join(f"## {s}" for s in SECTIONS)
     return f"""\
-你在为一个角色扮演对话系统撰写《偶像大师 闪耀色彩》的偶像{character.name}的人设。\
+你在为一个角色扮演对话系统撰写《学园偶像大师》的偶像{character.name}的人设。\
 这份人设会完整放进对话模型的系统提示词里，由对话模型扮演她和制作人（用户）对话。
 根据下面她出场的{kind}，用中文、以第二人称（「你是……」）写出人设，依次包含这些小节，小节标题照抄：
 {sections}

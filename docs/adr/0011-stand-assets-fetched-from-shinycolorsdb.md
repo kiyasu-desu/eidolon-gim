@@ -1,3 +1,5 @@
+> 历史决定：当前 GIM 已停止采用此方案，见 [ADR-0029](0029-remove-sc-specific-content.md)。
+
 # 立绘素材由 eidolon 直接从 ShinyColorsDB 拉取，不再依赖单独的立绘镜像
 
 原作隔一两周出一次新卡，我们希望新衣装不用人盯着就能出现在换衣装面板上。原先立绘素材来自另一个仓库 `shinycolors-spine` 下载好的立绘镜像，eidolon 的同步脚本只读不写；镜像要自己记得去更新，而它的下载脚本把卡的列表永久缓存，重跑也看不到新卡。所以改为由 eidolon 自己拉取：`deploy/stand-sync.sh` 第一步运行 `eidolon stand fetch`，每次都重新向 `api.shinycolors.moe` 要卡的列表，从 `cf-static.shinycolors.moe` 下载本地还没有的衣装，只拉配了偶像编号的角色的私服和演出服；同步每周定时跑一次。下载目录归 eidolon 所有（默认在整理目录下），`shinycolors-spine` 留作独立工具，eidolon 不再读它。

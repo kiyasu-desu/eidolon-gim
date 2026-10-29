@@ -11,7 +11,7 @@ from tests.conftest import MANO_SHEET, ClientFactory
 from tests.fakes import FakeLLM, system_of
 
 
-async def start_conversation(client: httpx.AsyncClient, character: str = "mano") -> str:
+async def start_conversation(client: httpx.AsyncClient, character: str = "sora") -> str:
     res = await client.post("/api/conversations", json={"character_id": character})
     assert res.status_code == 201
     return res.json()["id"]
@@ -116,7 +116,7 @@ async def test_reply_is_streamed_segment_by_segment_even_when_tags_are_split(
     make_client: ClientFactory,
 ):
     llm = FakeLLM(
-        ["<j", "a>ほわっ、", "プロデューサーさん", "！</", "ja><zh>哇，制作人！", "</zh>\n",
+        ["<j", "a>えっと、", "プロデューサーさん", "！</", "ja><zh>哇，制作人！", "</zh>\n",
          "<ja>今日は</ja><", "zh>今天</zh>"]
     )
     client = make_client(llm)
@@ -124,9 +124,9 @@ async def test_reply_is_streamed_segment_by_segment_even_when_tags_are_split(
 
     events = await send_turn(client, conversation_id, "こんにちは")
 
-    assert deltas(events, "ja") == [(0, "ほわっ、"), (0, "プロデューサーさん"), (0, "！"), (1, "今日は")]
+    assert deltas(events, "ja") == [(0, "えっと、"), (0, "プロデューサーさん"), (0, "！"), (1, "今日は")]
     assert deltas(events, "zh") == [(0, "哇，制作人！"), (1, "今天")]
-    assert events[-1]["message"]["ja"] == "ほわっ、プロデューサーさん！今日は"
+    assert events[-1]["message"]["ja"] == "えっと、プロデューサーさん！今日は"
     assert events[-1]["message"]["zh"] == "哇，制作人！今天"
 
 
@@ -144,23 +144,23 @@ async def test_both_sides_of_a_turn_are_kept_in_the_conversation_record(
     make_client: ClientFactory,
 ):
     client = make_client(
-        FakeLLM(["<ja>おはようございます！</ja><zh>早上好！</zh><ja>ほわっ</ja><zh>哇</zh>"])
+        FakeLLM(["<ja>おはようございます！</ja><zh>早上好！</zh><ja>えっと</ja><zh>哇</zh>"])
     )
     conversation_id = await start_conversation(client)
     await send_turn(client, conversation_id, "早上好")
 
     reopened = make_client(FakeLLM())
-    listed = (await reopened.get("/api/conversations", params={"character_id": "mano"})).json()
+    listed = (await reopened.get("/api/conversations", params={"character_id": "sora"})).json()
     messages = (await reopened.get(f"/api/conversations/{conversation_id}/messages")).json()
 
     assert [c["id"] for c in listed] == [conversation_id]
     assert [(m["role"], m["text"], m["ja"], m["zh"]) for m in messages] == [
         ("user", "早上好", None, None),
-        ("character", None, "おはようございます！ほわっ", "早上好！哇"),
+        ("character", None, "おはようございます！えっと", "早上好！哇"),
     ]
     assert messages[1]["segments"] == [
         {"ja": "おはようございます！", "zh": "早上好！"},
-        {"ja": "ほわっ", "zh": "哇"},
+        {"ja": "えっと", "zh": "哇"},
     ]
 
 
@@ -168,7 +168,7 @@ async def test_prompt_carries_the_character_sheet_and_the_conversation_so_far(
     make_client: ClientFactory,
 ):
     llm = FakeLLM(
-        ["<ja>ピーちゃんです！</ja><zh>是小皮！</zh>"],
+        ["<ja>サンプルくんです！</ja><zh>是小样！</zh>"],
         ["<ja>はいっ</ja><zh>嗯！</zh>"],
     )
     client = make_client(llm)
@@ -183,11 +183,11 @@ async def test_prompt_carries_the_character_sheet_and_the_conversation_so_far(
         "system", f"{MANO_SHEET}\n\n{FORMAT_INSTRUCTIONS}", cache_breakpoint=True
     )
     system = system_of(llm.prompts[1])
-    assert "櫻木真乃" in system
+    assert "星野ソラ" in system
     assert "<ja>" in system and "<zh>" in system
     assert [(m.role, m.content) for m in llm.prompts[1] if m.role != "system"] == [
         ("user", "这只鸽子叫什么？"),
-        ("assistant", "<ja>ピーちゃんです！</ja><zh>是小皮！</zh>"),
+        ("assistant", "<ja>サンプルくんです！</ja><zh>是小样！</zh>"),
         ("user", "好可爱"),
     ]
 
@@ -204,7 +204,7 @@ async def test_conversations_are_kept_apart(make_client: ClientFactory):
     assert [(m.role, m.content) for m in llm.prompts[1] if m.role != "system"] == [
         ("user", "第二次")
     ]
-    listed = (await client.get("/api/conversations", params={"character_id": "mano"})).json()
+    listed = (await client.get("/api/conversations", params={"character_id": "sora"})).json()
     assert [c["id"] for c in listed] == [second, first]
 
 

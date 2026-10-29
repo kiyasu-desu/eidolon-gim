@@ -14,7 +14,7 @@ from tests.test_call_turns import (
     MANO_REPLY,
     SLOW_REPLY,
     CallUnderTest,
-    mano_call,  # noqa: F401  # the fixture
+    sora_call,  # noqa: F401  # the fixture
     spoken,
     typed,
 )
@@ -29,11 +29,11 @@ def emotions(messages: list[dict]) -> list[tuple]:
     ]
 
 
-async def test_each_segment_of_each_reply_gets_its_emotion(mano_call: CallUnderTest):
+async def test_each_segment_of_each_reply_gets_its_emotion(sora_call: CallUnderTest):
     llm = FakeLLM(MANO_REPLY, ["<ja>うん。</ja><zh>嗯。</zh>"])
     judge = FakeJudge(emotions=[feeling("happy"), feeling("shy"), feeling("thinking", nod="yes")])
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm, [spoken("早上好"), SleepFrame(0.5), spoken("在吗"), SETTLE], judge=judge
     )
 
@@ -42,12 +42,12 @@ async def test_each_segment_of_each_reply_gets_its_emotion(mano_call: CallUnderT
     ]
 
 
-async def test_an_answer_jev_is_unsure_of_is_calm_without_a_nod(mano_call: CallUnderTest):
+async def test_an_answer_jev_is_unsure_of_is_calm_without_a_nod(sora_call: CallUnderTest):
     judge = FakeJudge(
         emotions=[feeling("happy", 0.45, nod="no"), feeling("sad", 0.5, nod="yes", nod_probability=0.4)]
     )
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(MANO_REPLY), [spoken("早上好"), SETTLE], judge=judge,
         emotion=EmotionSettings(min_probability=0.5),
     )
@@ -57,11 +57,11 @@ async def test_an_answer_jev_is_unsure_of_is_calm_without_a_nod(mano_call: CallU
 
 @pytest.mark.parametrize("answer", [None, HANG], ids=["failed", "too slow"])
 async def test_a_segment_jev_cannot_judge_in_time_gets_no_emotion(
-    mano_call: CallUnderTest, answer: object
+    sora_call: CallUnderTest, answer: object
 ):
     judge = FakeJudge(emotions=[answer, feeling("shy")])
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(MANO_REPLY), [spoken("早上好"), SleepFrame(0.4)], judge=judge,
         emotion=EmotionSettings(timeout=0.2),
     )
@@ -70,10 +70,10 @@ async def test_a_segment_jev_cannot_judge_in_time_gets_no_emotion(
     assert len(judge.segments) == 2  # not asked again
 
 
-async def test_text_only_replies_are_judged_all_the_same(mano_call: CallUnderTest):
+async def test_text_only_replies_are_judged_all_the_same(sora_call: CallUnderTest):
     judge = FakeJudge(emotions=[feeling("happy"), feeling("surprised")])
 
-    spoken_text, messages = await mano_call.run(
+    spoken_text, messages = await sora_call.run(
         FakeLLM(MANO_REPLY), [spoken("早上好"), SETTLE], judge=judge, muted=True
     )
 
@@ -81,27 +81,27 @@ async def test_text_only_replies_are_judged_all_the_same(mano_call: CallUnderTes
     assert emotions(messages) == [(1, 0, "happy", None), (1, 1, "surprised", None)]
 
 
-async def test_jev_reads_the_segment_with_its_cues_after_those_before_it(mano_call: CallUnderTest):
+async def test_jev_reads_the_segment_with_its_cues_after_those_before_it(sora_call: CallUnderTest):
     llm = FakeLLM(
-        ["<ja>[shyly] ほわっ、</ja><zh>哇，</zh><ja>ありがとう", "ございます！</ja><zh>谢谢！</zh>"]
+        ["<ja>[shyly] えっと、</ja><zh>哇，</zh><ja>ありがとう", "ございます！</ja><zh>谢谢！</zh>"]
     )
     judge = FakeJudge()
 
-    await mano_call.run(llm, [spoken("你今天很可爱"), SETTLE], judge=judge)
+    await sora_call.run(llm, [spoken("你今天很可爱"), SETTLE], judge=judge)
 
     first, second = judge.segments
-    assert (first.character, first.user_said) == ("櫻木真乃", "你今天很可爱")
-    assert (first.before, first.ja, first.zh) == ("（这是回复的第一段）", "[shyly]ほわっ、", "哇，")
-    assert second.before == ["[shyly]ほわっ、（哇，）"]
+    assert (first.character, first.user_said) == ("星野ソラ", "你今天很可爱")
+    assert (first.before, first.ja, first.zh) == ("（这是回复的第一段）", "[shyly]えっと、", "哇，")
+    assert second.before == ["[shyly]えっと、（哇，）"]
     assert (second.ja, second.zh) == ("ありがとうございます！", "谢谢！")
 
 
 async def test_segments_left_incomplete_by_an_interruption_are_not_judged(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     judge = FakeJudge(emotions=[feeling("happy")])
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(INTERRUPTED_REPLY, delay=0.3), [spoken("早上好"), *INTERRUPTING, SETTLE],
         judge=judge,
     )
@@ -111,14 +111,14 @@ async def test_segments_left_incomplete_by_an_interruption_are_not_judged(
 
 
 async def test_a_reply_dropped_for_a_follow_on_is_judged_no_further_and_numbers_stay_with_replies(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     """What the user said in a call, and the emotions of a reply's segments, carry the
     number of the reply they are of."""
     llm = FakeLLM(SLOW_REPLY, ["<ja>うん。</ja><zh>嗯。</zh>"], ["<ja>ええ。</ja><zh>嗯。</zh>"], delay=0.3)
     judge = FakeJudge(emotions=[feeling("happy"), feeling("sad")])
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         [spoken("早上好"), SleepFrame(0.1), typed("在吗"), SleepFrame(1.0), spoken("好"), SETTLE],
         judge=judge,

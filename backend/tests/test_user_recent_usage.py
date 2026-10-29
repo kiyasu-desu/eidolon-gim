@@ -110,13 +110,13 @@ async def test_the_list_is_sorted_by_the_last_24_hours_turns_or_calls_before_its
     clock = FakeClock()
     admin = await admin_client(make_client, github, clock=clock)
     busy = make_client(FakeLLM(REPLY, REPLY), "busy-yesterday", clock=clock)
-    mano = make_client(FakeLLM(REPLY), "mano-fan", clock=clock)
-    kogane = make_client(FakeLLM(REPLY, REPLY), "kogane-fan", clock=clock)
+    sora = make_client(FakeLLM(REPLY), "sora-fan", clock=clock)
+    riku = make_client(FakeLLM(REPLY, REPLY), "riku-fan", clock=clock)
     caller = make_client(FakeLLM(REPLY), "caller", clock=clock)
     await take_turns(busy, 2)
     clock.advance(hours=25)
-    await take_turns(mano, 1)
-    await take_turns(kogane, 2)
+    await take_turns(sora, 1)
+    await take_turns(riku, 2)
     assert await call(caller, await start_conversation(caller), speech) == 200
     await calls_recorded(admin, (await find(admin, "caller"))["id"], 1)
 
@@ -126,13 +126,13 @@ async def test_the_list_is_sorted_by_the_last_24_hours_turns_or_calls_before_its
     by_turns = await users(admin, sort="turns", limit=2)
 
     # Equal in turns, newest first; the caller's one turn was in the call.
-    assert named(by_turns) == ["kogane-fan", "caller"]
+    assert named(by_turns) == ["riku-fan", "caller"]
     assert by_turns["total"] == 5
     assert named(await users(admin, sort="turns", offset=2)) == [
-        "mano-fan", "busy-yesterday", "boss"
+        "sora-fan", "busy-yesterday", "boss"
     ]
-    assert named(await users(admin, sort="turns", q="-fan")) == ["kogane-fan", "mano-fan"]
+    assert named(await users(admin, sort="turns", q="-fan")) == ["riku-fan", "sora-fan"]
     assert named(await users(admin, sort="calls", limit=1)) == ["caller"]
     assert [(u["name"], u["usage_24h"]) for u in (await users(admin, limit=2))["users"]] == [
-        ("caller", {"turns": 1, "calls": 1}), ("kogane-fan", {"turns": 2, "calls": 0}),
+        ("caller", {"turns": 1, "calls": 1}), ("riku-fan", {"turns": 2, "calls": 0}),
     ]

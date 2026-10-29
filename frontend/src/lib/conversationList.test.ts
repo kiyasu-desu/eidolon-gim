@@ -5,7 +5,7 @@ import { arrange, dayOf, hasUnseen, previewOf, unitsOf } from "@/lib/conversatio
 
 function latest(last: LatestConversation["last_message"]): LatestConversation {
   return {
-    character_id: "mano",
+    character_id: "sora",
     conversation_id: "c1",
     created_at: "2026-09-28T01:00:00Z",
     last_message: last,
@@ -16,7 +16,7 @@ function latest(last: LatestConversation["last_message"]): LatestConversation {
 describe("previewOf", () => {
   it("她的最后一句显示字幕，时间取这句话的", () => {
     const preview = previewOf(
-      latest({ role: "character", text: null, ja: "ほわっ", zh: "哇", created_at: "2026-09-28T02:00:00Z" }),
+      latest({ role: "character", text: null, ja: "えっと", zh: "哇", created_at: "2026-09-28T02:00:00Z" }),
     );
 
     expect(preview).toEqual({ from: "her", text: "哇", at: "2026-09-28T02:00:00Z", photo: false });
@@ -91,7 +91,7 @@ function idol(id: string, name = id, unit: string | null = null) {
 
 describe("arrange", () => {
   // 接口给的顺序，即原作的偶像顺序。
-  const characters = ["mano", "hiori", "meguru", "kogane", "mamimi"].map((id) => idol(id));
+  const characters = ["sora", "nagi", "hina", "riku", "mina"].map((id) => idol(id));
 
   /** 她最新的对话：`opened` 时开的，最后一句在 `lastAt`（null 表示还没有话）。 */
   function talked(id: string, opened: string, lastAt: string | null = opened): LatestConversation {
@@ -112,60 +112,60 @@ describe("arrange", () => {
   it("聊过的按最后一句从新到旧排，没聊过的在后面、保持原顺序", () => {
     expect(
       order(
-        talked("meguru", "2026-10-01T00:00:00Z", "2026-10-01T09:00:00Z"),
-        talked("mamimi", "2026-10-01T00:00:00Z", "2026-10-02T09:00:00Z"),
-        talked("hiori", "2026-09-01T00:00:00Z", "2026-09-30T23:00:00Z"),
+        talked("hina", "2026-10-01T00:00:00Z", "2026-10-01T09:00:00Z"),
+        talked("mina", "2026-10-01T00:00:00Z", "2026-10-02T09:00:00Z"),
+        talked("nagi", "2026-09-01T00:00:00Z", "2026-09-30T23:00:00Z"),
       ),
-    ).toEqual(["mamimi", "meguru", "hiori", "mano", "kogane"]);
+    ).toEqual(["mina", "hina", "nagi", "sora", "riku"]);
   });
 
   it("开了新对话还没说话的，按开对话的时间算", () => {
     expect(
       order(
-        talked("mano", "2026-10-01T00:00:00Z", "2026-10-01T09:00:00Z"),
-        talked("kogane", "2026-10-01T10:00:00Z", null),
+        talked("sora", "2026-10-01T00:00:00Z", "2026-10-01T09:00:00Z"),
+        talked("riku", "2026-10-01T10:00:00Z", null),
       ),
-    ).toEqual(["kogane", "mano", "hiori", "meguru", "mamimi"]);
+    ).toEqual(["riku", "sora", "nagi", "hina", "mina"]);
   });
 
   it("时间相同时按原顺序", () => {
     expect(
-      order(talked("kogane", "2026-10-01T00:00:00Z"), talked("hiori", "2026-10-01T00:00:00Z")),
-    ).toEqual(["hiori", "kogane", "mano", "meguru", "mamimi"]);
+      order(talked("riku", "2026-10-01T00:00:00Z"), talked("nagi", "2026-10-01T00:00:00Z")),
+    ).toEqual(["nagi", "riku", "sora", "hina", "mina"]);
   });
 
   it("时间的写法不同也按实际先后比", () => {
     expect(
-      order(talked("hiori", "2026-10-01T09:00:00+09:00"), talked("kogane", "2026-10-01T01:00:00Z")),
-    ).toEqual(["kogane", "hiori", "mano", "meguru", "mamimi"]);
+      order(talked("nagi", "2026-10-01T09:00:00+09:00"), talked("riku", "2026-10-01T01:00:00Z")),
+    ).toEqual(["riku", "nagi", "sora", "hina", "mina"]);
   });
 
   it("一位都没聊过时就是原顺序", () => {
-    expect(order()).toEqual(["mano", "hiori", "meguru", "kogane", "mamimi"]);
+    expect(order()).toEqual(["sora", "nagi", "hina", "riku", "mina"]);
   });
 
   it("摘要里有配置中已经不存在的角色时不出错，也不多出一行", () => {
-    expect(order(talked("gone", "2026-10-02T00:00:00Z"), talked("meguru", "2026-10-01T00:00:00Z"))).toEqual([
-      "meguru", "mano", "hiori", "kogane", "mamimi",
+    expect(order(talked("gone", "2026-10-02T00:00:00Z"), talked("hina", "2026-10-01T00:00:00Z"))).toEqual([
+      "hina", "sora", "nagi", "riku", "mina",
     ]);
   });
 });
 
 describe("arrange 加上隐藏、置顶和搜索", () => {
   const characters = [
-    idol("mano", "櫻木真乃", "illumination STARS"),
-    idol("hiori", "風野灯織", "illumination STARS"),
-    idol("meguru", "八宮めぐる", "illumination STARS"),
-    idol("kogane", "月岡恋鐘", "L'Antica"),
-    idol("mamimi", "田中摩美々", "L'Antica"),
+    idol("sora", "星野ソラ", "Sample Stars"),
+    idol("nagi", "雨宮ナギ", "Sample Stars"),
+    idol("hina", "晴川ヒナ", "Sample Stars"),
+    idol("riku", "青葉リク", "Sample Harmony"),
+    idol("mina", "架空ミナ", "Sample Harmony"),
   ];
 
-  // meguru 最近，其次 kogane，再其次 mano；hiori 和 mamimi 没聊过。
+  // hina 最近，其次 riku，再其次 sora；nagi 和 mina 没聊过。
   const latest = Object.fromEntries(
     [
-      ["meguru", "2026-10-03T00:00:00Z"],
-      ["kogane", "2026-10-02T00:00:00Z"],
-      ["mano", "2026-10-01T00:00:00Z"],
+      ["hina", "2026-10-03T00:00:00Z"],
+      ["riku", "2026-10-02T00:00:00Z"],
+      ["sora", "2026-10-01T00:00:00Z"],
     ].map(([id, at]) => [
       id,
       { character_id: id, conversation_id: `c-${id}`, created_at: at, last_message: null, unseen_reach_out: false },
@@ -179,47 +179,47 @@ describe("arrange 加上隐藏、置顶和搜索", () => {
   const ids = (result: ReturnType<typeof arranged>) => result.rows.map((row) => row.character.id);
 
   it("置顶的排在前面，她们之间也按最近往来排", () => {
-    const result = arranged({ preferences: { hidden: [], pinned: ["hiori", "mano", "kogane"] } });
+    const result = arranged({ preferences: { hidden: [], pinned: ["nagi", "sora", "riku"] } });
 
-    expect(ids(result)).toEqual(["kogane", "mano", "hiori", "meguru", "mamimi"]);
+    expect(ids(result)).toEqual(["riku", "sora", "nagi", "hina", "mina"]);
   });
 
   it("每一行带上是否置顶、是否隐藏", () => {
-    const result = arranged({ preferences: { hidden: ["mamimi"], pinned: ["mano"] }, query: "l'antica" });
+    const result = arranged({ preferences: { hidden: ["mina"], pinned: ["sora"] }, query: "sample harmony" });
 
     expect(result.rows.map(({ character, isPinned, isHidden }) => [character.id, isPinned, isHidden])).toEqual([
-      ["kogane", false, false],
-      ["mamimi", false, true],
+      ["riku", false, false],
+      ["mina", false, true],
     ]);
-    expect(arranged({ preferences: { hidden: [], pinned: ["mano"] } }).rows[0]).toMatchObject({
+    expect(arranged({ preferences: { hidden: [], pinned: ["sora"] } }).rows[0]).toMatchObject({
       isPinned: true,
       isHidden: false,
     });
   });
 
   it("没有搜索时去掉隐藏的人", () => {
-    const result = arranged({ preferences: { hidden: ["meguru", "hiori"], pinned: [] } });
+    const result = arranged({ preferences: { hidden: ["hina", "nagi"], pinned: [] } });
 
-    expect(ids(result)).toEqual(["kogane", "mano", "mamimi"]);
+    expect(ids(result)).toEqual(["riku", "sora", "mina"]);
   });
 
   it("当前打开的和正在通话的始终留下，即使隐藏了", () => {
-    const result = arranged({ preferences: { hidden: ["meguru", "hiori", "mamimi"], pinned: [] }, keep: ["hiori", "meguru"] });
+    const result = arranged({ preferences: { hidden: ["hina", "nagi", "mina"], pinned: [] }, keep: ["nagi", "hina"] });
 
-    expect(ids(result)).toEqual(["meguru", "kogane", "mano", "hiori"]);
-    expect(result.rows.find((row) => row.character.id === "hiori")?.isHidden).toBe(true);
+    expect(ids(result)).toEqual(["hina", "riku", "sora", "nagi"]);
+    expect(result.rows.find((row) => row.character.id === "nagi")?.isHidden).toBe(true);
   });
 
   it("有搜索时在所有人里搜，隐藏的人照样出现，也按置顶和最近往来排", () => {
-    const result = arranged({ preferences: { hidden: ["mano", "meguru"], pinned: ["hiori"] }, query: "illumination" });
+    const result = arranged({ preferences: { hidden: ["sora", "hina"], pinned: ["nagi"] }, query: "sample stars" });
 
-    expect(ids(result)).toEqual(["hiori", "meguru", "mano"]);
+    expect(ids(result)).toEqual(["nagi", "hina", "sora"]);
   });
 
   it("搜索框只有空格时当作没有搜索", () => {
-    const result = arranged({ preferences: { hidden: ["mano"], pinned: [] }, query: "  " });
+    const result = arranged({ preferences: { hidden: ["sora"], pinned: [] }, query: "  " });
 
-    expect(ids(result)).toEqual(["meguru", "kogane", "hiori", "mamimi"]);
+    expect(ids(result)).toEqual(["hina", "riku", "nagi", "mina"]);
   });
 
   it("什么都没搜到时没有行", () => {
@@ -227,7 +227,7 @@ describe("arrange 加上隐藏、置顶和搜索", () => {
   });
 
   it("给出隐藏的人数，只数配置里还存在的角色", () => {
-    expect(arranged({ preferences: { hidden: ["mano", "gone", "kogane"], pinned: [] } }).hiddenCount).toBe(2);
+    expect(arranged({ preferences: { hidden: ["sora", "gone", "riku"], pinned: [] } }).hiddenCount).toBe(2);
     expect(arranged({}).hiddenCount).toBe(0);
   });
 
@@ -239,12 +239,12 @@ describe("arrange 加上隐藏、置顶和搜索", () => {
 });
 
 describe("没看过的搭话", () => {
-  const characters = ["mano", "hiori", "meguru", "kogane"].map((id) => idol(id));
+  const characters = ["sora", "nagi", "hina", "riku"].map((id) => idol(id));
 
   /** 每位最新的对话；`unseen` 里的那几位有没看过的搭话（她刚搭的话就是最后一句）。 */
   function withUnseen(...unseen: string[]): Record<string, LatestConversation> {
     return Object.fromEntries(
-      ["mano", "hiori", "meguru", "gone"].map((id) => [
+      ["sora", "nagi", "hina", "gone"].map((id) => [
         id,
         {
           character_id: id,
@@ -264,21 +264,21 @@ describe("没看过的搭话", () => {
     arrange(characters, latest, options).rows.filter((row) => row.isUnseen).map((row) => row.character.id);
 
   it("有没看过的搭话的那几行标出来，别的行不标", () => {
-    expect(marked(withUnseen("hiori", "meguru"))).toEqual(["hiori", "meguru"]);
+    expect(marked(withUnseen("nagi", "hina"))).toEqual(["nagi", "hina"]);
     expect(marked(withUnseen())).toEqual([]);
   });
 
   it("当前对话正显示着的那位不标", () => {
-    expect(marked(withUnseen("hiori", "meguru"), { onScreen: "hiori" })).toEqual(["meguru"]);
+    expect(marked(withUnseen("nagi", "hina"), { onScreen: "nagi" })).toEqual(["hina"]);
   });
 
   it("导航上的点：只要列表里有一行有没看过的搭话；当前对话正显示着的、在这台设备上隐藏了的、配置里已经没有的不算", () => {
-    const hidden = { preferences: { hidden: ["hiori"], pinned: [] } };
+    const hidden = { preferences: { hidden: ["nagi"], pinned: [] } };
 
-    expect(hasUnseen(characters, withUnseen("meguru")), "有一行").toBe(true);
+    expect(hasUnseen(characters, withUnseen("hina")), "有一行").toBe(true);
     expect(hasUnseen(characters, withUnseen()), "一行都没有").toBe(false);
-    expect(hasUnseen(characters, withUnseen("meguru"), { onScreen: "meguru" }), "只有正显示着的那位").toBe(false);
-    expect(hasUnseen(characters, withUnseen("hiori", "gone"), hidden), "只有隐藏的和配置里没有的").toBe(false);
+    expect(hasUnseen(characters, withUnseen("hina"), { onScreen: "hina" }), "只有正显示着的那位").toBe(false);
+    expect(hasUnseen(characters, withUnseen("nagi", "gone"), hidden), "只有隐藏的和配置里没有的").toBe(false);
   });
 });
 
@@ -287,17 +287,17 @@ describe("unitsOf", () => {
 
   it("按组合的官方顺序分组，组内保持接口顺序，没有组合或对不上官方顺序的放在最后", () => {
     const groups = unitsOf([
-      member("kogane", "L'Antica", 1),
+      member("riku", "Sample Harmony", 1),
       member("guest", null, null),
       member("stray", "未知", null),
-      member("mano", "illumination STARS", 0),
-      member("mamimi", "L'Antica", 1),
-      member("hiori", "illumination STARS", 0),
+      member("sora", "Sample Stars", 0),
+      member("mina", "Sample Harmony", 1),
+      member("nagi", "Sample Stars", 0),
     ]);
 
     expect(groups.map((g) => [g.unit, g.members.map((c) => c.id)])).toEqual([
-      ["illumination STARS", ["mano", "hiori"]],
-      ["L'Antica", ["kogane", "mamimi"]],
+      ["Sample Stars", ["sora", "nagi"]],
+      ["Sample Harmony", ["riku", "mina"]],
       [null, ["guest", "stray"]],
     ]);
   });

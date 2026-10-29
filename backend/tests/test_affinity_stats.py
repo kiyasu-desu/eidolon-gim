@@ -12,7 +12,7 @@ from eidolon.config import Settings
 from tests.conftest import ClientFactory
 from tests.fakes import FAKE_JUDGE, START, FakeClock, FakeLLM
 from tests.test_affinity import keep
-from tests.test_stats import meguru, stats  # noqa: F401 (a fixture)
+from tests.test_stats import hina, stats  # noqa: F401 (a fixture)
 
 
 @pytest.fixture
@@ -22,14 +22,14 @@ def settings(settings: Settings) -> Settings:
 
 
 async def test_each_tier_has_those_in_it_in_the_idols_order_by_tier_alone(
-    make_client: ClientFactory, settings: Settings, meguru: None
+    make_client: ClientFactory, settings: Settings, hina: None
 ):
     client = make_client(FakeLLM(), clock=FakeClock())
     database = settings.database_path
-    # Kogane highest of the three, and configured before Meguru, but last in the idols' order.
+    # Riku highest of the three, and configured before Hina, but last in the idols' order.
     keep(database, "producer", 70, START)
-    keep(database, "producer", 66, START, character="meguru")
-    keep(database, "producer", 80, START, character="kogane")
+    keep(database, "producer", 66, START, character="hina")
+    keep(database, "producer", 80, START, character="riku")
 
     got = await stats(client)
 
@@ -37,23 +37,23 @@ async def test_each_tier_has_those_in_it_in_the_idols_order_by_tier_alone(
         {"tier": "cold", "characters": []},
         {"tier": "distant", "characters": []},
         {"tier": "trust", "characters": []},
-        {"tier": "close", "characters": ["mano", "meguru", "kogane"]},
+        {"tier": "close", "characters": ["sora", "hina", "riku"]},
         {"tier": "intimate", "characters": []},
     ]
 
 
 async def test_one_in_a_cooldown_is_in_cold_and_one_never_spoken_to_in_trust(
-    make_client: ClientFactory, settings: Settings, meguru: None
+    make_client: ClientFactory, settings: Settings, hina: None
 ):
     client = make_client(FakeLLM(), clock=FakeClock())
     keep(settings.database_path, "producer", 0, START, cooling=True)
-    keep(settings.database_path, "producer", 90, START, character="kogane")
+    keep(settings.database_path, "producer", 90, START, character="riku")
 
     tiers = {group["tier"]: group["characters"] for group in (await stats(client))["affinity"]}
 
     assert tiers == {
-        "cold": ["mano"], "distant": [], "trust": ["meguru"], "close": [],
-        "intimate": ["kogane"],
+        "cold": ["sora"], "distant": [], "trust": ["hina"], "close": [],
+        "intimate": ["riku"],
     }
 
 
@@ -65,8 +65,8 @@ async def test_each_user_has_their_own(make_client: ClientFactory, settings: Set
     mine = {g["tier"]: g["characters"] for g in (await stats(client))["affinity"]}
     theirs = {g["tier"]: g["characters"] for g in (await stats(other))["affinity"]}
 
-    assert mine["distant"] == ["mano"] and mine["trust"] == ["kogane"]
-    assert theirs["distant"] == [] and theirs["trust"] == ["mano", "kogane"]
+    assert mine["distant"] == ["sora"] and mine["trust"] == ["riku"]
+    assert theirs["distant"] == [] and theirs["trust"] == ["sora", "riku"]
 
 
 async def test_where_affinity_is_off_there_are_no_tiers_and_no_gifts(

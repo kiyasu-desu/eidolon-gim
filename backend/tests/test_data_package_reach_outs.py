@@ -44,7 +44,7 @@ async def test_her_reach_outs_move_to_another_deployment_as_they_were_and_seen(
     )
     last_contact(settings.database_path, conversation, clock.now - timedelta(hours=28))
     await backend_of(here).reach_outs.run_due()
-    assert await unseen(here) == {"mano": True}
+    assert await unseen(here) == {"sora": True}
     there = make_client(
         FakeLLM(), settings=replace(settings, database_path=tmp_path / "there.db")
     )
@@ -58,7 +58,7 @@ async def test_her_reach_outs_move_to_another_deployment_as_they_were_and_seen(
 
     assert res.status_code == 200, res.text
     assert res.json()["conversations"] == 1
-    assert await unseen(there) == {"mano": False}
+    assert await unseen(there) == {"sora": False}
     assert await records(there) == await records(here)
     assert len(reach_outs(await record(there, (await hers(there))[0]["id"]))) == 1
     _, _, again = unzipped(await export(there, "conversations"))

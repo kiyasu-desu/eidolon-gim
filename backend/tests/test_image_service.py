@@ -72,7 +72,7 @@ async def test_in_openais_image_format_the_picture_is_asked_for_at_the_top_level
     assert request["url"] == "https://relay.image.test/v1/images/generations"
     assert request["key"] == "relay-key"
     body = request["body"]
-    assert body["prompt"].startswith("1girl, solo, sakuragi mano, idolmaster shiny colors")
+    assert body["prompt"].startswith("1girl, solo, hoshino sora, gakuen idolmaster")
     assert body["negative_prompt"].startswith("nsfw, lowres")
     assert {k: v for k, v in body.items() if k not in ("prompt", "negative_prompt")} == {
         "model": "nai-diffusion-4-5-full", "size": "832x1216", "n": 1,
@@ -113,7 +113,7 @@ async def test_the_art_style_goes_as_written_after_the_works_tag_before_her_look
 
     [request] = image.requests
     assert request["body"]["input"].startswith(
-        "1girl, solo, sakuragi mano, idolmaster shiny colors,"
+        "1girl, solo, hoshino sora, gakuen idolmaster,"
         " 0.7::artist:example::, {artist:another example}, brown hair, medium hair, brown eyes,"
     )
 

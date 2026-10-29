@@ -17,5 +17,5 @@ call_opener_subtitle = "喂。……啊，制作人？那个，现在方便吗�
 sheet = "sheets/temari.md"
 color = "#617da6" # 原型临时界面色，不声称是官方代表色。
 default_outfit = "stand_3d/ttmr-default"
-stand_model = "../../corpus/gim-assets/animation"
+# 本地模型通过 EIDOLON_MODEL_ROOT/<角色ID>/ 挂载；源码不依赖本机资源目录。
 liked_gifts = ["prototype-note"] # 后端要求该字段；原型关闭好感度与礼物。

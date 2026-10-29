@@ -57,6 +57,8 @@ async def reembed(
     embedder: Embedder,
     batch: int = REEMBED_BATCH,
     world: World | None = None,
+    *,
+    story_path: Path | None = None,
 ) -> ReembedReport:
     """Embed with `embedder` whatever in the database at `path` has no vector from it yet,
     the entries of `world` included, then drop the other models' vectors. Raises
@@ -64,7 +66,7 @@ async def reembed(
     service fails."""
     by_id = {c.id: c for c in characters}
     # Passages missing vectors are what this is for; no need to warn of them.
-    sources = open_reference_sources(path, embedder, by_id.values(), world, warn=False)
+    sources = open_reference_sources(path, embedder, by_id.values(), world, warn=False, story_path=story_path)
     memories = Memories(path, by_id, utc_now, embedder=embedder)
     everything: list[Reembeddable] = [*sources.embedded(), memories]
     try:

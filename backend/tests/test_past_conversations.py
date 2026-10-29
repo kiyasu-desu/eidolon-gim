@@ -22,7 +22,7 @@ from tests.test_text_turn import send_turn, start_conversation
 Answer = Callable[[httpx.Request], Awaitable[httpx.Response]]
 
 
-async def hers(client: httpx.AsyncClient, character: str = "mano") -> list[dict]:
+async def hers(client: httpx.AsyncClient, character: str = "sora") -> list[dict]:
     res = await client.get("/api/conversations", params={"character_id": character})
     assert res.status_code == 200
     return res.json()
@@ -38,7 +38,7 @@ async def test_each_of_her_conversations_comes_with_its_last_message_and_whether
     at = hang_up(settings.database_path, ended)
     end(settings.database_path, ended)
     current = await start_conversation(client)
-    await start_conversation(client, "kogane")
+    await start_conversation(client, "riku")
 
     listed = await hers(client)
 

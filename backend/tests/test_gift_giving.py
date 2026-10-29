@@ -76,12 +76,12 @@ async def draw_them(client: httpx.AsyncClient, clock: FakeClock, count: int) -> 
     assert len(res.json()["drawn"]) == count
 
 
-def give(client: httpx.AsyncClient, gift_id: str, character: str = "mano", **body: str):
+def give(client: httpx.AsyncClient, gift_id: str, character: str = "sora", **body: str):
     """Give her the gift, with whatever else is put in the request `body`."""
     return client.post(f"/api/characters/{character}/gifts", json={"gift_id": gift_id} | body)
 
 
-async def given(client: httpx.AsyncClient, gift_id: str, character: str = "mano",
+async def given(client: httpx.AsyncClient, gift_id: str, character: str = "sora",
                 **body: str) -> dict:
     res = await give(client, gift_id, character, **body)
     assert res.status_code == 200, res.text
@@ -186,7 +186,7 @@ async def test_two_giving_the_last_one_at_once_give_it_once(make_client: ClientF
     client = holding(make_client, clock, TEA)
     await draw_them(client, clock, 1)
 
-    results = await asyncio.gather(give(client, "tea"), give(client, "tea", "kogane"))
+    results = await asyncio.gather(give(client, "tea"), give(client, "tea", "riku"))
 
     assert sorted(r.status_code for r in results) == [200, 409]
 

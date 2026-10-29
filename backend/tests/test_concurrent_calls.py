@@ -81,7 +81,7 @@ async def test_calls_at_once_are_limited_across_users(
     await browser.connect()
     assert browser.pc_id is not None
 
-    async with another_user(client, "hazuki") as other:
+    async with another_user(client, "yume") as other:
         theirs = await start_conversation(other)
         asked = await other.get("/api/ice-servers", params={"conversation": theirs})
         async with open_browser() as second:
@@ -105,7 +105,7 @@ async def test_a_call_counts_from_being_placed(
     through and answered, before it is served."""
     client = make_client(FakeLLM(), settings=one_call_at_once)
     mine = await start_conversation(client)
-    async with another_user(client, "hazuki") as other, open_browser() as a, open_browser() as b:
+    async with another_user(client, "yume") as other, open_browser() as a, open_browser() as b:
         theirs = await start_conversation(other)
         placed = await asyncio.gather(
             a.call(client, conversation_id=mine), b.call(other, conversation_id=theirs)

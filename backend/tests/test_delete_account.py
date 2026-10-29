@@ -86,7 +86,7 @@ async def test_deleting_leaves_nothing_of_the_user_in_any_table(
     await use_everything(client)
     producer = user_id(settings.database_path, "producer")
     conversation_id = (await client.get(
-        "/api/conversations", params={"character_id": "mano"}
+        "/api/conversations", params={"character_id": "sora"}
     )).json()[0]["id"]
     assert rows_mentioning(settings.database_path, producer)
 
@@ -124,7 +124,7 @@ async def test_signing_in_again_after_deleting_is_a_new_user(
 
     assert (await client.get("/api/account")).status_code == 428  # agrees afresh
     await agree_to_terms(client)
-    assert (await client.get("/api/conversations", params={"character_id": "mano"})).json() == []
+    assert (await client.get("/api/conversations", params={"character_id": "sora"})).json() == []
     assert (await client.get("/api/memories")).json() == []
     assert (await client.get("/api/profile")).json()["form_of_address"] is None
 

@@ -156,6 +156,6 @@ async def test_hanging_up_while_reconnecting_leaves_the_service_disconnected():
 
 
 def test_the_character_speaks_through_fish_audio_stopping_at_once():
-    tts = SpeechServices().tts("fish-key", "s2.1-pro-free", "mano-voice", 16000, own=False)
+    tts = SpeechServices().tts("fish-key", "s2.1-pro-free", "sora-voice", 16000, own=False)
 
     assert isinstance(tts, FishTTS)

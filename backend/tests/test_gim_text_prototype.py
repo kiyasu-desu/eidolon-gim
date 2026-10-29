@@ -24,27 +24,15 @@ async def test_temari_text_turn_has_no_old_world_and_survives_reopen(
     client = make_client(llm, settings=prototype, voice_configured=False)
 
     roster = (await client.get("/api/characters")).json()
-    assert [(character["id"], character["name"], character["stand"]) for character in roster] == [
-        (
-            "temari",
-            "月村手毬",
-            {
-                "default_outfit": {
-                    "id": "stand_3d/ttmr-default",
-                    "url": "/api/characters/temari/stand/",
-                },
-                "outfits_url": None,
-            },
-        )
-    ]
+    assert [(character["id"], character["name"], character["stand"]) for character in roster] == [("temari", "月村手毬", None)]
     conversation_id = await start_conversation(client, "temari")
     events = await send_turn(client, conversation_id, "你好，手毬")
     assert events[-1]["type"] == "done"
     prompt = system_of(llm.prompts[0])
     assert "初星学园" in prompt
     assert "283" not in prompt
-    assert "闪耀色彩" not in prompt
-    assert "櫻木真乃" not in prompt
+    assert "架空作品" not in prompt
+    assert "星野ソラ" not in prompt
 
     reopened = make_client(FakeLLM(), settings=prototype, voice_configured=False)
     listed = (await reopened.get("/api/conversations", params={"character_id": "temari"})).json()

@@ -29,17 +29,17 @@ from tests.fakes import (
 )
 
 NOW = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
-REPLY = ["<ja>ほわっ、</ja><zh>哇，</zh>"]
+REPLY = ["<ja>えっと、</ja><zh>哇，</zh>"]
 
 
 class Turns:
-    """A conversation with Mano and the engine that takes its turns."""
+    """A conversation with Sora and the engine that takes its turns."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._store = Store(settings.database_path)
         user = self._store.create_user("producer")
-        self.conversation: Conversation = self._store.create_conversation(user.id, "mano")
+        self.conversation: Conversation = self._store.create_conversation(user.id, "sora")
 
     async def take(
         self,
@@ -116,33 +116,33 @@ async def test_a_turn_opens_with_what_the_user_said_and_closes_with_the_recorded
 
     assert types(events) == ["user", "delta", "delta", "done"]
     assert events[0]["text"] == "早上好"
-    assert events[-1]["message"]["ja"] == "ほわっ、"
-    assert turns.record() == [("user", "早上好", None), ("character", None, "ほわっ、")]
+    assert events[-1]["message"]["ja"] == "えっと、"
+    assert turns.record() == [("user", "早上好", None), ("character", None, "えっと、")]
 
 
 async def test_chinese_dialogue_is_rewritten_before_speech_recording_and_the_next_turn(turns: Turns):
     llm = FakeLLM(
-        ["<ja>[shyly] えっ……那个，甜花", "，听到这话，脸就有点热……</ja><zh>甜花脸有点热。</zh>"],
-        ["<ja>[shyly] えっ……甜花、顔が熱くなった……</ja>"],
+        ["<ja>[shyly] えっ……那个，テン", "，听到这话，脸就有点热……</ja><zh>テン脸有点热。</zh>"],
+        ["<ja>[shyly] えっ……テン、顔が熱くなった……</ja>"],
         ["<ja>うん……</ja><zh>嗯……</zh>"],
     )
     events = await turns.take(llm, "继续聊吧", in_house=True)
 
     assert types(events)[-1] == "done"
-    assert events[-1]["message"]["ja"] == "えっ……甜花、顔が熱くなった……"
+    assert events[-1]["message"]["ja"] == "えっ……テン、顔が熱くなった……"
     speech = "".join(e["text"] for e in events if e["type"] == "speech-delta")
-    assert speech == "[shyly]えっ……甜花、顔が熱くなった……"
-    assert turns.record()[-1][2] == "[shyly] えっ……甜花、顔が熱くなった……"
+    assert speech == "[shyly]えっ……テン、顔が熱くなった……"
+    assert turns.record()[-1][2] == "[shyly] えっ……テン、顔が熱くなった……"
     await turns.take(llm, "嗯")
     assert len(llm.prompts) == 3
     assert llm.tools[1] == []
-    assert any("<ja>[shyly] えっ……甜花、顔が熱くなった……</ja>" in m.content
+    assert any("<ja>[shyly] えっ……テン、顔が熱くなった……</ja>" in m.content
                for m in llm.prompts[2] if m.role == "assistant")
-    assert not any("那个，甜花，听到这话" in m.content for m in llm.prompts[2])
+    assert not any("那个，テン，听到这话" in m.content for m in llm.prompts[2])
 
 
 async def test_legacy_chinese_is_only_context_not_an_assistant_example(turns: Turns, settings: Settings):
-    old = "那个……甜花，明天也会去……"
+    old = "那个……テン，明天也会去……"
     store = Store(settings.database_path)
     try:
         store.add_turn(turns.conversation.id, "明天见", [Segment(old, "明天也会去。")])
@@ -277,7 +277,7 @@ async def test_a_failed_turn_closes_with_an_error_and_leaves_no_record(
 
 async def test_a_turn_told_to_stop_is_recorded_with_only_its_complete_segments(turns: Turns):
     memory = FakeBackgroundLLM()
-    llm = FakeLLM(["<ja>ほわっ</ja><zh>哇</zh><ja>今日", "も</ja>", HANG])
+    llm = FakeLLM(["<ja>えっと</ja><zh>哇</zh><ja>今日", "も</ja>", HANG])
 
     events = await turns.take(
         llm, "早上好", stop_after=0,
@@ -285,8 +285,8 @@ async def test_a_turn_told_to_stop_is_recorded_with_only_its_complete_segments(t
     )
 
     assert events[-1]["type"] == "done"
-    assert (events[-1]["message"]["ja"], events[-1]["message"]["zh"]) == ("ほわっ", "哇")
-    assert turns.record() == [("user", "早上好", None), ("character", None, "ほわっ")]
+    assert (events[-1]["message"]["ja"], events[-1]["message"]["zh"]) == ("えっと", "哇")
+    assert turns.record() == [("user", "早上好", None), ("character", None, "えっと")]
     assert len(memory.prompts) == 1  # what the user revealed is written down as ever
 
 

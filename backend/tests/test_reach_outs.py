@@ -120,7 +120,7 @@ async def talked(
     make_client: ClientFactory, *replies: Sequence[str | asyncio.Event] | LLMError,
     at: datetime | None = None, **services,
 ) -> tuple[httpx.AsyncClient, FakeLLM, FakeClock, str]:
-    """A client whose user has had a turn with Mano, her chat model replying with `REPLY`
+    """A client whose user has had a turn with Sora, her chat model replying with `REPLY`
     and then `replies`, on a clock of its own, set to `at`; else to the time it is as the
     store writes it, so that what the store writes and what is set as the last contact come
     in their order, the producer living where it is the afternoon."""
@@ -161,7 +161,7 @@ async def test_once_her_time_comes_she_says_something_first_the_lists_last_line_
         "zh": "制作人！练习结束了哦", "created_at": said["created_at"], "reach_out": True,
     }
     [latest] = (await client.get("/api/conversations/latest")).json()
-    [listed] = (await client.get("/api/conversations", params={"character_id": "mano"})).json()
+    [listed] = (await client.get("/api/conversations", params={"character_id": "sora"})).json()
     assert latest["last_message"] == shown
     assert listed["last_message"] == shown
 
@@ -380,7 +380,7 @@ async def test_on_his_birthday_she_wishes_him_happy_birthday_once(
 
 
 def remember(
-    database: Path, text: str, at: datetime, told: str = "mano", superseded_by: int | None = None
+    database: Path, text: str, at: datetime, told: str = "sora", superseded_by: int | None = None
 ) -> int:
     """Have the producer have told `told` `text` at `at`, as a turn writes it down: its id."""
     with sqlite3.connect(database) as db:
@@ -407,11 +407,11 @@ async def test_she_finds_what_he_told_her_of_their_last_turn_and_his_last_two_we
     await send_turn(client, conversation, "我家的猫又捣乱了")
     database, now = settings.database_path, clock.now
     remember(database, "制作人家里养了一只叫小白的猫", now - timedelta(days=40))
-    remember(database, "制作人家的猫怕打雷", now - timedelta(days=40), told="kogane")
+    remember(database, "制作人家的猫怕打雷", now - timedelta(days=40), told="riku")
     remember(database, "制作人10月3日去北海道出差", now - timedelta(days=15))
     exam = remember(database, "制作人10月25日要考资格证", now - timedelta(days=3))
     remember(database, "制作人10月20日要考资格证", now - timedelta(days=5), superseded_by=exam)
-    remember(database, "制作人最近在学吉他", now - timedelta(days=1), told="kogane")
+    remember(database, "制作人最近在学吉他", now - timedelta(days=1), told="riku")
     remember(database, "制作人的猫这两天感冒了", now - timedelta(days=2))
     last_contact(database, conversation, now - timedelta(hours=20))
 
@@ -470,20 +470,20 @@ async def test_each_has_an_activity_record_of_its_own_which_no_turn_or_call_coun
     )
     database = settings.database_path
     await live_in(client, afternoon(clock.now + timedelta(hours=25)))
-    mano, kogane = await start_conversation(client), await start_conversation(client, "kogane")
-    for conversation in (mano, kogane):
+    sora, riku = await start_conversation(client), await start_conversation(client, "riku")
+    for conversation in (sora, riku):
         await send_turn(client, conversation, "在吗")
     clock.advance(hours=25)  # the turns out of the dashboard's last 24 hours
-    for conversation in (mano, kogane):
+    for conversation in (sora, riku):
         last_contact(database, conversation, clock.now - timedelta(hours=20))
 
     await backend_of(client).reach_outs.run_due()
 
     assert records(database)[2:] == [
-        ("reach_out", "mano", "success", 0), ("reach_out", "kogane", "failed", 0),
+        ("reach_out", "sora", "success", 0), ("reach_out", "riku", "failed", 0),
     ]
-    assert len(reach_outs(await record(client, mano))) == 1
-    assert reach_outs(await record(client, kogane)) == []
+    assert len(reach_outs(await record(client, sora))) == 1
+    assert reach_outs(await record(client, riku)) == []
     async with admin_beside(client, github) as admin:
         board = await dashboard(admin)
         week = await dashboard(admin, "7d")
@@ -494,7 +494,7 @@ async def test_each_has_an_activity_record_of_its_own_which_no_turn_or_call_coun
                for point in board["trend"]) == 0
     assert board["characters"] == []
     assert {(c["character_id"], c["turns"], c["calls"]) for c in week["characters"]} == {
-        ("mano", 1, 0), ("kogane", 1, 0),
+        ("sora", 1, 0), ("riku", 1, 0),
     }
     chat = health(board, "chat_llm")
     assert chat is not None and (chat["calls"], chat["errors"]) == (2, 1)
@@ -534,7 +534,7 @@ async def test_one_that_fails_is_put_off_by_a_time_from_her_range_and_counts_for
     assert asked == 2
     assert len(reach_outs(await record(client, conversation))) == 1
     assert [r for r in records(database) if r[0] == "reach_out"] == [
-        ("reach_out", "mano", "failed", 0), ("reach_out", "mano", "success", 0),
+        ("reach_out", "sora", "failed", 0), ("reach_out", "sora", "success", 0),
     ]
 
 
@@ -673,9 +673,9 @@ async def test_at_night_she_does_not_come_but_in_the_morning_after_between_8_and
 async def test_a_day_the_earliest_come_first_the_rest_the_next_morning_by_his_time_zone(
     make_client: ClientFactory, settings: Settings, github: FakeIdentityProvider
 ):
-    """The day goes by the producer's time zone, New York's: Mano, put off from 21:00 there,
+    """The day goes by the producer's time zone, New York's: Sora, put off from 21:00 there,
     comes at 9:00 the next morning, though it is the same day still in UTC."""
-    client, _, clock, mano = await talked(
+    client, _, clock, sora = await talked(
         make_client, REPLY, REACH_OUT, REACH_OUT,
         settings=replace(settings, admins=frozenset({ADMIN})),
         at=datetime(2026, 10, 20, 0, tzinfo=UTC),  # 20:00 in New York
@@ -683,12 +683,12 @@ async def test_a_day_the_earliest_come_first_the_rest_the_next_morning_by_his_ti
     )
     await live_in(client, "America/New_York")
     await allow_a_day(client, github, 1)
-    kogane = await start_conversation(client, "kogane")
-    await send_turn(client, kogane, "在吗")
+    riku = await start_conversation(client, "riku")
+    await send_turn(client, riku, "在吗")
     database = settings.database_path
     at = clock.now + timedelta(hours=1)  # 21:00 in New York
-    last_contact(database, mano, at - timedelta(hours=20))
-    last_contact(database, kogane, at - timedelta(hours=20, minutes=1))  # a minute before
+    last_contact(database, sora, at - timedelta(hours=20))
+    last_contact(database, riku, at - timedelta(hours=20, minutes=1))  # a minute before
     reach_out = backend_of(client).reach_outs
 
     came = []
@@ -696,8 +696,8 @@ async def test_a_day_the_earliest_come_first_the_rest_the_next_morning_by_his_ti
         clock.advance(seconds=to.total_seconds())
         await reach_out.run_due()
         came.append((
-            len(reach_outs(await record(client, kogane))),
-            len(reach_outs(await record(client, mano))),
+            len(reach_outs(await record(client, riku))),
+            len(reach_outs(await record(client, sora))),
         ))
 
     assert came == [(1, 0), (1, 0), (1, 1)]
@@ -706,20 +706,20 @@ async def test_a_day_the_earliest_come_first_the_rest_the_next_morning_by_his_ti
 async def test_one_over_the_day_put_off_past_the_week_does_not_come(
     make_client: ClientFactory, settings: Settings, github: FakeIdentityProvider
 ):
-    """Mano, missed as the backend was down six days on, put off to the next morning in the
+    """Sora, missed as the backend was down six days on, put off to the next morning in the
     week; over the day by then, and put off past it."""
-    client, _, clock, mano = await talked(
+    client, _, clock, sora = await talked(
         make_client, REPLY, REACH_OUT, REACH_OUT,
         settings=replace(settings, admins=frozenset({ADMIN})),
         at=datetime(2026, 10, 19, 6, tzinfo=UTC),  # 14:00 in Shanghai
         random=FakeRandom(0, 0, 0, 0),
     )
     await allow_a_day(client, github, 1)
-    kogane = await start_conversation(client, "kogane")
-    await send_turn(client, kogane, "在吗")
+    riku = await start_conversation(client, "riku")
+    await send_turn(client, riku, "在吗")
     database = settings.database_path
-    last_contact(database, mano, clock.now - timedelta(days=6))  # put off to 20 hours on
-    last_contact(database, kogane, clock.now - timedelta(minutes=1))  # due a minute before
+    last_contact(database, sora, clock.now - timedelta(days=6))  # put off to 20 hours on
+    last_contact(database, riku, clock.now - timedelta(minutes=1))  # due a minute before
     reach_out = backend_of(client).reach_outs
 
     await reach_out.run_due()
@@ -728,8 +728,8 @@ async def test_one_over_the_day_put_off_past_the_week_does_not_come(
     clock.advance(days=1)
     await reach_out.run_due()
 
-    assert len(reach_outs(await record(client, kogane))) == 1
-    assert reach_outs(await record(client, mano)) == []
+    assert len(reach_outs(await record(client, riku))) == 1
+    assert reach_outs(await record(client, sora)) == []
 
 
 async def test_what_came_as_the_backend_was_down_is_not_made_up_for_but_put_off(
@@ -821,6 +821,6 @@ async def test_what_she_thought_as_the_user_spoke_is_not_recorded_its_record_ref
 
     assert reach_outs(await record(client, conversation)) == []
     assert records(database) == [
-        ("turn", "mano", "success", 0), ("turn", "mano", "success", 0),
-        ("reach_out", "mano", "rejected", 0),
+        ("turn", "sora", "success", 0), ("turn", "sora", "success", 0),
+        ("reach_out", "sora", "rejected", 0),
     ]

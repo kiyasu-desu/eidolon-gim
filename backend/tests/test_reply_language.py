@@ -10,36 +10,36 @@ from tests.fakes import FakeLLM
 
 def test_chinese_detection_does_not_confuse_shared_kanji_names_or_cues_with_chinese():
     for line in (
-        "[shyly] えっ……那个，甜花，听到这话，脸就有点热……",
-        "[gently] 那……甜花，明天也會，好好去的……",
+        "[shyly] えっ……那个，テン，听到这话，脸就有点热……",
+        "[gently] 那……テン，明天也會，好好去的……",
         "えっと……睡不着了……",
     ):
         assert contains_chinese(line), line
     for line in (
-        "[embarrassed] 甜花、明日も頑張る……",
+        "[embarrassed] テン、明日も頑張る……",
         "<whisper>会いたい</whisper>、没頭してた……着替えるね。",
-        "大崎甜花", "了解", "一", "W.I.N.G.", "謝謝祭", "東京都千代田区",
+        "架空テン", "了解", "一", "練習", "謝謝祭", "東京都千代田区",
     ):
         assert not contains_chinese(line), line
 
 
 async def test_bad_dialogue_is_held_then_rewritten_before_display_speech_or_persistence():
-    llm = FakeLLM(["<ja>[shyly] あの……甜花、聞いて顔が熱くなった……</ja>"])
+    llm = FakeLLM(["<ja>[shyly] あの……テン、聞いて顔が熱くなった……</ja>"])
     parser = JapaneseReply(lambda line: rewrite_japanese(llm, line))
 
     assert [e async for e in parser.feed("<photo>garden</photo><ja>[shyly] えっ……")] == [
         PhotoTagged("garden")
     ]
-    assert [e async for e in parser.feed("那个，甜花，听到这话，脸就有点热……</ja>")] == []
-    events = [e async for e in parser.feed("<zh>听到这话，甜花脸有点热。</zh>")]
+    assert [e async for e in parser.feed("那个，テン，听到这话，脸就有点热……</ja>")] == []
+    events = [e async for e in parser.feed("<zh>听到这话，テン脸有点热。</zh>")]
 
     assert parser.complete == [Segment(
-        "[shyly] あの……甜花、聞いて顔が熱くなった……", "听到这话，甜花脸有点热。"
+        "[shyly] あの……テン、聞いて顔が熱くなった……", "听到这话，テン脸有点热。"
     )]
     shown = "".join(e.text for e in events if isinstance(e, SegmentDelta) and e.lang == "ja")
     spoken = "".join(e.text for e in events if isinstance(e, SpeechDelta))
-    assert shown == "あの……甜花、聞いて顔が熱くなった……"
-    assert spoken == "[shyly]あの……甜花、聞いて顔が熱くなった……"
+    assert shown == "あの……テン、聞いて顔が熱くなった……"
+    assert spoken == "[shyly]あの……テン、聞いて顔が熱くなった……"
     assert events[-1] == SegmentComplete(0)
 
     assert [e async for e in parser.feed("<ja>うん……")] == []

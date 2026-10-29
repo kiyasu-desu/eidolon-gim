@@ -31,6 +31,8 @@ from dataclasses import dataclass, field
 import httpx
 
 from eidolon.accounts import Accounts
+from eidolon.model_packs import mount_models
+from eidolon.story_library import mounted_library
 from eidolon.activity import ActivityLog, metered_retrieval
 from eidolon.admission import Admissions
 from eidolon.affinity import Affinities
@@ -203,14 +205,15 @@ def build(
     used instead of made. Raises RuntimeError, having opened nothing, if the character
     configuration (her liked gifts and all), the world setting or the gift catalog is broken,
     or a character is none of its idols."""
-    characters = load_characters(settings.characters_path)
+    characters = mount_models(load_characters(settings.characters_path), settings.model_root, enabled=settings.models_enabled)
+    story_path = mounted_library(settings.story_path) if settings.stories_enabled else None
     gift_catalog = load_gift_catalog(gifts_path(settings.characters_path))
     check_liked_gifts(characters, gift_catalog)
     world = load_world(path := world_path(settings.characters_path))
     if world is None:
         log.info(
-            "there is no world setting at %s: characters go without it (run `eidolon world"
-            " sync` and commit the file it writes)",
+            "there is no world setting at %s: characters go without it; "
+            "provide an optional world.json beside the character configuration if needed",
             path,
         )
     else:
@@ -314,7 +317,8 @@ def build(
         retrieval = Retrieval(
             retrieval_judge,
             open_reference_sources(
-                settings.database_path, embedder, characters.values(), world
+                settings.database_path, embedder, characters.values(), world,
+                story_path=story_path,
             ),
             reranker,
             lambda: config.rerank_thresholds.references,

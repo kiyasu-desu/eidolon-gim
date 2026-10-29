@@ -16,25 +16,25 @@ async def latest(client: httpx.AsyncClient) -> dict[str, dict]:
 async def test_each_character_shows_her_newest_conversation_and_its_last_message(
     make_client: ClientFactory,
 ):
-    llm = FakeLLM(["<ja>ほわっ</ja><zh>哇</zh>"], ["<ja>また明日</ja><zh>明天见</zh>"])
+    llm = FakeLLM(["<ja>えっと</ja><zh>哇</zh>"], ["<ja>また明日</ja><zh>明天见</zh>"])
     client = make_client(llm)
     older = await start_conversation(client)
     await send_turn(client, older, "早上好")
     newer = await start_conversation(client)
     await send_turn(client, newer, "晚安")
-    await start_conversation(client, "kogane")
+    await start_conversation(client, "riku")
 
     summaries = await latest(client)
 
-    mano = summaries["mano"]
-    assert mano["conversation_id"] == newer
-    last = mano["last_message"]
+    sora = summaries["sora"]
+    assert sora["conversation_id"] == newer
+    last = sora["last_message"]
     assert last["role"] == "character"
     assert (last["ja"], last["zh"]) == ("また明日", "明天见")
     assert last["created_at"]
     # 刚开的新对话还没有话：只给出对话本身和它开始的时间。
-    assert summaries["kogane"]["last_message"] is None
-    assert summaries["kogane"]["created_at"]
+    assert summaries["riku"]["last_message"] is None
+    assert summaries["riku"]["created_at"]
 
 
 async def test_a_new_conversation_replaces_the_old_one_in_the_summary(make_client: ClientFactory):
@@ -42,10 +42,10 @@ async def test_a_new_conversation_replaces_the_old_one_in_the_summary(make_clien
     await send_turn(client, await start_conversation(client), "你好")
     fresh = await start_conversation(client)
 
-    mano = (await latest(client))["mano"]
+    sora = (await latest(client))["sora"]
 
-    assert mano["conversation_id"] == fresh
-    assert mano["last_message"] is None
+    assert sora["conversation_id"] == fresh
+    assert sora["last_message"] is None
 
 
 async def test_other_users_conversations_are_not_shown(make_client: ClientFactory):

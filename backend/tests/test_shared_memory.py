@@ -38,23 +38,23 @@ async def turn(client: httpx.AsyncClient, conversation_id: str, text: str) -> No
     assert events[-1]["type"] == "done", events[-1]
 
 
-async def test_what_the_user_told_mano_reaches_kogane_as_hearsay(make_client: ClientFactory):
+async def test_what_the_user_told_sora_reaches_riku_as_hearsay(make_client: ClientFactory):
     llm, background = FakeLLM(REPLY, REPLY), FakeBackgroundLLM(memorized(CAT))
     client = make_client(
         llm, retrieval_judge=FakeJudge(), embedder=FakeEmbedder(), reranker=FakeReranker("猫"),
         background_llm=background,
     )
 
-    await turn(client, await start_conversation(client, "mano"), "我家的猫叫小白哦")
-    await turn(client, await start_conversation(client, "kogane"), "你知道我家的猫吗？")
+    await turn(client, await start_conversation(client, "sora"), "我家的猫叫小白哦")
+    await turn(client, await start_conversation(client, "riku"), "你知道我家的猫吗？")
 
-    kogane = llm.prompts[-1]
-    memories = memories_section(context_of(kogane))
+    riku = llm.prompts[-1]
+    memories = memories_section(context_of(riku))
     assert CAT in memories
     line = next(line for line in memories.splitlines() if CAT in line)
-    assert "櫻木真乃" in line and "转述" in line
+    assert "星野ソラ" in line and "转述" in line
     # A new conversation carries only what memory retrieves, not the earlier conversation.
-    assert [m.role for m in kogane] == ["system", "system", "system", "user"]
+    assert [m.role for m in riku] == ["system", "system", "system", "user"]
 
 
 async def test_talk_of_the_users_own_life_retrieves_memories_only(
@@ -67,8 +67,8 @@ async def test_talk_of_the_users_own_life_retrieves_memories_only(
         background_llm=FakeBackgroundLLM(memorized(CAT)),
     )
 
-    await turn(client, await start_conversation(client, "mano"), "我家的猫叫小白哦")
-    await turn(client, await start_conversation(client, "kogane"), "我家的猫最近总是半夜叫")
+    await turn(client, await start_conversation(client, "sora"), "我家的猫叫小白哦")
+    await turn(client, await start_conversation(client, "riku"), "我家的猫最近总是半夜叫")
 
     context = context_of(llm.prompts[-1])
     assert CAT in memories_section(context)
@@ -84,8 +84,8 @@ async def test_small_talk_retrieves_no_memories(make_client: ClientFactory):
         background_llm=FakeBackgroundLLM(memorized(CAT)),
     )
 
-    await turn(client, await start_conversation(client, "mano"), "我家的猫叫小白哦")
-    await turn(client, await start_conversation(client, "kogane"), "早上好")
+    await turn(client, await start_conversation(client, "sora"), "我家的猫叫小白哦")
+    await turn(client, await start_conversation(client, "riku"), "早上好")
 
     assert memories_section(context_of(llm.prompts[-1])) == ""
     assert reranker.calls == []
@@ -104,7 +104,7 @@ async def test_memories_are_found_with_what_the_character_said_just_before(
         llm, retrieval_judge=FakeJudge(answer="memories"), embedder=embedder,
         reranker=reranker, background_llm=FakeBackgroundLLM(memorized(CAT)),
     )
-    conversation_id = await start_conversation(client, "mano")
+    conversation_id = await start_conversation(client, "sora")
 
     await turn(client, conversation_id, "我家的猫叫小白哦")
     await turn(client, conversation_id, "它昨晚又叫了一夜")

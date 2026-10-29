@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        动手前会先在 `.scratch/<feature>/` 写 spec 和 ticket；涉及已有设计决策的，请先看看 [docs/adr/](https://github.com/Sallyn0225/eidolon-sc/tree/main/docs/adr)。
+        动手前会先在 `.scratch/<feature>/` 写 spec 和 ticket；涉及已有设计决策的，请先看看 [docs/adr/](https://github.com/kiyasu-desu/eidolon-gim/tree/main/docs/adr)。
 
   - type: textarea
     id: problem

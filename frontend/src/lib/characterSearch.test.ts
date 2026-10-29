@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { matchesSearch, type Searchable } from "@/lib/characterSearch";
 
-const ILLUMINATION = ["illumination STARS", "いるみねーしょんすたーず"] as const;
-const LANTICA = ["L'Antica", "あんてぃーか"] as const;
-const HOKAGO = ["放課後クライマックスガールズ", "ほうかごくらいまっくすがーるず"] as const;
-const NOCTCHILL = ["noctchill", "のくちる"] as const;
-const STRAYLIGHT = ["Straylight", "すとれいらいと"] as const;
+const ILLUMINATION = ["Sample Stars", "さんぷるすたーず"] as const;
+const LANTICA = ["Sample Harmony", "さんぷるはーもにー"] as const;
+const HOKAGO = ["放課後サンプル", "ほうかごさんぷる"] as const;
+const NOCTCHILL = ["Sample Night", "さんぷるないと"] as const;
+const STRAYLIGHT = ["Sample Light", "さんぷるらいと"] as const;
 
 function idol(
   name: string,
@@ -17,16 +17,16 @@ function idol(
 }
 
 const ROSTER: Searchable[] = [
-  idol("櫻木真乃", ["樱木真乃", "さくらぎ まの", "Sakuragi Mano"], ILLUMINATION),
-  idol("八宮めぐる", ["八宫巡", "はちみや めぐる", "Hachimiya Meguru"], ILLUMINATION),
-  idol("月岡恋鐘", ["月冈恋钟", "つきおか こがね", "Tsukioka Kogane"], LANTICA),
-  idol("田中摩美々", ["田中摩美美", "たなか まみみ", "Tanaka Mamimi"], LANTICA),
-  idol("白瀬咲耶", ["白濑咲耶", "しらせ さくや", "Shirase Sakuya"], LANTICA),
-  idol("小宮果穂", ["小宫果穗", "こみや かほ", "Komiya Kaho"], HOKAGO),
-  idol("西城樹里", ["西城树里", "さいじょう じゅり", "Saijo Juri"], HOKAGO),
-  idol("浅倉透", ["浅仓透", "あさくら とおる", "Asakura Toru"], NOCTCHILL),
-  idol("樋口円香", ["樋口圆香", "ひぐち まどか", "Higuchi Madoka"], NOCTCHILL),
-  idol("芹沢あさひ", ["芹泽朝日", "せりざわ あさひ", "Serizawa Asahi"], STRAYLIGHT),
+  idol("星野ソラ", ["星野空", "ほしの そら", "Hoshino Sora"], ILLUMINATION),
+  idol("晴川ヒナ", ["晴川日奈", "はるかわ ひな", "Harukawa Hina"], ILLUMINATION),
+  idol("青葉リク", ["青叶陆", "あおば りく", "Aoba Riku"], LANTICA),
+  idol("架空美々", ["架空美美", "かくう みみ", "Kaku Mimi"], LANTICA),
+  idol("架空アオ", ["架空青", "かくう あお", "Kaku Ao"], LANTICA),
+  idol("架空カナ", ["架空佳奈", "かくう かな", "Kaku Kana"], HOKAGO),
+  idol("架空ジュン", ["架空淳", "かくう じゅん", "Kaku Jun"], HOKAGO),
+  idol("架空トラ", ["架空永", "かくう とら", "Kaku Tora"], NOCTCHILL),
+  idol("架空マド", ["架空圆", "かくう まど", "Kaku Mado"], NOCTCHILL),
+  idol("架空アサ", ["架空朝日", "かくう あさ", "Kaku Asa"], STRAYLIGHT),
   { name: "誰か", name_zh: null, name_kana: null, name_romaji: null, unit: null, unit_reading: null },
 ];
 
@@ -36,56 +36,56 @@ function found(query: string): string[] {
 }
 
 describe("matchesSearch", () => {
-  it.each(["樱木真乃", "樱木", "真乃"])("中文简体译名、只输姓或只输名都找得到：%s", (query) => {
-    expect(found(query)).toEqual(["櫻木真乃"]);
+  it.each(["星野空", "星野", "ソラ"])("中文简体译名、只输姓或只输名都找得到：%s", (query) => {
+    expect(found(query)).toEqual(["星野ソラ"]);
   });
 
   it.each([
-    ["八宫巡", "八宮めぐる"],
-    ["巡", "八宮めぐる"],
-    ["朝日", "芹沢あさひ"],
-    ["圆香", "樋口円香"],
+    ["晴川日奈", "晴川ヒナ"],
+    ["日奈", "晴川ヒナ"],
+    ["朝日", "架空アサ"],
+    ["圆", "架空マド"],
   ])("名字是假名或日文字形的，用社区通行的中文译名找得到：%s", (query, name) => {
     expect(found(query)).toEqual([name]);
   });
 
-  it.each(["恋钟", "恋鐘", "戀鐘", "戀钟"])("繁体、日文字形和简体混着输都行：%s", (query) => {
-    expect(found(query)).toEqual(["月岡恋鐘"]);
+  it.each(["陆", "リク", "青葉", "青叶"])("繁体、日文字形和简体混着输都行：%s", (query) => {
+    expect(found(query)).toEqual(["青葉リク"]);
   });
 
-  it.each(["櫻木", "櫻木真乃", "円香"])("日文原名照旧找得到：%s", (query) => {
+  it.each(["星野", "星野ソラ", "マド"])("日文原名照旧找得到：%s", (query) => {
     expect(found(query)).toHaveLength(1);
   });
 
-  it.each(["摩美々", "摩美美", "田中摩美"])("々 和它前面的字一样：%s", (query) => {
-    expect(found(query)).toEqual(["田中摩美々"]);
+  it.each(["美々", "美美", "架空美"])("々 和它前面的字一样：%s", (query) => {
+    expect(found(query)).toEqual(["架空美々"]);
   });
 
-  it.each(["まの", "マノ", "さくらぎ", "サクラギマノ", "ｻｸﾗｷﾞ"])("假名读音，平假名片假名都算：%s", (query) => {
-    expect(found(query)).toEqual(["櫻木真乃"]);
+  it.each(["そら", "ソラ", "ほしの", "ホシノソラ", "ﾎｼﾉ"])("假名读音，平假名片假名都算：%s", (query) => {
+    expect(found(query)).toEqual(["星野ソラ"]);
   });
 
-  it.each(["mano", "Sakuragi", "Sakuragi Mano", "mano sakuragi", "Mano Sakuragi", "sakuragimano", "SAKURAGI"])(
+  it.each(["sora", "Hoshino", "Hoshino Sora", "sora hoshino", "Sora Hoshino", "hoshinosora", "HOSHINO"])(
     "罗马字不分姓名先后、大小写和空格：%s",
     (query) => {
-      expect(found(query)).toEqual(["櫻木真乃"]);
+      expect(found(query)).toEqual(["星野ソラ"]);
     },
   );
 
-  it.each(["toru", "tooru", "tōru", "Tohru"])("长音的几种写法都认：%s", (query) => {
-    expect(found(query)).toEqual(["浅倉透"]);
+  it.each(["tora", "toora", "tōra", "Tohra"])("长音的几种写法都认：%s", (query) => {
+    expect(found(query)).toEqual(["架空トラ"]);
   });
 
-  it.each(["L'Antica", "lantica", "L’Antica", "アンティーカ", "あんてぃーか"])("组合名搜出整组成员：%s", (query) => {
-    expect(found(query)).toEqual(["月岡恋鐘", "田中摩美々", "白瀬咲耶"]);
+  it.each(["Sample Harmony", "sampleharmony", "Sample Harmony", "サンプルハーモニー", "さんぷるはーもにー"])("组合名搜出整组成员：%s", (query) => {
+    expect(found(query)).toEqual(["青葉リク", "架空美々", "架空アオ"]);
   });
 
   it.each(["放课后", "放課後", "ほうかご"])("组合名用简体、日文或读音写都行：%s", (query) => {
-    expect(found(query)).toEqual(["小宮果穂", "西城樹里"]);
+    expect(found(query)).toEqual(["架空カナ", "架空ジュン"]);
   });
 
   it("前后多打的空格不算", () => {
-    expect(found("  真乃 ")).toEqual(["櫻木真乃"]);
+    expect(found("  ソラ ")).toEqual(["星野ソラ"]);
   });
 
   it.each(["", "   "])("空着时全部留下：%j", (query) => {
@@ -93,7 +93,7 @@ describe("matchesSearch", () => {
   });
 
   it("只输一个字母不出错，只是结果多一点", () => {
-    expect(found("a")).toContain("櫻木真乃");
+    expect(found("a")).toContain("星野ソラ");
   });
 
   it.each(["佐藤", "xyz", "ぴーちゃん"])("不认识的输入什么都不留下：%s", (query) => {

@@ -41,7 +41,7 @@ from eidolon.dashboard import SPANS, Range, stretches
 from tests.fakes import START, FakeClock
 
 USERS = ["u1", "u2", "u3", "u4"]
-CHARACTERS = ["mano", "hiori", "meguru"]
+CHARACTERS = ["sora", "nagi", "hina"]
 ORIGINS = [
     Origin("chat_llm", "llm.invalid", "m"),
     Origin("chat_llm", "own", "own", own_key=True),

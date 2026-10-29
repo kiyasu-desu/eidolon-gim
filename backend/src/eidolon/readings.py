@@ -1,5 +1,5 @@
-"""Readings (GLOSSARY.md「读音」): how names are said in the characters' voices, e.g. 天井努
-as あまい つとむ, 283プロ as つばさプロ.
+"""Readings (GLOSSARY.md「读音」): how names are said in the characters' voices, e.g. 月村手毬
+as つきむら てまり, 初星学園 as はつぼしがくえん.
 
 They are in the readings file beside the character configuration (`readings.toml`),
 committed with it and kept by the deployer: each entry is a name as it is written, its
@@ -37,7 +37,7 @@ class Reading:
     written: str
     """The name as it is written: Fish Audio's key, matched as a substring, case and all."""
     kana: str
-    """How it is read, in kana, surname and given name apart (`さくらぎ まの`)."""
+    """How it is read, in kana, surname and given name apart (`つきむら てまり`)."""
     phonemes: str
     """What Fish Audio is told it is read as; empty until drafted, and then not sent."""
 

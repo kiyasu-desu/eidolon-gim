@@ -15,29 +15,29 @@ function storage(initial: Record<string, string> = {}) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-const character = (id: string, scsp: boolean) =>
+const character = (id: string, alternate: boolean) =>
   ({
     id,
     avatar_url: `/api/characters/${id}/avatar`,
-    scsp_avatar_url: scsp ? `/api/characters/${id}/scsp-avatar` : null,
+    alternate_avatar_url: alternate ? `/api/characters/${id}/alternate-avatar` : null,
   }) as Character;
 
 describe("外观存在这台设备上、按用户分开", () => {
-  it("没存过时 SCSP 头像是关的", () => {
+  it("没存过时 alternate 头像是关的", () => {
     storage();
     expect(loadAppearance("u1")).toEqual(DEFAULT_APPEARANCE);
-    expect(DEFAULT_APPEARANCE.scspAvatars).toBe(false);
+    expect(DEFAULT_APPEARANCE.alternateAvatars).toBe(false);
   });
 
   it("存下的读得回来，别的用户读不到", () => {
     storage();
-    keepAppearance("u1", { scspAvatars: true });
-    expect(loadAppearance("u1")).toEqual({ scspAvatars: true });
-    expect(loadAppearance("u2")).toEqual({ scspAvatars: false });
+    keepAppearance("u1", { alternateAvatars: true });
+    expect(loadAppearance("u1")).toEqual({ alternateAvatars: true });
+    expect(loadAppearance("u2")).toEqual({ alternateAvatars: false });
   });
 
   it("数据坏了当作默认", () => {
-    storage({ "eidolon.appearance.u1": "{oops", "eidolon.appearance.u2": '{"scspAvatars":"yes"}' });
+    storage({ "eidolon.appearance.u1": "{oops", "eidolon.appearance.u2": '{"alternateAvatars":"yes"}' });
     expect(loadAppearance("u1")).toEqual(DEFAULT_APPEARANCE);
     expect(loadAppearance("u2")).toEqual(DEFAULT_APPEARANCE);
   });
@@ -48,21 +48,21 @@ describe("外观存在这台设备上、按用户分开", () => {
         throw new Error("QuotaExceededError");
       },
     });
-    expect(() => keepAppearance("u1", { scspAvatars: true })).not.toThrow();
+    expect(() => keepAppearance("u1", { alternateAvatars: true })).not.toThrow();
   });
 });
 
 describe("按外观换头像", () => {
-  const all = [character("mano", true), character("kogane", false)];
+  const all = [character("sora", true), character("riku", false)];
 
   it("关着时头像照旧", () => {
-    expect(withAppearance(all, { scspAvatars: false })).toBe(all);
+    expect(withAppearance(all, { alternateAvatars: false })).toBe(all);
   });
 
-  it("打开时换成她的 SCSP 头像，她没有的照旧", () => {
-    expect(withAppearance(all, { scspAvatars: true }).map((c) => c.avatar_url)).toEqual([
-      "/api/characters/mano/scsp-avatar",
-      "/api/characters/kogane/avatar",
+  it("打开时换成她的 alternate 头像，她没有的照旧", () => {
+    expect(withAppearance(all, { alternateAvatars: true }).map((c) => c.avatar_url)).toEqual([
+      "/api/characters/sora/alternate-avatar",
+      "/api/characters/riku/avatar",
     ]);
   });
 });

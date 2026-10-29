@@ -150,7 +150,7 @@ async def test_without_a_form_of_address_the_character_sheet_decides(
 
     prompt = await system_prompt(client, llm)
 
-    assert "你是櫻木真乃" in prompt
+    assert "你是星野ソラ" in prompt
     assert "希望你称呼" not in prompt
 
 

@@ -11,7 +11,7 @@
 > |---|---|
 > | テキストチャット | `CHAT_LLM_*` |
 > | 音声通話 | `FISH_AUDIO_API_KEY` と音声認識のキー：`SONIOX_API_KEY`（デフォルト）、または `STT_PROVIDER=bailian` と `DASHSCOPE_API_KEY` |
-> | シナリオライブラリ（同期または取り込み） | ベクトル化のキー：`SILICONFLOW_API_KEY`（デフォルト）、または `EMBEDDING_PROVIDER=gemini` と `GEMINI_API_KEY` |
+> | シナリオライブラリ（ローカル取り込み） | ベクトル化のキー：`SILICONFLOW_API_KEY`（デフォルト）、または `EMBEDDING_PROVIDER=gemini` と `GEMINI_API_KEY` |
 > | 検索とメモリー | ベクトル化のキー、`SILICONFLOW_API_KEY`（並べ替え用）、判断モデル：`JEV_API_KEY`（デフォルト）、または `JUDGE_PROVIDER=cloudflare` と `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID`、または `JUDGE_PROVIDER=bailian` と `BAILIAN_JUDGE_API_KEY`・`BAILIAN_JUDGE_WORKSPACE_ID` |
 > | 好感度とプレゼント | 判断モデル（スイッチは初期状態でオン） |
 > | 写真 | 判断モデルと画像生成のキー：`NOVELAI_API_KEY` |
@@ -61,65 +61,7 @@
 
 ## キャラクター
 
-キャラクターは [`characters/characters.toml`](../characters/characters.toml) に、1 人につき 1 つの `[[characters]]` として書きます。いまは原作の 8 ユニット・28 人のアイドルがすべて設定済みで、キャラクターシート・キャラクター資料・アイコンもリポジトリにコミットされています（ADR-0003）。
-
-```toml
-[[characters]]
-id = "mano"                          # 識別子。URL とシナリオライブラリで使う
-name = "櫻木真乃"
-name_zh = "樱木真乃"                 # 以下の 3 項目は会話一覧の検索用
-name_kana = "さくらぎ まの"
-name_romaji = "Sakuragi Mano"
-intro = "illumination STARS 的中心。温柔又有点慢热，喜欢鸟……"
-voice_id = "a1150f3d14ac46fb8ea59c7803cd8357"   # Fish Audio の音声。公開設定にしておく
-sheet = "sheets/mano.md"
-avatar = "avatars/mano.jpg"
-color = "#ffbad6"                    # 公式のイメージカラー。必須
-facts = "facts/mano.md"
-liked_gifts = ["potted-plant", "black-tea"]   # 好きなプレゼント
-speakers = ["真乃"]                  # スクリプト上での彼女の話者名
-idol_id = 1                          # 以下の 2 項目は立ち絵用
-default_outfit = "stand/1030010010"  # 【ナチュラルモード】
-greeting = "[shyly] ほわっ……プロデューサーさん、ですか？　よろしくお願いしますっ"
-greeting_subtitle = "呼哇……你就是制作人吗？请多指教！"
-```
-
-各項目の書き方はファイル冒頭のコメントにあります。補足が必要な項目：
-
-- **`color`**：画面上で彼女に属する場所（会話の壁紙、通話ボタン、送信ボタン、未読数、通話画面と通話バー）はすべてこの色が基調になります。フロントエンドはここからライト・ダークの 2 組の色を導き、文字が読めることを保証します。この項目がない、または形式が正しくない場合、バックエンドは起動を拒否します。
-- **`background`**（任意）：通話画面の背景画像で、`characters/backgrounds/` に置きます。設定がなければイメージカラーのグラデーションで代用します。
-- **キャラクターシート**：シートのファイルが欠けているとバックエンドは起動を拒否し、どのファイルが足りないかを示します。docker compose は `characters/` をバックエンドコンテナに読み取り専用でマウントします。
-- **`liked_gifts`**：彼女の好きなプレゼントを、プレゼント目録 [`characters/gifts.toml`](../characters/gifts.toml) の `id` で 1〜3 件書きます。全部をレアにはできません。どれも出典ファイル（`facts/<id>.sources.md`）の「喜欢的礼物」の節にストーリー上の出典が必要です。書いていない、目録にない、件数が合わない、全部レアのときはバックエンドが起動を拒否します。
-
-**キャラクターを追加する**ときの手順：
-
-1. `characters.toml` に 1 段落追加し、[`sheets/example.md`](../characters/sheets/example.md) を参考にキャラクターシートを、[`facts/example.md`](../characters/facts/example.md) を参考にキャラクター資料（任意）を書き、アイコンを 224×224 の JPEG に縮小して（画面上の最大表示は 112px、高密度ディスプレイ向けに 2 倍）`characters/avatars/` に置きます。
-2. `backend/` で `uv run eidolon reading draft` を実行し、彼女の名前の読みを補います（[読みとあいさつ](#読みとあいさつ)を参照）。
-3. あいさつを設定した場合は、`backend/` で `uv run --env-file=../.env eidolon greeting upload` を実行して合成・アップロードします。
-4. `frontend/` で `node scripts/landing-fonts.mts` を実行し、ランディングページのフォントサブセットを作り直します（[`frontend/AGENTS.md`](../frontend/AGENTS.md) を参照）。ユニット・あいさつ・表示名を変えたときも実行が必要です。忘れるとフロントエンドのフォント網羅テストが失敗し、足りない文字を示します。
-5. シナリオライブラリを取り込み済みなら、もう一度同期または取り込みを行います。そうしないと彼女が登場するコミュが彼女のものとして扱われません。
-6. バックエンドを再起動します。
-
-<details>
-<summary><b>バックグラウンドモデルでキャラクターシートの下書きを作る</b></summary>
-
-<br>
-
-キャラクターシートは、まずバックグラウンドモデルに彼女のコミュをすべて読ませて下書きを作り、あとから人の手で校正することもできます。先にシナリオライブラリの取り込みが必要です：
-
-```sh
-uv run eidolon --db data/eidolon.db character draft-sheet mano   # backend/ 内で実行
-# docker compose では characters/ が読み取り専用なので、データボリュームに書き出してからコピーする：
-docker compose exec backend eidolon character draft-sheet mano --output /data/drafts/mano.md
-docker compose cp backend:/data/drafts/mano.md characters/sheets/mano.md
-```
-
-- **素材**：彼女が登場したコミュ（正規ルート）だけを使います。
-- **節**：下書きは身分、一人称、他者への呼び方、口癖、ユニットの仲間との関係、厳守ルールの順に構成され、モデルが書き漏らした節には「（待补充）」（要追記）が残ります。
-- **下書きマーカー**：下書きの 1 行目は下書きマーカーです。マーカーがあってもシートは普通に使えますが、バックエンド起動時にこのシートが未校正だと警告が出ます。校正が済んだらこの行を削除してください。校正済みのシートは上書きされません。どうしても書き直す場合は `--force` を付けます。
-- **素材が長すぎる場合**：素材が 1 リクエストの上限（`--budget`、デフォルト 40000 字）を超えると、まずバッチごとにノートを取り、そのノートから下書きを書きます。真乃の場合、約 220 コミュ・33 万字で、バックグラウンドモデルへのリクエストは 10 回程度です。
-
-</details>
+既定の設定は `characters/gim/characters.toml` で、現在は月村手毬のみです。人設・音声・読みを同じディレクトリで設定します。`alternate_avatar` は任意の別画像、正整数の `display_order` は表示順です。
 
 ## 読みとあいさつ
 
@@ -168,103 +110,15 @@ docker compose cp backend:/data/drafts/mano.md characters/sheets/mano.md
 
 ## 立ち絵
 
-通話画面には原作の Spine 立ち絵を重ねられます（任意）。次の 3 つがすべて揃ったときだけ表示され、1 つでも欠けていると通話画面は背景画像だけを表示します：
-
-| 設定 | 書く場所 | 説明 |
-|---|---|---|
-| `idol_id` | `characters.toml` | 原作のアイドル番号（ShinyColorsDB の idolId）。真乃なら `1` |
-| `default_outfit` | `characters.toml` | ユーザーが衣装を選ぶまで着る 1 着：`stand/<enzaId>`（私服）または `stand_costume/<enzaId>`（ステージ衣装） |
-| `EIDOLON_STAND_ASSETS_URL` | `.env` | 立ち絵素材を置く S3 互換ストレージバケットの公開 URL。フロントエンドにも同じ値を渡す必要があり、ページの CSP はここからしか立ち絵を読み込ませない |
-
-- **動き**：待機中は呼吸とまばたきをし、彼女の声が流れている間は口が動きます。あなたが話し始めるとこちらを向き、話し終えるとうなずきます。
-- **感情**：判断モデルを設定していると、彼女が話すひとまとまりごとに判断モデルがそのまとまりの感情（平静・うれしい・照れ・驚き・悲しい・怒り・考え中）と、うなずくか首を振るかを判断し、立ち絵がそれに合わせて表情と動きを変えます。しきい値とタイムアウトは `JUDGE_EMOTION_MIN_PROBABILITY`・`JUDGE_EMOTION_TIMEOUT` で調整します。
-- **着替え**：会話画面の右上の「更多操作」（その他の操作）に「换衣装」（着替え）があります。カードごとに 1 項目で、私服とステージ衣装を切り替えられ、動く全身プレビューで確認できます。選んだ衣装はアイドルごとにこの端末に保存されます。
-- **素材の同期**：素材はリポジトリに含めず、ライセンスの対象外でもあり、オブジェクトストレージに置きます（[ADR-0011](adr/0011-stand-assets-fetched-from-shinycolorsdb.md)）。`deploy/stand-sync.sh` が ShinyColorsDB から新しいカードを取得し、衣装リストを整理してサムネイルを描画し、バケットにアップロードします。cron で週 1 回実行するのがおすすめです。
-
-`stand-sync.sh` は docker を経由せず、uv・Node.js 22.18 以上・Playwright の Chromium が必要です。バケットの選び方（R2・Tencent Cloud COS・Alibaba Cloud OSS・MinIO など）、CORS、終了コード、ローカルでの確認方法は [`deploy.md`](deploy.md)（中国語）の「立绘素材」を参照してください。
+任意の Three.js 3D モデルパックを使います。`EIDOLON_MODEL_ROOT` の `<root>/<キャラクターID>/` に `model.json`、`animations.json`、`textures/` を配置します。`EIDOLON_MODELS_ENABLED=0` で無効化でき、パックがなくても通話できます。[リソース説明](local-resource-packs.md)と[パイプライン](stand3d-pipeline.md)を参照してください。
 
 ## シナリオライブラリ
 
-彼女が思い出せる原作のコミュには 2 つの出どころがあり、同じコマンド 1 つでまとめて管理します：
-
-| | 翻訳版 | 原文コミュ |
-|---|---|---|
-| 出どころ | [SCTranslationData](https://github.com/ShinyGroup/SCTranslationData) のシナリオ CSV | ShinyColorsDB のデコード済みミラー（[ADR-0004](adr/0004-untranslated-episodes-from-shinycolorsdb-mirror.md)） |
-| 内容 | 日本語原文 + ファンによる中国語訳 | 日本語原文のみ |
-| 鮮度 | ファンの翻訳待ちで、数週間〜数か月 | ゲーム更新から 1 週間以内 |
-
-どちらも同じコミュの 2 つの状態です。翻訳版が揃うと、同じスクリプト番号で原文コミュを置き換えます。彼女が思い出すときに両者の区別はありません。
-
-シナリオデータはリポジトリに含めません（ADR-0003）。SCTranslationData をリポジトリ直下の `corpus/` に clone し（git の管理外で、docker compose がコンテナの `/corpus` に読み取り専用でマウントします）、ベクトル化のキーを設定してから同期します：
-
-```sh
-git clone --depth 1 https://github.com/ShinyGroup/SCTranslationData.git corpus/SCTranslationData
-docker compose exec backend eidolon story sync
-```
-
-初回の同期ではミラーにある不足分をすべて補うため 1〜2 時間ほどかかり、中断しても再実行すれば続きから再開します。以降は毎回数分で終わります。ローカル開発では `backend/` で `uv run eidolon --db data/eidolon.db story sync` を使います。サーバーでの週次自動同期、キャッシュ、CSV や JSON の手動取り込みは [`deploy.md`](deploy.md)（中国語）の「同步剧情库」を参照してください。
-
-<details>
-<summary><b>同期でやること</b></summary>
-
-<br>
-
-`eidolon story sync` はまず翻訳版を取り込み、次にシナリオライブラリにまだないコミュをミラーから原文コミュとして取り込みます。翻訳版があるコミュはダウンロードも上書きもしません。
-
-- **P カード・S カードのコミュ**：出典はカード名（例：`【ほわっとスマイル】櫻木真乃`。SCTranslationData のディレクトリ名と同じ）、タイトルはゲーム内のコミュタイトルです。
-- **プロデュースコミュとスペシャルコミュ**：
-  - プロデュースコミュ（W.I.N.G.・感謝祭・G.R.A.D.・Landing Point・S.T.E.P. と各種の交流コミュ）と、誕生日やシーズンなどのスペシャルコミュは、各アイドルのゲーム内アルバムから取ります。アルバムは 2024 年 3 月以降更新されていません。
-  - 出典は SCTranslationData がアルバムの同じ部分に使っているディレクトリ名を使います。同期の最後に、タイトルに「敗」「失敗」を含むのに敗北エンドのルールで除外されなかったコミュを一覧表示するので、手で確認してください。
-- **イベントコミュ**：
-  - 一覧がないため、スクリプト番号（`4001` + 3 桁のイベント番号 + 2 桁の話数）から推測します。まず既知の範囲で欠けているものを補い、その後ろの番号をいくつか試します。
-  - イベント名は `deploy/event-names.toml` から取ります（[`event-names.example.toml`](../deploy/event-names.example.toml) を参考に作成。リポジトリには入りません）。書かれていないイベントは「活动剧情 NNN」と表示され、同期の最後にその番号が一覧表示されます。
-- **礼儀と障害時の動作**：リクエストは 1 件ずつ約 1 秒間隔で送り、変化のないカードとアルバムは再リクエストしません。ミラーに接続できない場合も翻訳版は通常どおり取り込まれ、コマンドは終了コード 2 で終わります。
-- **オプション**：`--idol 1` で特定のアイドルのカードとアルバムだけを同期します（複数指定可）。翻訳版のディレクトリはデフォルトで `EIDOLON_STORY_PATH` を使い、`--story` でも指定できます。
-
-</details>
-
-<details>
-<summary><b>取り込みのルール（翻訳版・原文コミュ共通）</b></summary>
-
-<br>
-
-- 各コミュは元スクリプトの番号を主キーとし、再取り込みすると上書き更新します。内容が変わっていないコミュは再ベクトル化しないので、いつでも取り込み直せます。
-- 正規ルートだけを収録します：失敗エンド（W.I.N.G. 敗退、シーズン目標未達成、G.R.A.D. 敗退、オーディション落選、約束を守れなかった場合）はスクリプト番号で識別して除外します。プロデューサーの選択肢は収録せず、各選択肢に対するアイドルの反応はすべて残します。
-- 登場キャラクターはセリフの話者で識別します（`characters.toml` の `speakers`）。`speakers` を変えたりキャラクターを追加したりしたあとは再取り込みが必要です。
-- コミュ目録は「キャラクター → カードまたはイベント → 話」の階層で、シナリオライブラリから直接生成されます。取り込みの最後に各キャラクターの目録規模が表示されます。
-
-</details>
+利用可能な学マス CSV を `eidolon story import-gim` で独立ライブラリに取り込みます。正式な経験・条件付き反応・失敗・未確認資料を分けます。`--offline` はテキストのみ、後から `reembed` でベクトル化します。旧データベースは `story migrate` でバックアップして分離できます。[取り込み](gim-story-import.md)と[パック](local-resource-packs.md)を参照してください。自動ダウンロード・同期はありません。
 
 ## 世界設定
 
-毎ターン、キャラクターシートの後ろに世界設定の節を付けて渡します（[ADR-0008](adr/0008-real-world-releases-and-lives-are-in-character.md)）：
-
-- 事務所の社長と事務員、8 つのユニットとそれぞれのアイドル
-- 彼女自身の曲（ソロ曲と、所属ユニット全員で歌う曲）。収録 CD と発売日つき
-- 彼女が立った／これから立つライブ：公演日ごとの日付と会場。声優さんが出演を見合わせた日は含めません
-
-データは [`characters/world.json`](../characters/world.json) にあり、リポジトリにコミット済みです。各キャラクターの表示名がデータ内のアイドルと一致しなければバックエンドは起動しません。このファイルがない場合は、世界設定なしで通常どおり動きます。
-
-<details>
-<summary><b>世界設定を更新する（eidolon world sync）</b></summary>
-
-<br>
-
-`backend/` で `uv run eidolon world sync` を実行すると、次のソースから取り込みます：
-
-| 内容 | ソース |
-|---|---|
-| アイドルとユニット | im@sparql、公式のユニットページ |
-| CD・収録曲・歌唱者 | Lantis のシャイニーカラーズサイト。Lantis に書かれていない歌唱者はふじわらはじめの API で補完 |
-| ライブ | アイドルマスター公式ポータル（2020 年 9 月より前は旧公式サイト） |
-| 公演日ごとの出演者と出演見合わせ | wikiwiki |
-| 公演日ごとのセットリスト | imas-db |
-
-- **確認**：取り込みの最後に、各項目の件数、旧ファイルからの増減、ソース間で食い違う箇所、アイドルに対応づけられなかった歌唱者と出演者を表示します。`git diff` を確認してからコミットしてください。
-- **手動の訂正**：確かめた訂正は [`characters/world-corrections.json`](../characters/world-corrections.json) に、1 件ごとに出典とメモを付けて書きます。毎回の取り込みで適用されます。
-- **失敗時の保護**：どれか 1 つのソースでも失敗すると、旧ファイルは変更されません。
-
-</details>
+設定の隣に任意の `world.json` を配置できます。現在の手毬設定には含めません。汎用的な読み込みと検索は残し、外部作品の同期機能は削除しました。
 
 ## ベクトル化サービス
 
@@ -488,7 +342,7 @@ EIDOLON_PROXY_SERVICES=chat_llm,tts,stt
 | `own_stt` | ユーザーが持ち込んだ音声認識（ユーザーが選んだほう） |
 | `own_image` | ユーザーが持ち込んだ画像生成。HTTPS の NovelAI 公式アドレス `image.novelai.net` のときだけで、中継はいつも直接 |
 
-- **この 2 つだけを見る**：環境変数 `HTTPS_PROXY`・`ALL_PROXY` などは上のサービスには効きません。ログイン・バックアップ・シナリオ同期などほかの外向きの通信は、これまでどおり環境変数に従います。
+- **この 2 つだけを見る**：環境変数 `HTTPS_PROXY`・`ALL_PROXY` などは上のサービスには効きません。ログイン・バックアップなどほかの外向きの通信は、これまでどおり環境変数に従います。
 - **自前のキーは別に選ぶ**：ユーザーが持ち込んだキーは、デプロイした人のサービスとは別にチェックします。両者の提供元が違うことがあるためです（デプロイした人の音声認識は Model Studio に直接、ユーザーのは Soniox、など）。リクエストを出すのはサーバーなので、ユーザー自身のプロキシや VPN は関係しません。既定ではチェックなし、つまりこれまでどおり直接です。チェックすると、その通信はデプロイした人のプロキシを通ります。
 - **自前の LLM は既知の提供元のときだけプロキシを通る**：自前の LLM のアドレスはユーザーが自分で書くもので、サーバーのいる内部ネットワークを指すこともあります。プロキシを経由すると、実際にどこへつながったかをサーバーは確かめられません。そこで、アドレスのホスト名が既知の提供元のものであるときだけプロキシに渡します。既知の提供元は、価格カタログ（models.dev。デプロイガイドの[花费估算用的单价](deploy.md#花费估算用的单价)を参照）にアドレスが書かれている提供元と、コードが知っているいくつか（OpenAI・Anthropic・Google Gemini・xAI・Mistral・Cohere・Groq・Cerebras・DeepInfra・Together・Perplexity・Venice）と OpenRouter です。IP アドレスや `localhost` は含みません。ほかのアドレスはこれまでどおり直接つなぎ、公開インターネット上かどうかを確かめます（[ADR-0022](adr/0022-own-llms-through-the-proxy-only-to-known-providers.md)）。価格カタログを取得できないあいだは、コードが知っているものだけを認めます。自前の画像生成も同じで、既知の提供元は NovelAI 公式だけです。
 - **管理画面で変更できる**：設定ページの「网络」（ネットワーク）タブの「网络代理」（ネットワークプロキシ）で、オン・オフ、アドレス、サービスごとの選択を再起動なしで変えられます。次のリクエストから効きます（進行中のターンと通話も同じ。すでにつながっている音声の接続は切れません）。保存前に、経路が変わるデプロイした人のサービスへ新しい経路で一度ずつつなぎ（持ち込まれたキーはここにないので試しません）、どれかが届かなければ保存しません。サーバー再起動時に届かなければ `.env` の値に戻し、管理画面に表示します。アドレスのパスワードはキーと同じく暗号化して保存し、`EIDOLON_SECRET_KEY` がなければパスワード付きのアドレスは `.env` でしか変えられません。
@@ -531,12 +385,9 @@ EIDOLON_STATUS_WINDOW_MINUTES=30
 | コマンド | できること |
 |---|---|
 | `serve` | サービスを起動（デフォルト） |
-| `story sync` / `import-csv` / `import-json` | シナリオライブラリを同期または取り込み |
-| `world sync` | 世界設定を更新 |
 | `character draft-sheet <id>` | バックグラウンドモデルでキャラクターシートの下書きを作成 |
 | `reading draft` | 読み表に音素を補う（手元でのみ実行） |
 | `greeting upload` | ランディングページのあいさつを合成してアップロード |
-| `stand fetch` / `outfits` / `upload` | 立ち絵素材の 3 ステップ。通常は `deploy/stand-sync.sh` がまとめて実行 |
 | `reembed` | ベクトル化サービス・モデル・次元数を変えたあとに再ベクトル化 |
 | `eval rerank` / `judge` / `memory` | 並べ替えのしきい値と判断モデルのしきい値の調整、メモリーの評価 |
 | `user list` / `ban` / `unban` / `usage` | ユーザーを管理 |

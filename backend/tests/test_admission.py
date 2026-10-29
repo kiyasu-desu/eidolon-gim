@@ -120,7 +120,7 @@ def deployment(tmp_path: Path) -> Iterator[Deployment]:
 def test_a_turn_counts_when_it_succeeded_or_was_left_and_is_given_back_otherwise(
     deployment: Deployment, result: Result, counted: bool
 ):
-    admission = deployment.admissions().turn(deployment.user, "mano", BroughtKeys())
+    admission = deployment.admissions().turn(deployment.user, "sora", BroughtKeys())
 
     admission.settle(result)
 
@@ -134,10 +134,10 @@ def test_a_turn_over_the_limit_is_refused_recorded_rejected_and_lets_go_of_its_l
     deployment: Deployment,
 ):
     admissions = deployment.admissions()
-    admissions.turn(deployment.user, "mano", BroughtKeys()).settle("success")
+    admissions.turn(deployment.user, "sora", BroughtKeys()).settle("success")
 
     with pytest.raises(OverLimit):
-        admissions.turn(deployment.user, "mano", BroughtKeys())
+        admissions.turn(deployment.user, "sora", BroughtKeys())
 
     assert deployment.turns_taken() == 1
     assert deployment.records() == [("success", False), ("rejected", False)]
@@ -148,7 +148,7 @@ def test_a_turn_bringing_an_own_llm_does_not_count_and_leases_nothing(deployment
     admissions = deployment.admissions()
 
     for _ in range(2):  # over the limit, were they counted
-        admission = admissions.turn(deployment.user, "mano", BroughtKeys(llm=MY_LLM))
+        admission = admissions.turn(deployment.user, "sora", BroughtKeys(llm=MY_LLM))
         assert admission.exempt
         assert not any(admission.counts(r) for r in ("success", "failed", "rejected", "left"))
         admission.settle("success")
@@ -160,7 +160,7 @@ def test_a_turn_bringing_an_own_llm_does_not_count_and_leases_nothing(deployment
 
 
 def test_a_turn_settled_twice_is_settled_once(deployment: Deployment):
-    admission = deployment.admissions().turn(deployment.user, "mano", BroughtKeys())
+    admission = deployment.admissions().turn(deployment.user, "sora", BroughtKeys())
 
     admission.settle("failed")
     admission.settle("success")
@@ -176,7 +176,7 @@ def test_a_turn_settled_twice_is_settled_once(deployment: Deployment):
 def test_a_call_counts_once_it_connected_and_is_given_back_otherwise(
     deployment: Deployment, result: Result, counted: bool
 ):
-    admission = deployment.admissions().call(deployment.user, "mano", BroughtKeys())
+    admission = deployment.admissions().call(deployment.user, "sora", BroughtKeys())
 
     admission.settle(result, None if result == "not_connected" else 12.5, "hung_up")
 
@@ -190,10 +190,10 @@ def test_a_call_over_the_limit_is_refused_recorded_rejected_and_lets_go_of_its_l
     deployment: Deployment,
 ):
     admissions = deployment.admissions()
-    admissions.call(deployment.user, "mano", BroughtKeys()).settle("success", 3.0, "hung_up")
+    admissions.call(deployment.user, "sora", BroughtKeys()).settle("success", 3.0, "hung_up")
 
     with pytest.raises(OverLimit):
-        admissions.call(deployment.user, "mano", BroughtKeys())
+        admissions.call(deployment.user, "sora", BroughtKeys())
 
     assert deployment.calls_taken() == 1
     assert deployment.records() == [("success", False), ("rejected", False)]
@@ -206,7 +206,7 @@ def test_a_call_without_keys_for_speech_is_unavailable_and_not_recorded(
     deployment.deployer.keys = DeployerKeys(FakeLLM(), FakeBackgroundLLM())
 
     with pytest.raises(CallsUnavailable):
-        deployment.admissions().call(deployment.user, "mano", BroughtKeys())
+        deployment.admissions().call(deployment.user, "sora", BroughtKeys())
 
     assert deployment.calls_taken() == 0
     assert deployment.records() == []
@@ -217,7 +217,7 @@ def test_a_call_on_the_users_own_keys_alone_does_not_count(deployment: Deploymen
     admissions = deployment.admissions()
 
     for _ in range(2):  # over the limit, were they counted
-        admission = admissions.call(deployment.user, "mano", ALL_OWN)
+        admission = admissions.call(deployment.user, "sora", ALL_OWN)
         assert admission.exempt
         assert not any(admission.counts(r) for r in ("success", "failed", "not_connected"))
         admission.settle("success", 3.0, "hung_up")

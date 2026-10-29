@@ -64,12 +64,12 @@ class Admin:
 
 ClientFactory = Callable[..., httpx.AsyncClient]
 
-MANO_SHEET = "# 人设\n你是櫻木真乃。口癖是「ほわっ」。"
-KOGANE_SHEET = "# 人设\n你是月岡恋鐘。说长崎方言。"
-MANO_PHOTO = ("sakuragi mano", "brown hair, medium hair, brown eyes")
-"""Mano's `photo_tag` and `photo_appearance`."""
+MANO_SHEET = "# 人设\n你是星野ソラ。口癖是「えっと」。"
+KOGANE_SHEET = "# 人设\n你是青葉リク。说长崎方言。"
+MANO_PHOTO = ("hoshino sora", "brown hair, medium hair, brown eyes")
+"""Sora's `photo_tag` and `photo_appearance`."""
 AVATAR = b"\x89PNG\r\n\x1a\n fake avatar"
-SCSP_AVATAR = b"\xff\xd8\xff fake SCSP avatar"
+ALTERNATE_AVATAR = b"\xff\xd8\xff fake alternate avatar"
 BACKGROUND = b"\xff\xd8\xff fake background"
 REPO_GIFTS = Path(__file__).parents[2] / "characters" / GIFTS_FILE
 
@@ -92,12 +92,12 @@ class CharacterConfig:
         intro: str = "",
         voice_id: str = "voice",
         avatar: bytes | None = None,
-        scsp_avatar: bytes | None = None,
+        alternate_avatar: bytes | None = None,
         color: str | None = "#ffbad6",
         background: bytes | None = None,
         speakers: list[str] | None = None,
         facts: str | None = None,
-        idol_id: int | None = None,
+        display_order: int | None = None,
         default_outfit: str | None = None,
         greeting: tuple[str, str] | None = None,
         call_opener: tuple[str, str] | None = None,
@@ -117,9 +117,9 @@ class CharacterConfig:
         if avatar is not None:
             self.write(f"avatars/{id}.png", avatar)
             entry += f'avatar = "avatars/{id}.png"\n'
-        if scsp_avatar is not None:
-            self.write(f"avatars-scsp/{id}.jpg", scsp_avatar)
-            entry += f'scsp_avatar = "avatars-scsp/{id}.jpg"\n'
+        if alternate_avatar is not None:
+            self.write(f"avatars-alternate/{id}.jpg", alternate_avatar)
+            entry += f'alternate_avatar = "avatars-alternate/{id}.jpg"\n'
         if color is not None:
             entry += f'color = "{color}"\n'
         if background is not None:
@@ -130,8 +130,8 @@ class CharacterConfig:
             entry += f'facts = "facts/{id}.md"\n'
         if speakers is not None:
             entry += f"speakers = {json.dumps(speakers, ensure_ascii=False)}\n"
-        if idol_id is not None:
-            entry += f"idol_id = {idol_id}\n"
+        if display_order is not None:
+            entry += f"display_order = {display_order}\n"
         if default_outfit is not None:
             entry += f'default_outfit = "{default_outfit}"\n'
         if greeting is not None:
@@ -168,26 +168,26 @@ class CharacterConfig:
 
 @pytest.fixture
 def characters(tmp_path: Path) -> CharacterConfig:
-    """Mano (with both avatars, a background, a stand and her photo tags) and Kogane (with none
+    """Sora (with both avatars, a background, a stand and her photo tags) and Riku (with none
     of them)."""
     return (
         CharacterConfig(tmp_path / "characters")
         .add(
-            "mano", "櫻木真乃", MANO_SHEET, intro="illumination STARS 的中心", avatar=AVATAR,
-            scsp_avatar=SCSP_AVATAR, color="#ffbad6", background=BACKGROUND, speakers=["真乃"],
-            voice_id="mano-voice", idol_id=1, default_outfit="stand/1030010010", photo=MANO_PHOTO,
+            "sora", "星野ソラ", MANO_SHEET, intro="Sample Stars 的中心", avatar=AVATAR,
+            alternate_avatar=ALTERNATE_AVATAR, color="#ffbad6", background=BACKGROUND, speakers=["ソラ"],
+            voice_id="sora-voice", display_order=1, default_outfit="stand_3d/sample-default", photo=MANO_PHOTO,
         )
         .add(
-            "kogane", "月岡恋鐘", KOGANE_SHEET, intro="L'Antica 的偶像", color="#f84cad",
-            speakers=["恋鐘"], voice_id="kogane-voice",
+            "riku", "青葉リク", KOGANE_SHEET, intro="Sample Harmony 的偶像", color="#f84cad",
+            speakers=["リク"], voice_id="riku-voice",
         )
     )
 
 
 @pytest.fixture
 def story(tmp_path: Path) -> Path:
-    """A directory of sample story CSVs: Mano's W.I.N.G. episodes (won, and failure endings),
-    a card of Kogane's that Mano also speaks in, and an event with neither."""
+    """A directory of sample story CSVs: Sora's 練習 episodes (won, and failure endings),
+    a card of Riku's that Sora also speaks in, and an event with neither."""
     return write_sample_stories(tmp_path / "story")
 
 

@@ -32,7 +32,7 @@ async def test_each_document_is_its_own_request_item_with_its_title():
     requests: list[dict] = []
 
     vectors = await embedder(requests).embed_documents([
-        Document("真乃：ほわっ", "W.I.N.G.編「公園の歌声」"),
+        Document("ソラ：えっと", "練習編「公園の歌声」"),
         Document("制作人养了一只猫"),
     ])
 
@@ -42,7 +42,7 @@ async def test_each_document_is_its_own_request_item_with_its_title():
     assert request["requests"] == [
         {
             "model": "models/gemini-embedding-2",
-            "content": {"parts": [{"text": "title: W.I.N.G.編「公園の歌声」 | text: 真乃：ほわっ"}]},
+            "content": {"parts": [{"text": "title: 練習編「公園の歌声」 | text: ソラ：えっと"}]},
             "output_dimensionality": 1536,
         },
         {

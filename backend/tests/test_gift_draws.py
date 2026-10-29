@@ -56,8 +56,8 @@ async def test_a_new_user_has_one_draw_the_day_they_come_and_nothing_else_yet(
         "next_draw_at": "2026-09-25T16:00:00+00:00",
         "resettable": [],
         "characters": [
-            {"id": "mano", "tier": "trust", "cooling": False, "cooldown_until": None},
-            {"id": "kogane", "tier": "trust", "cooling": False, "cooldown_until": None},
+            {"id": "sora", "tier": "trust", "cooling": False, "cooldown_until": None},
+            {"id": "riku", "tier": "trust", "cooling": False, "cooldown_until": None},
         ],
         "daily_tasks": {"tasks": tasks(), "renews_at": "2026-09-25T16:00:00+00:00"},
         "rewarded_at": None,

@@ -43,8 +43,8 @@ OUT_OF_LINE = level(1, out_of_line=True)
 
 @pytest.fixture
 def characters(characters: CharacterConfig) -> CharacterConfig:
-    """Mano and Kogane, and Meguru."""
-    return characters.add("meguru", "八宮めぐる", "# 人设\n你是八宮めぐる。")
+    """Sora and Riku, and Hina."""
+    return characters.add("hina", "晴川ヒナ", "# 人设\n你是晴川ヒナ。")
 
 
 @pytest.fixture
@@ -71,29 +71,29 @@ async def test_the_section_sums_up_the_judged_turns_and_ranks_the_characters_by_
     clock = FakeClock()
     clients = FakeServiceClients()
     clients.judge.judgings = [
-        # Mano: 20 judged, 2 lowering (10%), 1 raising (5%), one that would have but tried to
+        # Sora: 20 judged, 2 lowering (10%), 1 raising (5%), one that would have but tried to
         # dictate it; one judged but failed, one the judge failed on.
         *[level(1)] * 2, level(3, manipulation=True), level(4), *[level(2)] * 16,
         level(0), Judging(fails=True),
-        # Kogane: 20 judged, 5 lowering (25%), the last out of line, cooling her and ending the
+        # Riku: 20 judged, 5 lowering (25%), the last out of line, cooling her and ending the
         # conversation.
         *[level(1)] * 4, *[level(2)] * 15, OUT_OF_LINE,
-        # Meguru: once, cooling her too; too few to tell a share.
+        # Hina: once, cooling her too; too few to tell a share.
         level(0),
     ]
     replies = [REPLY] * 20 + [LLMError("对话模型返回 500"), REPLY] + [REPLY] * 21
     client = make_client(FakeLLM(*replies), clients=clients, clock=clock)
-    mano = await start_conversation(client, "mano")
-    kogane = await start_conversation(client, "kogane")
-    meguru = await start_conversation(client, "meguru")
+    sora = await start_conversation(client, "sora")
+    riku = await start_conversation(client, "riku")
+    hina = await start_conversation(client, "hina")
 
     async with admin_beside(client, github) as admin:
-        await talk(client, mano, 22)
-        await talk(client, kogane, 19)
-        keep(settings.database_path, "producer", 5, clock.now, character="kogane")
-        await talk(client, kogane, 1)
-        keep(settings.database_path, "producer", 3, clock.now, character="meguru")
-        await talk(client, meguru, 1)
+        await talk(client, sora, 22)
+        await talk(client, riku, 19)
+        keep(settings.database_path, "producer", 5, clock.now, character="riku")
+        await talk(client, riku, 1)
+        keep(settings.database_path, "producer", 3, clock.now, character="hina")
+        await talk(client, hina, 1)
         board = await dashboard(admin)
 
     section = board["affinity"]
@@ -104,17 +104,17 @@ async def test_the_section_sums_up_the_judged_turns_and_ranks_the_characters_by_
         "manipulation": 1,
         "levels": [1, 7, 31, 1, 1],
         "characters": [
-            # As many judged as Mano, but she ended a conversation.
+            # As many judged as Sora, but she ended a conversation.
             {
-                "character_id": "kogane", "name": "月岡恋鐘", "judged": 20,
+                "character_id": "riku", "name": "青葉リク", "judged": 20,
                 "raised_share": 0.0, "lowered_share": 0.25, "cooldowns": 1, "she_ended": 1,
             },
             {
-                "character_id": "mano", "name": "櫻木真乃", "judged": 20,
+                "character_id": "sora", "name": "星野ソラ", "judged": 20,
                 "raised_share": 0.05, "lowered_share": 0.1, "cooldowns": 0, "she_ended": 0,
             },
             {
-                "character_id": "meguru", "name": "八宮めぐる", "judged": 1,
+                "character_id": "hina", "name": "晴川ヒナ", "judged": 1,
                 "raised_share": None, "lowered_share": None, "cooldowns": 1, "she_ended": 1,
             },
         ],
@@ -136,8 +136,8 @@ async def test_the_conversations_she_ended_are_counted_whatever_for(
         await talk(client, await start_conversation(client), 2)
         board = await dashboard(admin)
 
-    [mano] = board["affinity"]["characters"]
-    assert mano["she_ended"] == 2
+    [sora] = board["affinity"]["characters"]
+    assert sora["she_ended"] == 2
 
 
 async def test_the_section_follows_the_dashboards_range(

@@ -28,9 +28,9 @@ REPLY = ["<ja>はいっ</ja><zh>好的</zh>"]
 
 
 async def conversations(client: httpx.AsyncClient) -> list[str]:
-    """The user's conversations with Mano, once they have agreed to the terms."""
+    """The user's conversations with Sora, once they have agreed to the terms."""
     await agree_to_terms(client)
-    res = await client.get("/api/conversations", params={"character_id": "mano"})
+    res = await client.get("/api/conversations", params={"character_id": "sora"})
     assert res.status_code == 200, res.text
     return [c["id"] for c in res.json()]
 
@@ -41,7 +41,7 @@ async def account_id(client: httpx.AsyncClient) -> str:
 
 
 async def signed_in(client: httpx.AsyncClient) -> bool:
-    res = await client.get("/api/conversations", params={"character_id": "mano"})
+    res = await client.get("/api/conversations", params={"character_id": "sora"})
     return res.status_code != 401
 
 

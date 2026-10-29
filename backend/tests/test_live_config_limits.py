@@ -109,7 +109,7 @@ async def test_the_calls_at_once_saved_hold_from_the_next_call(
     await browser.connect()
 
     saved = await client.put(LIMITS, json=ENV_LIMITS | {"concurrent_calls": 1})
-    async with another_user(client, "hazuki") as other:
+    async with another_user(client, "yume") as other:
         theirs = await start_conversation(other)
         refused = await other.get("/api/ice-servers", params={"conversation": theirs})
         await client.put(LIMITS, json=ENV_LIMITS | {"concurrent_calls": 0})

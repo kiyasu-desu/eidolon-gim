@@ -94,9 +94,9 @@ async def test_a_recorded_tool_call_is_assembled(protocol: str):
 
 
 PROMPT = [
-    ChatMessage("system", "你是櫻木真乃。"),
+    ChatMessage("system", "你是星野ソラ。"),
     ChatMessage("user", "你好"),
-    ChatMessage("assistant", "<ja>ほわっ</ja><zh>哇</zh>"),
+    ChatMessage("assistant", "<ja>えっと</ja><zh>哇</zh>"),
     ChatMessage("user", "那次拍写真集"),
     ChatMessage(
         "assistant",
@@ -124,10 +124,10 @@ async def test_responses_request_carries_the_prompt_tools_and_tool_round_trip():
         "model": "some-model",
         "stream": True,
         "store": False,
-        "instructions": "你是櫻木真乃。",
+        "instructions": "你是星野ソラ。",
         "input": [
             {"role": "user", "content": "你好"},
-            {"role": "assistant", "content": "<ja>ほわっ</ja><zh>哇</zh>"},
+            {"role": "assistant", "content": "<ja>えっと</ja><zh>哇</zh>"},
             {"role": "user", "content": "那次拍写真集"},
             {"role": "assistant", "content": "我查一下"},
             {
@@ -171,10 +171,10 @@ async def test_anthropic_request_carries_the_prompt_tools_and_tool_round_trip():
         "model": "some-model",
         "stream": True,
         "max_tokens": body["max_tokens"],
-        "system": "你是櫻木真乃。",
+        "system": "你是星野ソラ。",
         "messages": [
             {"role": "user", "content": "你好"},
-            {"role": "assistant", "content": "<ja>ほわっ</ja><zh>哇</zh>"},
+            {"role": "assistant", "content": "<ja>えっと</ja><zh>哇</zh>"},
             {"role": "user", "content": "那次拍写真集"},
             {
                 "role": "assistant",
@@ -275,7 +275,7 @@ CONTEXT_AFTER_THE_HISTORY = [
     ChatMessage("system", "甲", cache_breakpoint=True),
     ChatMessage("system", "乙"),
     ChatMessage("user", "你好"),
-    ChatMessage("assistant", "<ja>ほわっ</ja><zh>哇</zh>", cache_breakpoint=True),
+    ChatMessage("assistant", "<ja>えっと</ja><zh>哇</zh>", cache_breakpoint=True),
     ChatMessage("system", "丙"),
     ChatMessage("user", "在吗"),
 ]
@@ -293,7 +293,7 @@ async def test_responses_instructions_are_the_opening_system_messages_and_a_late
     assert body["instructions"] == "甲\n\n乙"
     assert body["input"] == [
         {"role": "user", "content": "你好"},
-        {"role": "assistant", "content": "<ja>ほわっ</ja><zh>哇</zh>"},
+        {"role": "assistant", "content": "<ja>えっと</ja><zh>哇</zh>"},
         {"role": "system", "content": "丙"},
         {"role": "user", "content": "在吗"},
     ]
@@ -317,7 +317,7 @@ async def test_anthropic_sends_a_later_system_message_as_the_user_turn_s_first_b
             "content": [
                 {
                     "type": "text",
-                    "text": "<ja>ほわっ</ja><zh>哇</zh>",
+                    "text": "<ja>えっと</ja><zh>哇</zh>",
                     "cache_control": {"type": "ephemeral"},
                 }
             ],

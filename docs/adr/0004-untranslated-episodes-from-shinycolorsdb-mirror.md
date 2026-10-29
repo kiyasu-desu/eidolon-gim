@@ -1,3 +1,5 @@
+> 历史决定：当前 GIM 已停止采用此方案，见 [ADR-0029](0029-remove-sc-specific-content.md)。
+
 # 原文剧情从 ShinyColorsDB 镜像拉取，不自己解包游戏资源
 
 SCTranslationData 靠译者逐段手动导出再翻译，新剧情要等几周到几个月、甚至永远不收录，而我们希望角色在一周内就能回忆起新剧情。所以另从粉丝站 ShinyColorsDB 的解码镜像（`viewer.shinycolors.moe`，剧情 ID 和卡名、标题来自 `api.shinycolors.moe`，培育剧情和特别剧情的 ID 和标题来自同站 `cf-static.shinycolors.moe` 上各偶像的游戏内相册）拉取日语原文，作为原文剧情导入；SCTranslationData 的汉化版到位后按同一剧本 ID 取代它。同步每周定时跑一次，并支持「没变就不下载」，把对镜像的请求压到最少。

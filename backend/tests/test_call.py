@@ -33,7 +33,7 @@ from tests.fakes import (
 )
 from tests.test_text_turn import start_conversation
 
-MANO_REPLY = ["<ja>ほわっ、", "おはようございます！</ja><zh>哇，早上好！</zh><ja>今日も</ja><zh>今天也</zh>"]
+MANO_REPLY = ["<ja>えっと、", "おはようございます！</ja><zh>哇，早上好！</zh><ja>今日も</ja><zh>今天也</zh>"]
 REPLY = ["<ja>はいっ</ja><zh>好的</zh>"]
 CAT = "制作人家里养了一只叫小白的猫"
 
@@ -46,10 +46,10 @@ def one_call_an_hour(settings: Settings) -> Settings:
 async def test_a_call_is_heard_and_voiced_and_lands_in_the_conversation(
     make_client: ClientFactory, speech: FakeSpeech, browser: Browser
 ):
-    llm = FakeLLM(MANO_REPLY, ["<ja>ピーちゃん！</ja><zh>小皮！</zh>"])
+    llm = FakeLLM(MANO_REPLY, ["<ja>サンプルくん！</ja><zh>小样！</zh>"])
     client = make_client(llm, clock=lambda: datetime(2026, 9, 25, 12, 30, tzinfo=UTC))
     client.headers["X-Timezone"] = "Asia/Tokyo"
-    conversation_id = await start_conversation(client, "mano")
+    conversation_id = await start_conversation(client, "sora")
     assert (await browser.call(client, conversation_id=conversation_id)).status_code == 200
     await browser.connect()
 
@@ -60,7 +60,7 @@ async def test_a_call_is_heard_and_voiced_and_lands_in_the_conversation(
 
     assert spoken[0] == {"type": "user", "text": "早上好", "reply": 1}
     assert [(m["segment"], m["lang"], m["text"]) for m in spoken if m["type"] == "delta"] == [
-        (0, "ja", "ほわっ、"),
+        (0, "ja", "えっと、"),
         (0, "ja", "おはようございます！"),
         (0, "zh", "哇，早上好！"),
         (1, "ja", "今日も"),
@@ -70,16 +70,16 @@ async def test_a_call_is_heard_and_voiced_and_lands_in_the_conversation(
     assert [m["type"] for m in typed] == ["user", "delta", "delta", "done"]
     assert typed[0]["text"] == "鸽子叫什么？"
     [tts] = speech.ttss
-    assert tts.voice_id == "mano-voice"
-    assert "".join(tts.voiced) == "ほわっ、おはようございます！今日もピーちゃん！"  # Japanese only
+    assert tts.voice_id == "sora-voice"
+    assert "".join(tts.voiced) == "えっと、おはようございます！今日もサンプルくん！"  # Japanese only
     system = system_of(llm.prompts[0])
     assert "21:30" in system and "Asia/Tokyo" in system  # the time on the caller's device
     res = await client.get(f"/api/conversations/{conversation_id}/messages")
     assert [(m["role"], m["text"], m["ja"]) for m in res.json()] == [
         ("user", "早上好", None),
-        ("character", None, "ほわっ、おはようございます！今日も"),
+        ("character", None, "えっと、おはようございます！今日も"),
         ("user", "鸽子叫什么？", None),
-        ("character", None, "ピーちゃん！"),
+        ("character", None, "サンプルくん！"),
     ]
 
 
@@ -99,7 +99,7 @@ async def test_call_turns_look_things_up_and_remember(
     browser.type("你还记得我家的猫吗？")
     await browser.turn()
 
-    assert jev.asked == [("櫻木真乃", "我家的猫叫小白哦"), ("櫻木真乃", "你还记得我家的猫吗？")]
+    assert jev.asked == [("星野ソラ", "我家的猫叫小白哦"), ("星野ソラ", "你还记得我家的猫吗？")]
     context = context_of(llm.prompts[-1])
     assert CAT in context[context.index("# 关于制作人的记忆") :]
 
@@ -108,7 +108,7 @@ async def test_a_call_joins_the_conversation_asked_for_muted_as_asked(
     make_client: ClientFactory, speech: FakeSpeech, browser: Browser
 ):
     client = make_client(FakeLLM(REPLY))
-    conversation_id = await start_conversation(client, "kogane")
+    conversation_id = await start_conversation(client, "riku")
     res = await browser.call(client, conversation_id=conversation_id, muted=True)
     assert res.status_code == 200
     answer = res.json()
@@ -120,7 +120,7 @@ async def test_a_call_joins_the_conversation_asked_for_muted_as_asked(
     messages = await browser.turn()
 
     assert messages[-1]["type"] == "done"
-    assert [tts.voice_id for tts in speech.ttss] == ["kogane-voice"]
+    assert [tts.voice_id for tts in speech.ttss] == ["riku-voice"]
     assert speech.ttss[-1].voiced == []
     res = await client.get(f"/api/conversations/{conversation_id}/messages")
     assert [m["text"] for m in res.json()] == ["你好", None]
@@ -130,7 +130,7 @@ async def test_a_call_waits_for_a_follow_on_as_long_as_its_speech_recognition_ne
     make_client: ClientFactory, speech: FakeSpeech, browser: Browser
 ):
     speech.follow_on_timeout = 0.3
-    client = make_client(FakeLLM(["<ja>ほわっ", "</ja><zh>哇</zh>"], REPLY, delay=0.5))
+    client = make_client(FakeLLM(["<ja>えっと", "</ja><zh>哇</zh>"], REPLY, delay=0.5))
     await browser.call(client, conversation_id=await start_conversation(client))
     await browser.connect()
 
@@ -185,7 +185,7 @@ async def test_a_call_failing_as_it_is_answered_never_connected_and_lets_go_of_i
     )
     try:
         user = backend.store.create_user("producer").id
-        conversation = backend.store.create_conversation(user, "mano")
+        conversation = backend.store.create_conversation(user, "sora")
         released: list[None] = []
         lease = backend.config.lease
 
@@ -206,7 +206,7 @@ async def test_a_call_failing_as_it_is_answered_never_connected_and_lets_go_of_i
 
         with pytest.raises(RuntimeError):
             await backend.calls.start(
-                user, conversation, backend.characters["mano"], CallOptions(),
+                user, conversation, backend.characters["sora"], CallOptions(),
                 SessionDescription("v=0", "offer"),
             )
 
@@ -276,7 +276,7 @@ async def test_a_call_hung_up_by_the_user_counts(
 async def test_shutting_down_hangs_up_calls_and_drops_the_reply_in_progress(
     settings: Settings, speech: FakeSpeech, browser: Browser
 ):
-    slow = FakeLLM(["<ja>ほわっ</ja><zh>哇</zh>", "<ja>今日も</ja><zh>今天也</zh>"], delay=60)
+    slow = FakeLLM(["<ja>えっと</ja><zh>哇</zh>", "<ja>今日も</ja><zh>今天也</zh>"], delay=60)
     backend = build_faked(settings, slow, background_llm=FakeBackgroundLLM(), speech=speech)
     try:
         async with httpx.AsyncClient(

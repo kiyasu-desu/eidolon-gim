@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from eidolon.characters import load_characters
-from eidolon.corpus import Episode, Line
+from eidolon.corpus import Episode, Line, StoryCorpus
 from eidolon.rerank import RerankThresholds
 from eidolon.rerank_eval import (
     CalibrationError,
@@ -27,60 +27,60 @@ from tests.test_world_setting import write_world
 REPO = Path(__file__).parents[2]
 
 PARK = Episode(
-    "produce_events/100100101", "培育剧情", "W.I.N.G.編", "公園の歌声", frozenset({"mano"}),
-    (Line("真乃", "公園の鳩が好きです"),),
+    "produce_events/100100101", "培育剧情", "練習編", "公園の歌声", frozenset({"sora"}),
+    (Line("ソラ", "公園の鳩が好きです"),),
 )
 FINAL = Episode(
-    "produce_events/100100109", "培育剧情", "W.I.N.G.編", "決勝", frozenset({"mano"}),
-    (Line("真乃", "優勝しました"), Line("真乃", "写真も撮りました")),
+    "produce_events/100100109", "培育剧情", "練習編", "決勝", frozenset({"sora"}),
+    (Line("ソラ", "優勝しました"), Line("ソラ", "写真も撮りました")),
 )
-FACTS = "# 鸟\n## ピーちゃん\n家里养的鸟，会说话。\n\n# 档案\n生日是4月25日。\n"
+FACTS = "# 鸟\n## サンプルくん\n家里养的鸟，会说话。\n\n# 档案\n生日是4月25日。\n"
 
 CALIBRATION = """
 [[memories]]
 key = "cat"
-source = "mano"
+source = "sora"
 text = "制作人养了一只叫小白的猫"
 
 [[memories]]
 key = "trip"
-source = "kogane"
+source = "riku"
 text = "制作人下个月去北海道出差"
 
 [[cases]]
 id = "park"
-character = "mano"
+character = "sora"
 kind = "story"
 query = "公園の鳩のこと覚えてる？"
 relevant = ["produce_events/100100101", "produce_events/100100999"]
-acceptable = ["鸟 / ピーちゃん"]
+acceptable = ["鸟 / サンプルくん"]
 
 [[cases]]
 id = "smalltalk"
-character = "mano"
+character = "sora"
 kind = "story"
 query = "今天天气真好"
 relevant = []
 
 [[cases]]
 id = "cat"
-character = "kogane"
+character = "riku"
 kind = "memory"
 query = "我家的猫最近胖了"
 relevant = ["cat"]
 """
 
 
-HIKARI = "歌曲「ヒカリのdestination」"
-WING_02 = "唱片《THE IDOLM@STER SHINY COLORS BRILLI@NT WING 02 ヒカリのdestination》（LACM-14782）"
-WING_A = "唱片《THE IDOLM@STER SHINY COLORS WING COLLECTION -A side-》（LACA-9946～7）"
+HIKARI = "歌曲「サンプルメロディー」"
+WING_02 = "唱片《SYNTHETIC MUSIC COLLECTION SAMPLE SERIES 02 サンプルメロディー》（SYNM-14782）"
+WING_A = "唱片《SYNTHETIC MUSIC COLLECTION SAMPLE COLLECTION A》（SYNA-9946～7）"
 
 WORK_CASE = f"""
 [[cases]]
 id = "hikari"
-character = "mano"
+character = "sora"
 kind = "work"
-query = "ヒカリのdestinationって誰が歌ってる？"
+query = "サンプルメロディーって誰が歌ってる？"
 relevant = ["{HIKARI}"]
 acceptable = ["{WING_02}"]
 """
@@ -89,13 +89,14 @@ acceptable = ["{WING_02}"]
 @pytest.fixture
 def world(tmp_path: Path):
     config = CharacterConfig(tmp_path / "characters")
-    config.add("mano", "櫻木真乃", "sheet", speakers=["真乃"], facts=FACTS)
-    config.add("kogane", "月岡恋鐘", "sheet", speakers=["恋鐘"])
+    config.add("sora", "星野ソラ", "sheet", speakers=["ソラ"], facts=FACTS)
+    config.add("riku", "青葉リク", "sheet", speakers=["リク"])
     calibration = tmp_path / "calibration.toml"
     calibration.write_text(CALIBRATION, encoding="utf-8")
     characters = load_characters(config.path)
+    StoryCorpus(tmp_path / "eidolon.stories.db", FakeEmbedder()).close()
     sources = open_reference_sources(
-        tmp_path / "eidolon.db", FakeEmbedder(), characters.values(), None
+        tmp_path / "eidolon.db", FakeEmbedder(), characters.values(), None, story_path=tmp_path / "eidolon.stories.db"
     )
     yield characters, calibration, sources
     sources.close()
@@ -104,7 +105,7 @@ def world(tmp_path: Path):
 async def test_each_candidate_is_scored_and_labelled(world):
     characters, calibration, sources = world
     await sources.corpus.save([PARK, FINAL])
-    reranker = KeywordReranker({"鳩": 0.9, "ピーちゃん": 0.4, "猫": 0.02})
+    reranker = KeywordReranker({"鳩": 0.9, "サンプルくん": 0.4, "猫": 0.02})
 
     park, smalltalk, cat = await evaluate(
         load_calibration(calibration), characters, reranker, sources
@@ -113,13 +114,13 @@ async def test_each_candidate_is_scored_and_labelled(world):
     assert {(s.label, s.score, s.verdict) for s in park.scored} == {
         ("produce_events/100100101", 0.9, "relevant"),
         ("produce_events/100100109", 0.05, "irrelevant"),
-        ("鸟 / ピーちゃん", 0.4, "acceptable"),
+        ("鸟 / サンプルくん", 0.4, "acceptable"),
         ("档案", 0.05, "irrelevant"),
     }
     # A labelled episode the vector search never offered is a recall problem.
     assert park.not_retrieved == ["produce_events/100100999"]
     assert all(s.verdict == "irrelevant" for s in smalltalk.scored)
-    # Memories are shared: Kogane finds the one told to Mano.
+    # Memories are shared: Riku finds the one told to Sora.
     assert {(s.label, s.verdict) for s in cat.scored} == {
         ("cat", "relevant"), ("trip", "irrelevant")
     }
@@ -134,7 +135,7 @@ def work(world, tmp_path: Path):
     data = load_world(world_path(config.path))
     assert data is not None
     with_work = open_reference_sources(
-        tmp_path / "eidolon.db", sources.embedder, characters.values(), data
+        tmp_path / "eidolon.db", sources.embedder, characters.values(), data, story_path=tmp_path / "eidolon.stories.db"
     )
     yield data, with_work
     with_work.close()
@@ -149,7 +150,7 @@ async def test_work_facts_are_labelled_by_their_titles(world, work):
     characters, calibration, sources = world
     data, sources = work
     await sources.corpus.save([PARK, FINAL])
-    reranker = KeywordReranker({HIKARI: 0.8, "唱片《THE IDOLM@STER SHINY COLORS BRILLI@NT WING 02": 0.5})
+    reranker = KeywordReranker({HIKARI: 0.8, "唱片《SYNTHETIC MUSIC COLLECTION SAMPLE SERIES 02": 0.5})
 
     *_, hikari = await evaluate(
         with_work_case(calibration, data), characters, reranker, sources
@@ -166,7 +167,7 @@ async def test_an_episode_scores_as_its_best_passage(world):
     characters, calibration, sources = world
     long_final = Episode(
         FINAL.id, FINAL.category, FINAL.source, FINAL.title, FINAL.cast,
-        tuple(Line("真乃", "あ" * 700) for _ in range(3)) + (Line("真乃", "鳩"),),
+        tuple(Line("ソラ", "あ" * 700) for _ in range(3)) + (Line("ソラ", "鳩"),),
     )
     await sources.corpus.save([long_final])
     reranker = KeywordReranker({"鳩": 0.7})
@@ -182,7 +183,7 @@ async def test_an_episode_scores_as_its_best_passage(world):
 async def test_the_report_sets_relevant_against_irrelevant_at_the_thresholds(world):
     characters, calibration, sources = world
     await sources.corpus.save([PARK, FINAL])
-    reranker = KeywordReranker({"鳩": 0.9, "ピーちゃん": 0.4, "猫": 0.02})
+    reranker = KeywordReranker({"鳩": 0.9, "サンプルくん": 0.4, "猫": 0.02})
     results = await evaluate(
         load_calibration(calibration), characters, reranker, sources
     )
@@ -214,7 +215,7 @@ async def test_the_report_puts_work_facts_among_the_references(world, work):
     assert "阈值 0.3：相关命中 2/2，" in text
     assert "## 记忆（1 条问题）" in text
     assert "剧情与角色资料" not in text
-    assert "hikari（work）ヒカリのdestinationって誰が歌ってる？" in text
+    assert "hikari（work）サンプルメロディーって誰が歌ってる？" in text
     assert f"  + 0.8000 {HIKARI}" in text
 
 
@@ -238,7 +239,7 @@ async def test_a_memory_question_after_a_reply_is_asked_as_a_turn_would(world):
         CALIBRATION + """
 [[cases]]
 id = "cat-pronoun"
-character = "mano"
+character = "sora"
 kind = "memory"
 previous = "小猫还好吗？"
 query = "它昨晚又叫了一夜"
@@ -269,7 +270,7 @@ async def test_a_reference_question_after_a_reply_is_asked_as_a_turn_would(world
         CALIBRATION + WORK_CASE + f"""
 [[cases]]
 id = "park-tired"
-character = "mano"
+character = "sora"
 kind = "story"
 previous = "是和鸽子一起在公园唱歌的那天吧"
 query = "那时候累吗？"
@@ -277,17 +278,17 @@ relevant = ["produce_events/100100101"]
 
 [[cases]]
 id = "pichan-pronoun"
-character = "mano"
+character = "sora"
 kind = "facts"
-previous = "ピーちゃんのこと？"
+previous = "サンプルくんのこと？"
 query = "它会说话吗？"
-relevant = ["鸟 / ピーちゃん"]
+relevant = ["鸟 / サンプルくん"]
 
 [[cases]]
 id = "hikari-who"
-character = "mano"
+character = "sora"
 kind = "work"
-previous = "ヒカリのdestination、いい曲ですよね"
+previous = "サンプルメロディー、いい曲ですよね"
 query = "那是谁唱的？"
 relevant = ["{HIKARI}"]
 """,
@@ -301,8 +302,8 @@ relevant = ["{HIKARI}"]
 
     asked = [
         "是和鸽子一起在公园唱歌的那天吧\n那时候累吗？",
-        "ピーちゃんのこと？\n它会说话吗？",
-        "ヒカリのdestination、いい曲ですよね\n那是谁唱的？",
+        "サンプルくんのこと？\n它会说话吗？",
+        "サンプルメロディー、いい曲ですよね\n那是谁唱的？",
     ]
     assert reranker.queries[-3:] == asked
     assert sources.embedder.queries[-3:] == asked
@@ -312,7 +313,7 @@ relevant = ["{HIKARI}"]
     assert ("produce_events/100100101", 0.9, "relevant") in [
         (s.label, s.score, s.verdict) for s in tired.scored
     ]
-    assert pronoun.case.previous == "ピーちゃんのこと？"
+    assert pronoun.case.previous == "サンプルくんのこと？"
     assert (HIKARI, 0.8, "relevant") in [(s.label, s.score, s.verdict) for s in who.scored]
     text = report([tired], "fake-reranker", RerankThresholds(references=0.3, memories=0.01))
     assert "park-tired（story）那时候累吗？\n  上一句：是和鸽子一起在公园唱歌的那天吧\n" in text
@@ -321,13 +322,13 @@ relevant = ["{HIKARI}"]
 @pytest.mark.parametrize(
     "broken, complaint",
     [
-        ('[[cases]]\nid = "x"\ncharacter = "mano"\nkind = "chat"\nquery = "q"\nrelevant = []\n',
+        ('[[cases]]\nid = "x"\ncharacter = "sora"\nkind = "chat"\nquery = "q"\nrelevant = []\n',
          "kind 只能是 story、facts、work、memory，而不是 chat"),
-        ('[[cases]]\nid = "x"\ncharacter = "mano"\nkind = "memory"\nquery = "q"\n'
+        ('[[cases]]\nid = "x"\ncharacter = "sora"\nkind = "memory"\nquery = "q"\n'
          'relevant = ["dog"]\n', "dog"),
-        ('[[cases]]\nid = "x"\ncharacter = "mano"\nkind = "story"\nrelevant = []\n', "query"),
+        ('[[cases]]\nid = "x"\ncharacter = "sora"\nkind = "story"\nrelevant = []\n', "query"),
         ("[[cases]\n", "格式有误"),
-        ('[[cases]]\nid = "x"\ncharacter = "mano"\nkind = "story"\nquery = "q"\n'
+        ('[[cases]]\nid = "x"\ncharacter = "sora"\nkind = "story"\nquery = "q"\n'
          'previous = 1\nrelevant = []\n', "previous"),
     ],
 )
@@ -361,8 +362,8 @@ def test_any_question_names_only_work_facts_in_the_data_file(tmp_path: Path, wor
     path = tmp_path / "calibration.toml"
     # The work facts are reranked with the story, so a story question may name them too.
     path.write_text(
-        CALIBRATION.replace('acceptable = ["鸟 / ピーちゃん"]',
-                            'acceptable = ["鸟 / ピーちゃん", "歌曲「ヒカリのdestinatoin」"]'),
+        CALIBRATION.replace('acceptable = ["鸟 / サンプルくん"]',
+                            'acceptable = ["鸟 / サンプルくん", "歌曲「ヒカリのdestinatoin」"]'),
         encoding="utf-8",
     )
 
@@ -371,14 +372,14 @@ def test_any_question_names_only_work_facts_in_the_data_file(tmp_path: Path, wor
     with pytest.raises(CalibrationError, match="park.*world.json"):
         load_calibration(path)
     path.write_text(
-        CALIBRATION.replace('acceptable = ["鸟 / ピーちゃん"]', f'acceptable = ["{HIKARI}"]'),
+        CALIBRATION.replace('acceptable = ["鸟 / サンプルくん"]', f'acceptable = ["{HIKARI}"]'),
         encoding="utf-8",
     )
     assert load_calibration(path, data).cases[0].acceptable == (HIKARI,)
 
 
 def test_the_committed_calibration_set_names_only_facts_the_characters_have():
-    config = REPO / "characters" / "characters.toml"
+    config = REPO / "characters" / "gim" / "characters.toml"
     # Its work-fact questions are checked against the committed data file as it loads.
     calibration = load_calibration(
         REPO / "backend" / "eval" / "rerank-calibration.toml", load_world(world_path(config))
@@ -419,7 +420,7 @@ def test_the_command_needs_the_reranker(
     calibration.write_text(CALIBRATION, encoding="utf-8")
     admin = Admin(tmp_path / "eidolon.db", capsys)
 
-    characters = REPO / "characters" / "characters.toml"
+    characters = REPO / "characters" / "gim" / "characters.toml"
 
     err = admin.fails("eval", "rerank", "--file", str(calibration), "--characters", str(characters))
 

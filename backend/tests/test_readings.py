@@ -8,29 +8,26 @@ from pathlib import Path
 
 import pytest
 
-from eidolon.characters import load_characters
 from eidolon.readings import (
     Reading,
     ReadingsError,
     load_readings,
     pronunciation_dictionary,
-    readings_path,
     used_in,
 )
-from eidolon.world import load_world, world_path
 
-REPO_CHARACTERS = Path(__file__).resolve().parents[2] / "characters" / "characters.toml"
+REPO_CHARACTERS = Path(__file__).resolve().parents[2] / "characters" / "gim" / "characters.toml"
 KANJI = re.compile(r"[一-鿿々]")
 
-MANO = Reading("櫻木真乃", "さくらぎ まの", "sa0ku1ra1gi0ma1no0")
-MANO_GIVEN = Reading("真乃", "まの", "ma1no0")
+MANO = Reading("星野ソラ", "さくらぎ まの", "sa0ku1ra1gi0ma1no0")
+MANO_GIVEN = Reading("ソラ", "まの", "ma1no0")
 TSUBASA = Reading("283", "つばさ", "")
 
 
 def test_the_readings_are_read_in_file_order(tmp_path: Path):
     path = tmp_path / "readings.toml"
     path.write_text(
-        '# 读音\n[[readings]]\nwritten = "櫻木真乃"\nkana = "さくらぎ まの"\nphonemes = "sa0ku1ra1gi0ma1no0"\n\n'
+        '# 读音\n[[readings]]\nwritten = "星野ソラ"\nkana = "さくらぎ まの"\nphonemes = "sa0ku1ra1gi0ma1no0"\n\n'
         '[[readings]]\nwritten = "283"\nkana = "つばさ"\nphonemes = ""\n',
         encoding="utf-8",
     )
@@ -45,14 +42,14 @@ def test_without_a_readings_file_there_are_none(tmp_path: Path):
 @pytest.mark.parametrize(
     "entries, complaint",
     [
-        ('[[readings]]\nwritten = "真乃"\nkana = "まの"\n', "phonemes"),
+        ('[[readings]]\nwritten = "ソラ"\nkana = "まの"\n', "phonemes"),
         ('[[readings]]\nwritten = ""\nkana = "まの"\nphonemes = ""\n', "written"),
         (
-            '[[readings]]\nwritten = "真乃"\nkana = "まの"\nphonemes = "ma1no0"\n'
-            '[[readings]]\nwritten = "真乃"\nkana = "まの"\nphonemes = ""\n',
-            "真乃",
+            '[[readings]]\nwritten = "ソラ"\nkana = "まの"\nphonemes = "ma1no0"\n'
+            '[[readings]]\nwritten = "ソラ"\nkana = "まの"\nphonemes = ""\n',
+            "ソラ",
         ),
-        ('[[readings]]\nwritten = "真乃"\nkana = "まの"\nphonemes = "<|phoneme_start|>ma1no0"\n', "phoneme_start"),
+        ('[[readings]]\nwritten = "ソラ"\nkana = "まの"\nphonemes = "<|phoneme_start|>ma1no0"\n', "phoneme_start"),
         ("[[readings]\n", "格式"),
     ],
 )
@@ -68,8 +65,8 @@ def test_the_pronunciation_dictionary_has_every_reading_with_phonemes_case_sensi
     assert pronunciation_dictionary((MANO, TSUBASA, MANO_GIVEN)) == [
         {
             "items": [
-                {"key": "櫻木真乃", "value": "sa0ku1ra1gi0ma1no0", "case_sensitive": True},
-                {"key": "真乃", "value": "ma1no0", "case_sensitive": True},
+                {"key": "星野ソラ", "value": "sa0ku1ra1gi0ma1no0", "case_sensitive": True},
+                {"key": "ソラ", "value": "ma1no0", "case_sensitive": True},
             ]
         }
     ]
@@ -81,36 +78,14 @@ def test_what_a_line_uses_is_what_fish_audio_matches_earliest_and_longest_first(
     wins, and of those the longest."""
     sakuragi = Reading("櫻木", "さくらぎ", "sa0ku1ra1gi0")
     tsubasa = Reading("283", "つばさ", "tsu0ba1sa0")
-    pro = Reading("283プロ", "つばさ ぷろ", "tsu0ba1sa0pu1ro0")
+    pro = Reading("サンプル事務所", "つばさ ぷろ", "tsu0ba1sa0pu1ro0")
     readings = (MANO, sakuragi, MANO_GIVEN, tsubasa, pro, Reading("透", "とおる", ""))
 
-    assert used_in("はじめまして、櫻木真乃です", readings) == (MANO,)
-    assert used_in("真乃です。283プロの、櫻木です", readings) == (MANO_GIVEN, pro, sakuragi)
-    assert used_in("真乃、真乃", readings) == (MANO_GIVEN,)
+    assert used_in("はじめまして、星野ソラです", readings) == (MANO,)
+    assert used_in("ソラです。サンプル事務所の、櫻木です", readings) == (MANO_GIVEN, pro, sakuragi)
+    assert used_in("ソラ、ソラ", readings) == (MANO_GIVEN,)
     assert used_in("透明", readings) == ()  # it has no phonemes, so Fish Audio is not told it
-    assert used_in("ほわっ", readings) == ()
+    assert used_in("えっと", readings) == ()
 
 
 # The committed readings file.
-
-
-def test_the_committed_readings_read_every_character_unit_and_the_office():
-    readings = {r.written: r for r in load_readings(readings_path(REPO_CHARACTERS))}
-    characters = load_characters(REPO_CHARACTERS, require_sheets=False)
-    world = load_world(world_path(REPO_CHARACTERS))
-    assert world is not None
-
-    # Every character with kanji in her name has her full name read.
-    unread = [c.name for c in characters.values() if KANJI.search(c.name) and c.name not in readings]
-    assert unread == []
-    for unit in world.units:
-        assert readings[unit.name].kana.replace(" ", "") == unit.reading, unit.name
-    for written in ("283プロダクション", "283プロ", "283"):
-        assert readings[written].kana.startswith("つばさ"), written
-    assert readings["天井努"].kana.replace(" ", "") == "あまいつとむ"
-    for written in ("天井社長", "天井さん"):
-        assert readings[written].kana.startswith("あまい"), written
-    # Words of their own, which these would make Fish Audio misread wherever they appear.
-    assert "透" not in readings
-    assert "天井" not in readings
-    assert [r.written for r in readings.values() if not r.phonemes] == []

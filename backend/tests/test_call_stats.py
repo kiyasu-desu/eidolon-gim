@@ -84,7 +84,7 @@ async def test_a_call_that_connected_counts_for_as_long_as_its_record_says_and_o
     clock: FakeClock,
 ):
     client = make_client(FakeLLM(REPLY), clock=clock)
-    conversation = await start_conversation(client, "kogane")
+    conversation = await start_conversation(client, "riku")
     await call(client, conversation, speech)
     got = await kept(client, 1)
     [lasted] = await recorded_calls(settings.database_path, 1)
@@ -100,7 +100,7 @@ async def test_a_call_that_connected_counts_for_as_long_as_its_record_says_and_o
     assert lasted is not None and lasted > 0
     assert got["calls"] == {"count": 1, "seconds": lasted}
     assert got["characters"] == [
-        {"character_id": "kogane", "turns": 1, "days_known": 1, "call_seconds": lasted}
+        {"character_id": "riku", "turns": 1, "days_known": 1, "call_seconds": lasted}
     ]
     assert after["calls"] == got["calls"]
     # Not in the conversation's record, nor counted as anything else.
@@ -144,9 +144,9 @@ async def test_she_is_known_from_a_call_in_which_nothing_was_said(
 
     got = await stats(client)
 
-    [mano] = got["range"]["characters"]
-    assert (mano["character_id"], mano["turns"], mano["days_known"]) == ("mano", 0, 10)
-    assert mano["call_seconds"] == got["range"]["calls"]["seconds"] > 0
+    [sora] = got["range"]["characters"]
+    assert (sora["character_id"], sora["turns"], sora["days_known"]) == ("sora", 0, 10)
+    assert sora["call_seconds"] == got["range"]["calls"]["seconds"] > 0
     assert sum(got["all_hours"]) == 0  # not a day she came
 
 

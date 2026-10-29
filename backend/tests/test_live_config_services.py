@@ -112,7 +112,7 @@ async def test_a_saved_memory_model_writes_down_the_next_turns_memories_until_re
     assert restored.status_code == 200, restored.text
     await send_turn(client, conversation_id, "再见")
     await settle(client)
-    await client.get("/api/conversations", params={"character_id": "mano"})  # named, too
+    await client.get("/api/conversations", params={"character_id": "sora"})  # named, too
 
     assert before["status"] == "env" and before["follows_chat"] is True
     shown = saved.json()["memory_llm"]

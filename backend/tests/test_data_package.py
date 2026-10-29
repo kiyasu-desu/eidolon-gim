@@ -261,9 +261,9 @@ async def test_memories_move_to_another_deployment_superseded_as_they_were(
     make_client: ClientFactory, settings: Settings, tmp_path: Path
 ):
     here = remembering(make_client, memorized(OSAKA), superseding(TOKYO, OSAKA), memorized(CAT))
-    await turn(here, await start_conversation(here, "mano"), "我住在大阪")
-    await turn(here, await start_conversation(here, "kogane"), "我搬到东京了")
-    await turn(here, await start_conversation(here, "mano"), "我家的猫叫小白哦")
+    await turn(here, await start_conversation(here, "sora"), "我住在大阪")
+    await turn(here, await start_conversation(here, "riku"), "我搬到东京了")
+    await turn(here, await start_conversation(here, "sora"), "我家的猫叫小白哦")
     there = other_deployment(make_client, settings, tmp_path)
 
     package = await export(here, "memories")
@@ -274,7 +274,7 @@ async def test_memories_move_to_another_deployment_superseded_as_they_were(
     assert osaka["text"] == OSAKA and tokyo["text"] == TOKYO and cat["text"] == CAT
     assert osaka["superseded_by"] == tokyo["id"]
     assert tokyo["superseded_by"] is None and cat["superseded_by"] is None
-    assert (tokyo["source_character_id"], tokyo["source_character_name"]) == ("kogane", "月岡恋鐘")
+    assert (tokyo["source_character_id"], tokyo["source_character_name"]) == ("riku", "青葉リク")
     assert all(m["conversation"] is None for m in data["memories"])
     assert set(osaka) == {
         "id", "source_character_id", "source_character_name", "conversation", "text",
@@ -296,7 +296,7 @@ def memories_package(*memories: dict) -> bytes:
 
 
 def packaged_memory(id: int, text: str, superseded_by: int | None = None, *,
-                    source: tuple[str, str] = ("mano", "櫻木真乃")) -> dict:
+                    source: tuple[str, str] = ("sora", "星野ソラ")) -> dict:
     return {
         "id": id, "source_character_id": source[0], "source_character_name": source[1],
         "conversation": None, "text": text, "created_at": f"2026-09-0{id}T08:00:00.000000+00:00",
@@ -309,7 +309,7 @@ async def test_a_memory_already_here_is_not_added_again_and_stands_in_for_it(
 ):
     """Also importing the same package twice: the second time, every memory is here."""
     client = remembering(make_client, memorized(TOKYO))
-    await turn(client, await start_conversation(client, "kogane"), "我搬到东京了")
+    await turn(client, await start_conversation(client, "riku"), "我搬到东京了")
     package = memories_package(
         packaged_memory(1, OSAKA, superseded_by=2),
         packaged_memory(2, TOKYO, superseded_by=3),  # here, holding: left holding
@@ -341,13 +341,13 @@ async def test_memories_told_to_someone_not_here_are_imported_all_the_same(
     client = remembering(make_client)
 
     res = await import_package(
-        client, memories_package(packaged_memory(1, CAT, source=("hazuki", "七草はづき"))),
+        client, memories_package(packaged_memory(1, CAT, source=("yume", "架空ユメ"))),
         "memories",
     )
 
     assert res.json()["memories"] == 1
     assert [(m["text"], m["source_character_id"], m["source_character_name"])
-            for m in await memories(client)] == [(CAT, "hazuki", None)]
+            for m in await memories(client)] == [(CAT, "yume", None)]
 
 
 async def test_she_recalls_imported_memories_in_her_next_turn(make_client: ClientFactory):
@@ -361,7 +361,7 @@ async def test_she_recalls_imported_memories_in_her_next_turn(make_client: Clien
 
     await memories(client)  # waits for them to be embedded, as her turns do
     assert embedder.documents == [CAT]  # embedded by the server, not when first searched
-    await turn(client, await start_conversation(client, "kogane"), "你知道我家的猫吗？")
+    await turn(client, await start_conversation(client, "riku"), "你知道我家的猫吗？")
     assert CAT in memories_section(context_of(llm.prompts[-1]))
     assert embedder.documents == [CAT]
 

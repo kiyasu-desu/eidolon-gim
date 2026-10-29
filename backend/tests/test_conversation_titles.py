@@ -57,7 +57,7 @@ REPLY = ["<ja>はい</ja><zh>好的</zh>"]
 TITLE = "商量周末去看海"
 
 
-async def listed_titles(client: httpx.AsyncClient, character: str = "mano") -> list[str | None]:
+async def listed_titles(client: httpx.AsyncClient, character: str = "sora") -> list[str | None]:
     """The titles of her conversations as she lists them, newest first."""
     res = await client.get("/api/conversations", params={"character_id": character})
     assert res.status_code == 200, res.text
@@ -146,15 +146,15 @@ async def test_the_model_reads_the_first_turns_in_order_with_their_events_and_he
     [prompt] = background.prompts
     assert prompt[0].role == "system" and "起标题" in prompt[0].content
     assert fed(prompt) == [
-        "# 制作人和櫻木真乃的对话",
+        "# 制作人和星野ソラ的对话",
         "制作人：我想去看海",
-        "櫻木真乃：好啊",
-        "（櫻木真乃挂断了电话）",
+        "星野ソラ：好啊",
+        "（星野ソラ挂断了电话）",
         f"制作人：{'海' * 150}…",
-        "櫻木真乃：好的",
-        "（制作人送给櫻木真乃一份布丁）",
+        "星野ソラ：好的",
+        "（制作人送给星野ソラ一份布丁）",
         "制作人：第三句",
-        "櫻木真乃：好的",
+        "星野ソラ：好的",
     ]
 
 
@@ -198,7 +198,7 @@ async def test_she_ending_the_conversation_in_its_third_turn_names_it_all_the_sa
     assert ended_by(turns[-1])
     assert await listed_titles(client) == [TITLE]
     [prompt] = background.prompts
-    assert fed(prompt)[-1] == "（櫻木真乃结束了对话）"
+    assert fed(prompt)[-1] == "（星野ソラ结束了对话）"
 
 
 async def test_a_turn_in_a_call_counts_among_the_three(

@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { Character, Memory } from "@/lib/api";
 import { sourceCharacter, supersededMark } from "@/lib/memories";
 
-const mano: Character = {
-  id: "mano",
-  name: "櫻木真乃",
+const sora: Character = {
+  id: "sora",
+  name: "星野ソラ",
   intro: "",
-  avatar_url: "/api/characters/mano/avatar",
-  scsp_avatar_url: null,
+  avatar_url: "/api/characters/sora/avatar",
+  alternate_avatar_url: null,
   color: "#ffbad6",
   background_url: null,
   stand: null,
-  idol_id: 1,
+  display_order: 1,
   name_zh: null,
   name_kana: null,
   name_romaji: null,
@@ -20,39 +20,37 @@ const mano: Character = {
   unit_order: null,
   greeting: null,
   call_opener: null,
-  call_poster_url: null,
-  voxels_url: null,
 };
 
 const memory = (source: string, superseded = false): Memory => ({
   id: 1,
   text: "制作人喜欢喝咖啡",
   source_character_id: source,
-  source_character_name: source === "mano" ? "櫻木真乃" : null,
+  source_character_name: source === "sora" ? "星野ソラ" : null,
   created_at: "2026-09-01T12:00:00Z",
   superseded,
 });
 
 describe("sourceCharacter", () => {
   it("找到记忆的来源角色，界面才能用她的颜色和头像标出来", () => {
-    expect(sourceCharacter(memory("mano"), [mano])).toBe(mano);
+    expect(sourceCharacter(memory("sora"), [sora])).toBe(sora);
   });
 
   it("来源角色已经不在配置里时没有角色", () => {
-    expect(sourceCharacter(memory("hiori"), [mano])).toBeNull();
+    expect(sourceCharacter(memory("nagi"), [sora])).toBeNull();
   });
 
   it("角色列表还没取到时也没有角色", () => {
-    expect(sourceCharacter(memory("mano"), [])).toBeNull();
+    expect(sourceCharacter(memory("sora"), [])).toBeNull();
   });
 });
 
 describe("supersededMark", () => {
   it("被取代的记忆标出「已被取代」", () => {
-    expect(supersededMark(memory("mano", true))).toBe("已被取代");
+    expect(supersededMark(memory("sora", true))).toBe("已被取代");
   });
 
   it("有效的记忆不标", () => {
-    expect(supersededMark(memory("mano"))).toBeNull();
+    expect(supersededMark(memory("sora"))).toBeNull();
   });
 });

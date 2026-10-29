@@ -147,7 +147,7 @@ async def test_she_is_told_whether_the_turn_is_typed_or_in_a_call_after_what_is_
     and opens as the other does, for a service to cache it."""
     typed_llm = FakeLLM(reply(1))
     client = make_client(typed_llm)
-    conversation = await start_conversation(client, "mano")
+    conversation = await start_conversation(client, "sora")
     await send_turn(client, conversation, "早上好")
     call = CallUnderTest(settings, client, conversation)
     call_llm = FakeLLM(MANO_REPLY)

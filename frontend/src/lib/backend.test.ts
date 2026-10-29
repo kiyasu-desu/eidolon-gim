@@ -49,7 +49,7 @@ describe("getCharacters: the characters for the landing page, asked for on the s
   });
 
   it("is the backend's character list, kept for a while rather than asked for on every visit", async () => {
-    const characters = [{ id: "mano", name: "櫻木真乃" }];
+    const characters = [{ id: "sora", name: "星野ソラ" }];
     const fetch = vi.fn(async (_url: string, _init: RequestInit) => Response.json(characters));
     vi.stubGlobal("fetch", fetch);
 

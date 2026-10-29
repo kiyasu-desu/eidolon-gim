@@ -16,12 +16,12 @@
 #   [[extraction]]
 #   id = "supersede-moved-to-tokyo"   # 唯一，kebab-case，以题型开头
 #   category = "supersede"             # 见下面的题型
-#   character = "mano"                 # 这一轮对话的角色，characters.toml 里的角色 id
+#   character = "sora"                 # 这一轮对话的角色，characters.toml 里的角色 id
 #   memories = [                       # 预置的记忆，可省略；按顺序写入
-#     { key = "osaka", source = "kogane", text = "制作人住在大阪" },
+#     { key = "osaka", source = "temari", text = "制作人住在大阪" },
 #     # superseded_by：已被哪条取代，那条要写在它后面；写下那条的回合会标出取代它
 #     # （和真实回合一样，只能取代背景模型看到的最相关的 20 条有效记忆，没看到时评测报错）
-#     { key = "old", source = "mano", text = "……", superseded_by = "new" },
+#     { key = "old", source = "temari", text = "……", superseded_by = "new" },
 #   ]
 #   history = [                        # 上文，从旧到新；{ user = "…" } 或 { ja = "…", zh = "…" }（角色的回复）
 #     { user = "最近好忙" },
@@ -40,7 +40,7 @@
 #   [[recall]]
 #   id = "pronoun-cat-cried"
 #   category = "pronoun"
-#   character = "mano"
+#   character = "sora"
 #   memories = [ … ]                   # 同上
 #   history = [ … ]                    # 最后一条必须是角色的上一条回复；只有前情题可以写 []（对话刚开始）
 #   said = "……"
@@ -85,30 +85,30 @@
 [[extraction]]
 id = "supersede-moved-to-tokyo"
 category = "supersede"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "osaka", source = "kogane", text = "制作人住在大阪" },
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
+  { key = "osaka", source = "temari", text = "制作人住在大阪" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
 ]
 history = [
   { user = "最近总算安顿下来了" },
-  { ja = "ほわっ……何かあったんですか？", zh = "哇……发生什么事了吗？" },
+  { ja = "えっと……何かあったんですか？", zh = "哇……发生什么事了吗？" },
 ]
 said = "我上周末搬到东京了，离事务所近多了"
 reply = { ja = "東京にお引っ越しされたんですね……！これからはもっと会えますね", zh = "您搬到东京了呀……！以后能更常见面了呢" }
 must = [["东京", "東京"]]
 supersedes = ["osaka"]
 keeps = ["cat"]
-note = "住处变了：大阪那条（对恋鐘说的）应被取代，跨来源角色；猫和搬家无关，应保留。新记忆写成「从大阪搬到了东京」也对。"
+note = "住处变了：大阪那条（对リク说的）应被取代，跨来源角色；猫和搬家无关，应保留。新记忆写成「从大阪搬到了东京」也对。"
 reviewed = true
 
 [[extraction]]
 id = "supersede-new-job"
 category = "supersede"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "job", source = "hiori", text = "制作人在一家游戏公司做程序员" },
-  { key = "coffee", source = "meguru", text = "制作人每天早上都要喝一杯黑咖啡" },
+  { key = "job", source = "temari", text = "制作人在一家游戏公司做程序员" },
+  { key = "coffee", source = "temari", text = "制作人每天早上都要喝一杯黑咖啡" },
 ]
 history = [
   { user = "跟你说个事" },
@@ -125,9 +125,9 @@ reviewed = true
 [[extraction]]
 id = "supersede-dog-died-cat-stays"
 category = "supersede"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "pets", source = "mano", text = "制作人家里养了一只猫和一只狗" },
+  { key = "pets", source = "temari", text = "制作人家里养了一只猫和一只狗" },
 ]
 history = [
   { user = "今天不太想说话" },
@@ -143,9 +143,9 @@ reviewed = true
 [[extraction]]
 id = "supersede-tea-and-coffee-both-hold"
 category = "supersede"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "coffee", source = "hiori", text = "制作人每天早上都要喝一杯黑咖啡" },
+  { key = "coffee", source = "temari", text = "制作人每天早上都要喝一杯黑咖啡" },
 ]
 history = [
   { user = "下午好" },
@@ -161,14 +161,14 @@ reviewed = true
 [[extraction]]
 id = "supersede-cat-gets-a-name"
 category = "supersede"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "cat", source = "kogane", text = "制作人养了一只猫" },
-  { key = "hometown", source = "kogane", text = "制作人的老家在北海道札幌" },
+  { key = "cat", source = "temari", text = "制作人养了一只猫" },
+  { key = "hometown", source = "temari", text = "制作人的老家在北海道札幌" },
 ]
 history = [
   { user = "我家的猫今天又在窗台上晒太阳" },
-  { ja = "ほわっ、かわいいです……！猫ちゃん、お名前はなんていうんですか？", zh = "哇，好可爱……！猫咪叫什么名字呀？" },
+  { ja = "えっと、かわいいです……！猫ちゃん、お名前はなんていうんですか？", zh = "哇，好可爱……！猫咪叫什么名字呀？" },
 ]
 said = "它叫小白，全身都是白的"
 reply = { ja = "小白ちゃん……ぴったりのお名前ですね", zh = "小白……真是很合适的名字呢" }
@@ -181,10 +181,10 @@ reviewed = true
 [[extraction]]
 id = "supersede-friend-fell-out"
 category = "supersede"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "friend", source = "meguru", text = "制作人和大学同学阿哲关系很好，经常一起去钓鱼" },
-  { key = "fishing", source = "meguru", text = "制作人的爱好是钓鱼" },
+  { key = "friend", source = "temari", text = "制作人和大学同学阿哲关系很好，经常一起去钓鱼" },
+  { key = "fishing", source = "temari", text = "制作人的爱好是钓鱼" },
 ]
 history = [
   { user = "这周末不去钓鱼了" },
@@ -201,10 +201,10 @@ reviewed = true
 [[extraction]]
 id = "supersede-moved-again"
 category = "supersede"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "sapporo", source = "mano", text = "制作人住在札幌", superseded_by = "osaka" },
-  { key = "osaka", source = "hiori", text = "制作人从札幌搬到了大阪" },
+  { key = "sapporo", source = "temari", text = "制作人住在札幌", superseded_by = "osaka" },
+  { key = "osaka", source = "temari", text = "制作人从札幌搬到了大阪" },
 ]
 history = [
   { user = "又要折腾了" },
@@ -220,11 +220,11 @@ reviewed = true
 [[recall]]
 id = "supersede-recall-where-i-live"
 category = "supersede"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "osaka", source = "kogane", text = "制作人住在大阪", superseded_by = "tokyo" },
-  { key = "tokyo", source = "mano", text = "制作人从大阪搬到了东京" },
-  { key = "hometown", source = "meguru", text = "制作人的老家在北海道札幌" },
+  { key = "osaka", source = "temari", text = "制作人住在大阪", superseded_by = "tokyo" },
+  { key = "tokyo", source = "temari", text = "制作人从大阪搬到了东京" },
+  { key = "hometown", source = "temari", text = "制作人的老家在北海道札幌" },
 ]
 history = [
   { user = "这周末想找个地方走走" },
@@ -239,11 +239,11 @@ reviewed = true
 [[recall]]
 id = "supersede-recall-my-job"
 category = "supersede"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "programmer", source = "hiori", text = "制作人在一家游戏公司做程序员", superseded_by = "editor" },
-  { key = "editor", source = "kogane", text = "制作人从游戏公司的程序员换工作去了出版社当编辑" },
-  { key = "coffee", source = "mano", text = "制作人每天早上都要喝一杯黑咖啡" },
+  { key = "programmer", source = "temari", text = "制作人在一家游戏公司做程序员", superseded_by = "editor" },
+  { key = "editor", source = "temari", text = "制作人从游戏公司的程序员换工作去了出版社当编辑" },
+  { key = "coffee", source = "temari", text = "制作人每天早上都要喝一杯黑咖啡" },
 ]
 history = [
   { user = "唉" },
@@ -262,9 +262,9 @@ reviewed = true
 [[extraction]]
 id = "duplicate-cat-told-to-another"
 category = "duplicate"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
 ]
 history = [
   { user = "你喜欢猫吗？" },
@@ -273,22 +273,22 @@ history = [
 said = "我家也养了一只猫，叫小白"
 reply = { ja = "小白ちゃん！今度写真見せてほしか〜", zh = "小白！下次给我看看照片嘛～" }
 nothing = true
-note = "对真乃说过的事又对恋鐘说了一遍，记忆是共享的，不该再写一条。"
+note = "对ソラ说过的事又对リク说了一遍，记忆是共享的，不该再写一条。"
 reviewed = true
 
 [[extraction]]
 id = "duplicate-pollen-reworded"
 category = "duplicate"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "pollen", source = "mano", text = "制作人对花粉过敏，每年春天都会打喷嚏、眼睛发痒" },
+  { key = "pollen", source = "temari", text = "制作人对花粉过敏，每年春天都会打喷嚏、眼睛发痒" },
 ]
 history = [
   { user = "春天快点过去吧" },
   { ja = "春はお花がきれいで、わたしは好きですけど……", zh = "春天花很漂亮，我是挺喜欢的……" },
 ]
 said = "我有花粉症，一到春天就鼻涕眼泪流个不停"
-reply = { ja = "ほわっ……それは大変です。マスク、忘れないでくださいね", zh = "哇……那可真辛苦。别忘了戴口罩哦" }
+reply = { ja = "えっと……それは大変です。マスク、忘れないでくださいね", zh = "哇……那可真辛苦。别忘了戴口罩哦" }
 nothing = true
 note = "换了说法的同一件事，不该再写。"
 reviewed = true
@@ -296,10 +296,10 @@ reviewed = true
 [[extraction]]
 id = "duplicate-hiking-to-another"
 category = "duplicate"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "hiking", source = "meguru", text = "制作人周末喜欢去爬山" },
-  { key = "tea", source = "meguru", text = "制作人不喝绿茶" },
+  { key = "hiking", source = "temari", text = "制作人周末喜欢去爬山" },
+  { key = "tea", source = "temari", text = "制作人不喝绿茶" },
 ]
 history = [
   { user = "周末一般做什么？" },
@@ -308,15 +308,15 @@ history = [
 said = "我一般都去爬山"
 reply = { ja = "山登り、いいですね。体力もつきますし", zh = "爬山不错呢。还能锻炼体力" }
 nothing = true
-note = "对めぐる说过的爱好对灯织又说了一遍，不该再写。"
+note = "对ヒナ说过的爱好对凪又说了一遍，不该再写。"
 reviewed = true
 
 [[extraction]]
 id = "duplicate-trip-date"
 category = "duplicate"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "trip", source = "kogane", text = "制作人10月17日要回北海道老家" },
+  { key = "trip", source = "temari", text = "制作人10月17日要回北海道老家" },
 ]
 history = [
   { user = "最近在订机票" },
@@ -331,16 +331,16 @@ reviewed = true
 [[extraction]]
 id = "duplicate-cat-plus-guitar"
 category = "duplicate"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
 ]
 history = [
   { user = "今天在家待了一天" },
   { ja = "ゆっくりできましたか？", zh = "好好休息了吗？" },
 ]
 said = "嗯，小白一直趴在我腿上。对了，我最近开始学吉他了"
-reply = { ja = "ほわっ、ギターですか！今度聴かせてください", zh = "哇，吉他吗！下次弹给我听吧" }
+reply = { ja = "えっと、ギターですか！今度聴かせてください", zh = "哇，吉他吗！下次弹给我听吧" }
 must = [["吉他"]]
 must_not = ["小白"]
 note = "一句话里有一件已经记住的事（养猫）和一件新事（学吉他）：只记吉他。猫趴在腿上是一时的事，也不用记。"
@@ -349,59 +349,59 @@ reviewed = true
 [[extraction]]
 id = "duplicate-told-long-ago"
 category = "duplicate"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "afu", source = "kogane", text = "制作人小时候奶奶家养过一只叫阿福的狗" },
-  { key = "f01", source = "mano", text = "制作人喜欢吃味噌拉面" },
-  { key = "f02", source = "hiori", text = "制作人每天坐电车上班，单程四十分钟" },
-  { key = "f03", source = "meguru", text = "制作人会弹一点钢琴" },
-  { key = "f04", source = "kogane", text = "制作人的生日是3月14日" },
-  { key = "f05", source = "mano", text = "制作人不吃香菜" },
-  { key = "f06", source = "hiori", text = "制作人喜欢看推理小说" },
-  { key = "f07", source = "meguru", text = "制作人大学学的是经济学" },
-  { key = "f08", source = "kogane", text = "制作人周末常去健身房" },
-  { key = "f09", source = "mano", text = "制作人有轻微的近视，平时戴隐形眼镜" },
-  { key = "f10", source = "hiori", text = "制作人最喜欢的季节是秋天" },
-  { key = "f11", source = "meguru", text = "制作人会说一点韩语" },
-  { key = "f12", source = "kogane", text = "制作人喜欢喝黑咖啡，不加糖" },
-  { key = "f13", source = "mano", text = "制作人怕打雷" },
-  { key = "f14", source = "hiori", text = "制作人收集各地的明信片" },
-  { key = "f15", source = "meguru", text = "制作人的手机壳是蓝色的" },
-  { key = "f16", source = "kogane", text = "制作人喜欢在雨天听爵士乐" },
-  { key = "f17", source = "mano", text = "制作人以前在便利店打过工" },
-  { key = "f18", source = "hiori", text = "制作人的房间朝南，阳光很好" },
-  { key = "f19", source = "meguru", text = "制作人不太会做饭，平时常吃便利店的便当" },
-  { key = "f20", source = "kogane", text = "制作人喜欢玩解谜类的游戏" },
-  { key = "f21", source = "mano", text = "制作人的爸爸是中学数学老师" },
-  { key = "f22", source = "hiori", text = "制作人喜欢收集马克杯" },
-  { key = "f23", source = "meguru", text = "制作人会骑摩托车" },
-  { key = "f24", source = "kogane", text = "制作人喜欢看棒球比赛" },
-  { key = "f25", source = "mano", text = "制作人睡前习惯看半小时书" },
-  { key = "f26", source = "hiori", text = "制作人最喜欢的颜色是深绿色" },
-  { key = "f27", source = "meguru", text = "制作人每年夏天都会去看烟花大会" },
-  { key = "f28", source = "kogane", text = "制作人喜欢吃甜甜圈" },
-  { key = "f29", source = "mano", text = "制作人用的笔记本电脑已经用了五年" },
-  { key = "f30", source = "hiori", text = "制作人小学时参加过合唱团" },
-  { key = "f31", source = "meguru", text = "制作人喜欢去澡堂泡澡" },
-  { key = "f32", source = "kogane", text = "制作人的字写得很工整" },
-  { key = "f33", source = "mano", text = "制作人有一辆折叠自行车" },
-  { key = "f34", source = "hiori", text = "制作人喜欢吃辣" },
-  { key = "f35", source = "meguru", text = "制作人每周会给老家的妈妈打一次电话" },
-  { key = "f36", source = "kogane", text = "制作人喜欢在阳台上看夕阳" },
-  { key = "f37", source = "mano", text = "制作人的高中是在仙台读的" },
-  { key = "f38", source = "hiori", text = "制作人会做简单的木工" },
-  { key = "f39", source = "meguru", text = "制作人喜欢喝柠檬汽水" },
-  { key = "f40", source = "kogane", text = "制作人以前养过金鱼" },
-  { key = "f41", source = "mano", text = "制作人最近在追一部刑侦剧" },
-  { key = "f42", source = "hiori", text = "制作人喜欢逛旧书店" },
-  { key = "f43", source = "meguru", text = "制作人不太能喝酒" },
-  { key = "f44", source = "kogane", text = "制作人喜欢早起，通常六点就醒了" },
-  { key = "f45", source = "mano", text = "制作人会折纸鹤" },
-  { key = "f46", source = "hiori", text = "制作人喜欢吃荞麦面" },
-  { key = "f47", source = "meguru", text = "制作人去过三次冲绳" },
-  { key = "f48", source = "kogane", text = "制作人的房间里有一盆绿萝" },
-  { key = "f49", source = "mano", text = "制作人喜欢拍天空的照片" },
-  { key = "f50", source = "hiori", text = "制作人有一个上初中的外甥" },
+  { key = "afu", source = "temari", text = "制作人小时候奶奶家养过一只叫阿福的狗" },
+  { key = "f01", source = "temari", text = "制作人喜欢吃味噌拉面" },
+  { key = "f02", source = "temari", text = "制作人每天坐电车上班，单程四十分钟" },
+  { key = "f03", source = "temari", text = "制作人会弹一点钢琴" },
+  { key = "f04", source = "temari", text = "制作人的生日是3月14日" },
+  { key = "f05", source = "temari", text = "制作人不吃香菜" },
+  { key = "f06", source = "temari", text = "制作人喜欢看推理小说" },
+  { key = "f07", source = "temari", text = "制作人大学学的是经济学" },
+  { key = "f08", source = "temari", text = "制作人周末常去健身房" },
+  { key = "f09", source = "temari", text = "制作人有轻微的近视，平时戴隐形眼镜" },
+  { key = "f10", source = "temari", text = "制作人最喜欢的季节是秋天" },
+  { key = "f11", source = "temari", text = "制作人会说一点韩语" },
+  { key = "f12", source = "temari", text = "制作人喜欢喝黑咖啡，不加糖" },
+  { key = "f13", source = "temari", text = "制作人怕打雷" },
+  { key = "f14", source = "temari", text = "制作人收集各地的明信片" },
+  { key = "f15", source = "temari", text = "制作人的手机壳是蓝色的" },
+  { key = "f16", source = "temari", text = "制作人喜欢在雨天听爵士乐" },
+  { key = "f17", source = "temari", text = "制作人以前在便利店打过工" },
+  { key = "f18", source = "temari", text = "制作人的房间朝南，阳光很好" },
+  { key = "f19", source = "temari", text = "制作人不太会做饭，平时常吃便利店的便当" },
+  { key = "f20", source = "temari", text = "制作人喜欢玩解谜类的游戏" },
+  { key = "f21", source = "temari", text = "制作人的爸爸是中学数学老师" },
+  { key = "f22", source = "temari", text = "制作人喜欢收集马克杯" },
+  { key = "f23", source = "temari", text = "制作人会骑摩托车" },
+  { key = "f24", source = "temari", text = "制作人喜欢看棒球比赛" },
+  { key = "f25", source = "temari", text = "制作人睡前习惯看半小时书" },
+  { key = "f26", source = "temari", text = "制作人最喜欢的颜色是深绿色" },
+  { key = "f27", source = "temari", text = "制作人每年夏天都会去看烟花大会" },
+  { key = "f28", source = "temari", text = "制作人喜欢吃甜甜圈" },
+  { key = "f29", source = "temari", text = "制作人用的笔记本电脑已经用了五年" },
+  { key = "f30", source = "temari", text = "制作人小学时参加过合唱团" },
+  { key = "f31", source = "temari", text = "制作人喜欢去澡堂泡澡" },
+  { key = "f32", source = "temari", text = "制作人的字写得很工整" },
+  { key = "f33", source = "temari", text = "制作人有一辆折叠自行车" },
+  { key = "f34", source = "temari", text = "制作人喜欢吃辣" },
+  { key = "f35", source = "temari", text = "制作人每周会给老家的妈妈打一次电话" },
+  { key = "f36", source = "temari", text = "制作人喜欢在阳台上看夕阳" },
+  { key = "f37", source = "temari", text = "制作人的高中是在仙台读的" },
+  { key = "f38", source = "temari", text = "制作人会做简单的木工" },
+  { key = "f39", source = "temari", text = "制作人喜欢喝柠檬汽水" },
+  { key = "f40", source = "temari", text = "制作人以前养过金鱼" },
+  { key = "f41", source = "temari", text = "制作人最近在追一部刑侦剧" },
+  { key = "f42", source = "temari", text = "制作人喜欢逛旧书店" },
+  { key = "f43", source = "temari", text = "制作人不太能喝酒" },
+  { key = "f44", source = "temari", text = "制作人喜欢早起，通常六点就醒了" },
+  { key = "f45", source = "temari", text = "制作人会折纸鹤" },
+  { key = "f46", source = "temari", text = "制作人喜欢吃荞麦面" },
+  { key = "f47", source = "temari", text = "制作人去过三次冲绳" },
+  { key = "f48", source = "temari", text = "制作人的房间里有一盆绿萝" },
+  { key = "f49", source = "temari", text = "制作人喜欢拍天空的照片" },
+  { key = "f50", source = "temari", text = "制作人有一个上初中的外甥" },
 ]
 history = [
   { user = "你喜欢狗吗？" },
@@ -420,7 +420,7 @@ reviewed = true
 [[extraction]]
 id = "transient-tired-after-overtime"
 category = "transient"
-character = "mano"
+character = "temari"
 history = [
   { user = "终于到家了" },
   { ja = "おかえりなさい、プロデューサーさん", zh = "欢迎回来，制作人" },
@@ -434,7 +434,7 @@ reviewed = true
 [[extraction]]
 id = "transient-sleepy"
 category = "transient"
-character = "meguru"
+character = "temari"
 history = [
   { user = "早" },
   { ja = "おはよー！プロデューサー、なんか眠そう？", zh = "早上好～！制作人，看起来好困？" },
@@ -448,7 +448,7 @@ reviewed = true
 [[extraction]]
 id = "transient-bad-mood"
 category = "transient"
-character = "hiori"
+character = "temari"
 history = [
   { user = "唉" },
   { ja = "プロデューサー、どうかしましたか", zh = "制作人，怎么了吗" },
@@ -462,7 +462,7 @@ reviewed = true
 [[extraction]]
 id = "transient-hungry"
 category = "transient"
-character = "kogane"
+character = "temari"
 history = [
   { user = "几点了" },
   { ja = "もう八時ばい！", zh = "已经八点啦！" },
@@ -476,7 +476,7 @@ reviewed = true
 [[extraction]]
 id = "transient-tired-but-moving-tomorrow"
 category = "transient"
-character = "mano"
+character = "temari"
 history = [
   { user = "今天打包了一整天" },
   { ja = "打包……ですか？", zh = "打包……吗？" },
@@ -491,7 +491,7 @@ reviewed = true
 [[extraction]]
 id = "transient-sick-with-fever"
 category = "transient"
-character = "hiori"
+character = "temari"
 history = [
   { user = "今天在家休息" },
   { ja = "お休みですか？珍しいですね", zh = "休息吗？真少见呢" },
@@ -505,7 +505,7 @@ reviewed = true
 [[extraction]]
 id = "transient-exam-tomorrow"
 category = "transient"
-character = "meguru"
+character = "temari"
 history = [
   { user = "今晚得早点睡" },
   { ja = "どうして？", zh = "为什么呀？" },
@@ -519,7 +519,7 @@ reviewed = true
 [[extraction]]
 id = "transient-interview-this-afternoon"
 category = "transient"
-character = "kogane"
+character = "temari"
 history = [
   { user = "今天穿了西装" },
   { ja = "わ、かっこよかね！どこか行くと？", zh = "哇，好帅！要去哪里吗？" },
@@ -533,7 +533,7 @@ reviewed = true
 [[extraction]]
 id = "transient-business-trip"
 category = "transient"
-character = "hiori"
+character = "temari"
 history = [
   { user = "下周不在东京" },
   { ja = "どちらへ行かれるんですか？", zh = "您要去哪里呢？" },
@@ -551,11 +551,11 @@ reviewed = true
 [[recall]]
 id = "pronoun-cat-cried-all-night"
 category = "pronoun"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
-  { key = "parents-dog", source = "kogane", text = "制作人老家的父母养了一只柴犬" },
-  { key = "coffee", source = "hiori", text = "制作人每天早上都要喝一杯黑咖啡" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
+  { key = "parents-dog", source = "temari", text = "制作人老家的父母养了一只柴犬" },
+  { key = "coffee", source = "temari", text = "制作人每天早上都要喝一杯黑咖啡" },
 ]
 history = [
   { user = "回来啦" },
@@ -570,11 +570,11 @@ reviewed = true
 [[recall]]
 id = "pronoun-car-broke-down"
 category = "pronoun"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "car", source = "kogane", text = "制作人上个月买了一辆二手的蓝色小车" },
-  { key = "bike", source = "mano", text = "制作人有一辆折叠自行车" },
-  { key = "commute", source = "hiori", text = "制作人每天坐电车上班" },
+  { key = "car", source = "temari", text = "制作人上个月买了一辆二手的蓝色小车" },
+  { key = "bike", source = "temari", text = "制作人有一辆折叠自行车" },
+  { key = "commute", source = "temari", text = "制作人每天坐电车上班" },
 ]
 history = [
   { user = "今天出门不太顺" },
@@ -589,11 +589,11 @@ reviewed = true
 [[recall]]
 id = "pronoun-sister-visiting"
 category = "pronoun"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "sister", source = "mano", text = "制作人的妹妹在京都读大学" },
-  { key = "mother", source = "meguru", text = "制作人每周会给老家的妈妈打一次电话" },
-  { key = "nephew", source = "kogane", text = "制作人有一个上初中的外甥" },
+  { key = "sister", source = "temari", text = "制作人的妹妹在京都读大学" },
+  { key = "mother", source = "temari", text = "制作人每周会给老家的妈妈打一次电话" },
+  { key = "nephew", source = "temari", text = "制作人有一个上初中的外甥" },
 ]
 history = [
   { user = "家里人最近还好" },
@@ -607,11 +607,11 @@ reviewed = true
 [[recall]]
 id = "pronoun-hometown-snowing"
 category = "pronoun"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "hometown", source = "mano", text = "制作人的老家在北海道札幌" },
-  { key = "nagasaki-trip", source = "kogane", text = "制作人上个月去长崎出差，在那里吃到了什锦面" },
-  { key = "okinawa", source = "hiori", text = "制作人去过三次冲绳" },
+  { key = "hometown", source = "temari", text = "制作人的老家在北海道札幌" },
+  { key = "nagasaki-trip", source = "temari", text = "制作人上个月去长崎出差，在那里吃到了什锦面" },
+  { key = "okinawa", source = "temari", text = "制作人去过三次冲绳" },
 ]
 history = [
   { user = "最近有点想家" },
@@ -626,11 +626,11 @@ reviewed = true
 [[recall]]
 id = "pronoun-tomatoes-eaten"
 category = "pronoun"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "tomato", source = "meguru", text = "制作人在阳台上种了一盆小番茄" },
-  { key = "pothos", source = "hiori", text = "制作人的房间里有一盆绿萝" },
-  { key = "sunset", source = "kogane", text = "制作人喜欢在阳台上看夕阳" },
+  { key = "tomato", source = "temari", text = "制作人在阳台上种了一盆小番茄" },
+  { key = "pothos", source = "temari", text = "制作人的房间里有一盆绿萝" },
+  { key = "sunset", source = "temari", text = "制作人喜欢在阳台上看夕阳" },
 ]
 history = [
   { user = "阳台上出事了" },
@@ -644,11 +644,11 @@ reviewed = true
 [[recall]]
 id = "pronoun-friend-ramen-shop"
 category = "pronoun"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "friend", source = "meguru", text = "制作人的大学同学阿哲在横滨开了一家拉面店" },
-  { key = "ramen", source = "mano", text = "制作人喜欢吃味噌拉面" },
-  { key = "colleague", source = "kogane", text = "制作人的同事山田下个月要结婚" },
+  { key = "friend", source = "temari", text = "制作人的大学同学阿哲在横滨开了一家拉面店" },
+  { key = "ramen", source = "temari", text = "制作人喜欢吃味噌拉面" },
+  { key = "colleague", source = "temari", text = "制作人的同事山田下个月要结婚" },
 ]
 history = [
   { user = "周末去横滨了" },
@@ -663,16 +663,16 @@ reviewed = true
 [[extraction]]
 id = "pronoun-cat-surgery-named"
 category = "pronoun"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
 ]
 history = [
   { user = "最近在操心家里的事" },
   { ja = "小白ちゃんのことですか？", zh = "是小白的事吗？" },
 ]
 said = "对，它下周要去做绝育手术"
-reply = { ja = "ほわっ……ちょっと心配ですね。でも、きっと大丈夫です", zh = "哇……有点担心呢。不过一定没问题的" }
+reply = { ja = "えっと……ちょっと心配ですね。でも、きっと大丈夫です", zh = "哇……有点担心呢。不过一定没问题的" }
 must = [["小白", "猫"], ["绝育", "手术"]]
 must_not = ["它"]
 note = "写下的记忆要把「它」换成小白（或猫），单独看也知道是谁做手术。"
@@ -685,11 +685,11 @@ reviewed = true
 [[recall]]
 id = "proper-noun-dog-mameta"
 category = "proper-noun"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "parents-dog", source = "mano", text = "制作人老家的父母养了一只柴犬，叫豆太" },
-  { key = "cat", source = "hiori", text = "制作人养了一只白猫" },
-  { key = "diet", source = "meguru", text = "制作人最近在减肥" },
+  { key = "parents-dog", source = "temari", text = "制作人老家的父母养了一只柴犬，叫豆太" },
+  { key = "cat", source = "temari", text = "制作人养了一只白猫" },
+  { key = "diet", source = "temari", text = "制作人最近在减肥" },
 ]
 history = [
   { user = "今天天气不错" },
@@ -704,11 +704,11 @@ reviewed = true
 [[recall]]
 id = "proper-noun-friend-azhe"
 category = "proper-noun"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "friend", source = "meguru", text = "制作人的大学同学阿哲在横滨开了一家拉面店" },
-  { key = "colleague", source = "kogane", text = "制作人的同事山田下个月要结婚" },
-  { key = "father", source = "hiori", text = "制作人的爸爸是中学数学老师" },
+  { key = "friend", source = "temari", text = "制作人的大学同学阿哲在横滨开了一家拉面店" },
+  { key = "colleague", source = "temari", text = "制作人的同事山田下个月要结婚" },
+  { key = "father", source = "temari", text = "制作人的爸爸是中学数学老师" },
 ]
 history = [
   { user = "刚挂了个电话" },
@@ -723,11 +723,11 @@ reviewed = true
 [[recall]]
 id = "proper-noun-colleague-yamada"
 category = "proper-noun"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "colleague", source = "kogane", text = "制作人的同事山田下个月要结婚" },
-  { key = "friend", source = "meguru", text = "制作人的大学同学阿哲在横滨开了一家拉面店" },
-  { key = "nephew", source = "mano", text = "制作人有一个上初中的外甥" },
+  { key = "colleague", source = "temari", text = "制作人的同事山田下个月要结婚" },
+  { key = "friend", source = "temari", text = "制作人的大学同学阿哲在横滨开了一家拉面店" },
+  { key = "nephew", source = "temari", text = "制作人有一个上初中的外甥" },
 ]
 history = [
   { user = "这个月开销有点大" },
@@ -742,11 +742,11 @@ reviewed = true
 [[recall]]
 id = "proper-noun-cat-xiaobai"
 category = "proper-noun"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
-  { key = "parents-dog", source = "kogane", text = "制作人老家的父母养了一只柴犬，叫豆太" },
-  { key = "pothos", source = "hiori", text = "制作人的房间里有一盆绿萝" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
+  { key = "parents-dog", source = "temari", text = "制作人老家的父母养了一只柴犬，叫豆太" },
+  { key = "pothos", source = "temari", text = "制作人的房间里有一盆绿萝" },
 ]
 history = [
   { user = "家里一团乱" },
@@ -761,11 +761,11 @@ reviewed = true
 [[recall]]
 id = "proper-noun-cafe-moonlight"
 category = "proper-noun"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "cafe", source = "mano", text = "制作人常去公司楼下一家叫「月光」的咖啡店" },
-  { key = "coffee", source = "hiori", text = "制作人每天早上都要喝一杯黑咖啡" },
-  { key = "jazz", source = "meguru", text = "制作人喜欢在雨天听爵士乐" },
+  { key = "cafe", source = "temari", text = "制作人常去公司楼下一家叫「月光」的咖啡店" },
+  { key = "coffee", source = "temari", text = "制作人每天早上都要喝一杯黑咖啡" },
+  { key = "jazz", source = "temari", text = "制作人喜欢在雨天听爵士乐" },
 ]
 history = [
   { user = "今天的早饭没着落了" },
@@ -780,15 +780,15 @@ reviewed = true
 [[recall]]
 id = "proper-noun-hamster-dango"
 category = "proper-noun"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "hamster", source = "kogane", text = "制作人的外甥养了一只叫团子的仓鼠" },
-  { key = "cat", source = "hiori", text = "制作人养了一只叫小白的猫" },
-  { key = "dango-sweets", source = "meguru", text = "制作人喜欢吃三色团子" },
+  { key = "hamster", source = "temari", text = "制作人的外甥养了一只叫团子的仓鼠" },
+  { key = "cat", source = "temari", text = "制作人养了一只叫小白的猫" },
+  { key = "dango-sweets", source = "temari", text = "制作人喜欢吃三色团子" },
 ]
 history = [
   { user = "外甥给我发了照片" },
-  { ja = "ほわっ、どんな写真ですか？", zh = "哇，是什么照片呀？" },
+  { ja = "えっと、どんな写真ですか？", zh = "哇，是什么照片呀？" },
 ]
 said = "团子生了三只小宝宝"
 found = ["hamster"]
@@ -799,7 +799,7 @@ reviewed = true
 [[extraction]]
 id = "proper-noun-keep-dog-name"
 category = "proper-noun"
-character = "hiori"
+character = "temari"
 history = [
   { user = "给你看我老家的照片" },
   { ja = "柴犬ですね。かわいいです", zh = "是柴犬呢。很可爱" },
@@ -813,7 +813,7 @@ reviewed = true
 [[extraction]]
 id = "proper-noun-keep-colleague-name"
 category = "proper-noun"
-character = "meguru"
+character = "temari"
 history = [
   { user = "下个月有喜事" },
   { ja = "えっ、なになに！？", zh = "诶，什么什么！？" },
@@ -831,10 +831,10 @@ reviewed = true
 [[recall]]
 id = "continuity-back-from-interview"
 category = "continuity"
-character = "mano"
+character = "temari"
 memories = [
-  { key = "interview", source = "mano", text = "制作人10月8日下午有一场面试" },
-  { key = "ramen", source = "kogane", text = "制作人喜欢吃味噌拉面" },
+  { key = "interview", source = "temari", text = "制作人10月8日下午有一场面试" },
+  { key = "ramen", source = "temari", text = "制作人喜欢吃味噌拉面" },
 ]
 history = []
 said = "我回来了～"
@@ -846,10 +846,10 @@ reviewed = true
 [[recall]]
 id = "continuity-morning-of-exam"
 category = "continuity"
-character = "meguru"
+character = "temari"
 memories = [
-  { key = "exam", source = "hiori", text = "制作人10月8日要参加日语能力考试N2" },
-  { key = "coffee", source = "kogane", text = "制作人每天早上都要喝一杯黑咖啡" },
+  { key = "exam", source = "temari", text = "制作人10月8日要参加日语能力考试N2" },
+  { key = "coffee", source = "temari", text = "制作人每天早上都要喝一杯黑咖啡" },
 ]
 history = []
 said = "早上好！"
@@ -860,10 +860,10 @@ reviewed = true
 [[recall]]
 id = "continuity-feeling-better"
 category = "continuity"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "sick", source = "mano", text = "制作人10月6日感冒发烧了，请假在家休息" },
-  { key = "hiking", source = "meguru", text = "制作人周末喜欢去爬山" },
+  { key = "sick", source = "temari", text = "制作人10月6日感冒发烧了，请假在家休息" },
+  { key = "hiking", source = "temari", text = "制作人周末喜欢去爬山" },
 ]
 history = [
   { user = "嗨" },
@@ -878,10 +878,10 @@ reviewed = true
 [[recall]]
 id = "continuity-back-from-trip"
 category = "continuity"
-character = "kogane"
+character = "temari"
 memories = [
-  { key = "trip", source = "mano", text = "制作人10月5日到10月7日去北海道出差" },
-  { key = "okinawa", source = "hiori", text = "制作人去过三次冲绳" },
+  { key = "trip", source = "temari", text = "制作人10月5日到10月7日去北海道出差" },
+  { key = "okinawa", source = "temari", text = "制作人去过三次冲绳" },
 ]
 history = []
 said = "我回来啦，带了点土特产"
@@ -893,10 +893,10 @@ reviewed = true
 [[recall]]
 id = "continuity-weekend-hike"
 category = "continuity"
-character = "hiori"
+character = "temari"
 memories = [
-  { key = "hike", source = "meguru", text = "制作人10月10日周六打算和朋友去高尾山爬山" },
-  { key = "jazz", source = "kogane", text = "制作人喜欢在雨天听爵士乐" },
+  { key = "hike", source = "temari", text = "制作人10月10日周六打算和朋友去高尾山爬山" },
+  { key = "jazz", source = "temari", text = "制作人喜欢在雨天听爵士乐" },
 ]
 history = [
   { user = "下午好" },

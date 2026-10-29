@@ -36,7 +36,7 @@ const none: Stats = {
   visits: { current: 0, longest: 0 },
   all_hours: hours(),
   heatmap: { from: "2025-09-22", counts: Array(52 * 7 + 5).fill(0) },
-  affinity: tiers({ trust: ["mano", "kogane"] }),
+  affinity: tiers({ trust: ["sora", "riku"] }),
   range: {
     span: "all",
     turns: 0,
@@ -52,7 +52,7 @@ const came: Stats = {
   ...none,
   visits: { current: 1, longest: 1 },
   all_hours: hours({ 9: 1 }),
-  range: { ...none.range, turns: 1, by_hour: hours({ 9: 1 }), characters: [known("mano", 1)] },
+  range: { ...none.range, turns: 1, by_hour: hours({ 9: 1 }), characters: [known("sora", 1)] },
 };
 
 function known(character_id: string, turns: number, days_known = 10, call_seconds = 0) {
@@ -183,9 +183,9 @@ describe("好感度分组", () => {
   });
 
   it("只列有角色的档，从亲密到冷淡；档里照接口给的顺序（偶像顺序）", () => {
-    expect(affinityGroups(tiers({ intimate: ["kogane"], cold: ["meguru", "mano"] }))).toEqual([
-      { tier: "intimate", characters: ["kogane"] },
-      { tier: "cold", characters: ["meguru", "mano"] },
+    expect(affinityGroups(tiers({ intimate: ["riku"], cold: ["hina", "sora"] }))).toEqual([
+      { tier: "intimate", characters: ["riku"] },
+      { tier: "cold", characters: ["hina", "sora"] },
     ]);
   });
 });
@@ -214,7 +214,7 @@ describe("哪一块显示", () => {
   });
 
   it("这段跨度里没来过时只剩总数", () => {
-    const quiet = { ...came, range: { ...none.range, span: "30d" as const, characters: [known("mano", 0)] } };
+    const quiet = { ...came, range: { ...none.range, span: "30d" as const, characters: [known("sora", 0)] } };
     expect(statsSections(quiet)).toMatchObject({ totals: true, mostTalked: false, hours: false, gifts: false });
   });
 
@@ -230,7 +230,7 @@ describe("哪一块显示", () => {
     });
     const gave = {
       ...came,
-      range: { ...came.range, gifts: { given: 2, liked: 0, most: { character_id: "mano", given: 2 } } },
+      range: { ...came.range, gifts: { given: 2, liked: 0, most: { character_id: "sora", given: 2 } } },
     };
     expect(statsSections(gave).gifts).toBe(true);
   });
@@ -238,7 +238,7 @@ describe("哪一块显示", () => {
   it("只打过电话、没有回合和送礼时不算空：有总数和通话最久，没有画像和连续来访", () => {
     const onlyCalled = {
       ...none,
-      range: { ...none.range, characters: [called("mano", 12)], calls: { count: 1, seconds: 12 } },
+      range: { ...none.range, characters: [called("sora", 12)], calls: { count: 1, seconds: 12 } },
     };
     expect(statsSections(onlyCalled)).toEqual({
       isEmpty: false,
@@ -261,8 +261,8 @@ describe("哪一块显示", () => {
       range: {
         ...came.range,
         turns: 0,
-        characters: [known("mano", 0)],
-        gifts: { given: 1, liked: 1, most: { character_id: "mano", given: 1 } },
+        characters: [known("sora", 0)],
+        gifts: { given: 1, liked: 1, most: { character_id: "sora", given: 1 } },
       },
     };
     expect(statsSections(onlyGave)).toMatchObject({ mostTalked: false, hours: true, gifts: true });

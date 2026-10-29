@@ -27,15 +27,12 @@ from eidolon.call import (
     SessionDescription,
     StillPlacing,
 )
-from eidolon.characters import Character, ScriptedLine, in_idol_order
+from eidolon.characters import Character, ScriptedLine, in_display_order
 from eidolon.database import readable
 from eidolon.engine import ENDED, TurnJudged, shown
 from eidolon.greetings import (
-    LANDING_MEMORY_STILL_PATH,
     call_opener_path,
-    call_poster_path,
     greeting_path,
-    voxels_path,
 )
 from eidolon.reply_format import SegmentComplete, SegmentDelta, SpeechDelta
 from eidolon.own_keys import BroughtKeys, CallsUnavailable, UnknownService, named_services
@@ -62,7 +59,6 @@ from eidolon.sessions import UserId, session_middleware
 from eidolon.sponsor_api import add_sponsor_routes
 from eidolon.stats import add_stats_routes
 from eidolon.service_status import add_service_status_routes
-from eidolon.stand_outfits import list_path, outfit_path
 from eidolon.store import Conversation, ConversationEvent, IsCurrent, ReachOut, Recorded
 from eidolon.throttle import Throttled
 from eidolon.turn_outcome import TurnOutcome
@@ -182,29 +178,17 @@ _STAND_3D_ASSET = re.compile(r"(model\.json|animations\.json|textures/[A-Za-z0-9
 
 
 def _stand(character: Character, assets_url: str | None) -> dict | None:
-    """Her stand on the call screen: where her default outfit's files are, and her outfit
-    list (`stand_outfits`). A 3D stand (`stand_3d/...`) is served from her local `stand_model`
-    directory or `assets_url` without requiring an integer `idol_id`."""
+    """The optional local or hosted 3D model. Missing packs expose no stand."""
     outfit = character.default_outfit
-    if outfit is None:
+    if outfit is None or not outfit.startswith("stand_3d/"):
         return None
-    if outfit.startswith("stand_3d/"):
-        if character.stand_model is not None:
-            url = f"/api/characters/{character.id}/stand/"
-        elif assets_url is not None:
-            url = f"{assets_url}/{outfit}/"
-        else:
-            return None
-        return {
-            "default_outfit": {"id": outfit, "url": url},
-            "outfits_url": None,
-        }
-    if character.idol_id is None or assets_url is None:
+    if character.stand_model is not None:
+        url = f"/api/characters/{character.id}/stand/"
+    elif assets_url is not None:
+        url = f"{assets_url}/{outfit}/"
+    else:
         return None
-    return {
-        "default_outfit": {"id": outfit, "url": f"{assets_url}/{outfit_path(outfit)}"},
-        "outfits_url": f"{assets_url}/{list_path(character.idol_id)}",
-    }
+    return {"default_outfit": {"id": outfit, "url": url}, "outfits_url": None}
 
 
 def _greeting(character: Character, assets_url: str | None) -> dict | None:
@@ -221,17 +205,8 @@ def _call_opener(character: Character, assets_url: str | None) -> dict | None:
     return _scripted(character.call_opener, call_opener_path(character), assets_url)
 
 
-def _call_poster(character: Character, assets_url: str | None) -> str | None:
-    """Her card on the landing page's incoming call (ADR-0003, 2026-10-12), at
-    `call_poster_path`, listed without asking the bucket whether it is there (the page shows
-    her colour instead when it is not). None unless the stand assets are served."""
-    return f"{assets_url}/{call_poster_path(character)}" if assets_url else None
 
 
-def _voxels(character: Character, assets_url: str | None) -> str | None:
-    """Her voxel figure in the landing page's act about memory (ADR-0003, 2026-10-16), at
-    `voxels_path`, listed as her call poster is."""
-    return f"{assets_url}/{voxels_path(character)}" if assets_url else None
 
 
 def _scripted(line: ScriptedLine | None, path: str | None, assets_url: str | None) -> dict | None:
@@ -307,7 +282,7 @@ def create_app(backend: Backend) -> FastAPI:
         yield
         await backend.aclose()
 
-    app = FastAPI(title="Eidolon-SC", lifespan=lifespan)
+    app = FastAPI(title="Eidolon-GIM", lifespan=lifespan)
     app.state.backend = backend
     app.middleware("http")(session_middleware(backend.settings))
 
@@ -479,38 +454,27 @@ def create_app(backend: Backend) -> FastAPI:
     def list_characters() -> list[dict]:
         """Who there is to talk to; shown before signing in too, and on the landing page.
         In the order of their idol numbers, those without one after them as configured."""
-        listed = in_idol_order(characters.values())
+        listed = in_display_order(characters.values())
         return [
             {
                 "id": c.id,
                 "name": c.name,
                 "intro": c.intro,
                 "avatar_url": f"/api/characters/{c.id}/avatar" if c.avatar else None,
-                "scsp_avatar_url": f"/api/characters/{c.id}/scsp-avatar" if c.scsp_avatar else None,
+                "alternate_avatar_url": f"/api/characters/{c.id}/alternate-avatar" if c.alternate_avatar else None,
                 "color": c.color,
                 "background_url": f"/api/characters/{c.id}/background" if c.background else None,
                 "stand": _stand(c, backend.settings.stand_assets_url),
-                "idol_id": c.idol_id,
+                "display_order": c.display_order,
                 "name_zh": c.name_zh,
                 "name_kana": c.name_kana,
                 "name_romaji": c.name_romaji,
                 **_unit(c, backend.world),
                 "greeting": _greeting(c, backend.settings.stand_assets_url),
                 "call_opener": _call_opener(c, backend.settings.stand_assets_url),
-                "call_poster_url": _call_poster(c, backend.settings.stand_assets_url),
-                "voxels_url": _voxels(c, backend.settings.stand_assets_url),
             }
             for c in listed
         ]
-
-    @app.get("/api/landing")
-    def landing() -> dict:
-        """What the landing page shows that belongs to no one character: its act about memory
-        as one picture, for visitors who see no animation (ADR-0003, 2026-10-16). Listed as a
-        call poster is, without asking the bucket whether it is there (the page shows only the
-        words instead); None unless the stand assets are served."""
-        assets_url = backend.settings.stand_assets_url
-        return {"memory_still_url": f"{assets_url}/{LANDING_MEMORY_STILL_PATH}" if assets_url else None}
 
     @app.get("/api/characters/{character_id}/avatar")
     def character_avatar(character_id: str, request: Request) -> Response:
@@ -519,13 +483,13 @@ def create_app(backend: Backend) -> FastAPI:
             raise HTTPException(404, "没有这位角色的头像")
         return _picture(character.avatar, request)
 
-    @app.get("/api/characters/{character_id}/scsp-avatar")
-    def character_scsp_avatar(character_id: str, request: Request) -> Response:
-        """Her avatar in SCSP's set, for users who switched to it in settings."""
+    @app.get("/api/characters/{character_id}/alternate-avatar")
+    def character_alternate_avatar(character_id: str, request: Request) -> Response:
+        """Her avatar in alternate's set, for users who switched to it in settings."""
         character = characters.get(character_id)
-        if character is None or character.scsp_avatar is None:
-            raise HTTPException(404, "没有这位角色的 SCSP 头像")
-        return _picture(character.scsp_avatar, request)
+        if character is None or character.alternate_avatar is None:
+            raise HTTPException(404, "没有这位角色的 alternate 头像")
+        return _picture(character.alternate_avatar, request)
 
     @app.get("/api/characters/{character_id}/background")
     def character_background(character_id: str, request: Request) -> Response:

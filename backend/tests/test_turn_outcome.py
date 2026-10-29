@@ -31,7 +31,7 @@ class Turn:
 
     def __init__(self, activity: ActivityLog) -> None:
         self.recording: Recording = activity.begin(
-            "turn", "producer", "mano", own_llm=False, exempt=False
+            "turn", "producer", "sora", own_llm=False, exempt=False
         )
         self.settled: list[Result] = []
         self.outcome = TurnOutcome(self.recording, self.settled.append)

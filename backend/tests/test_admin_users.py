@@ -133,22 +133,22 @@ async def test_the_list_comes_in_pages_newest_first_and_finds_users_by_name_emai
     make_client: ClientFactory, github: FakeIdentityProvider
 ):
     admin = await admin_client(make_client, github)
-    for subject, name in [("1", "mano-fan"), ("2", "kogane-fan"), ("3", "hiori-fan")]:
+    for subject, name in [("1", "sora-fan"), ("2", "riku-fan"), ("3", "nagi-fan")]:
         await github_user(make_client, github, subject, name, f"{name}@mail.example.com")
-    hiori = await find(admin, "hiori-fan")
+    nagi = await find(admin, "nagi-fan")
 
     first = await users(admin, limit=2)
     second = await users(admin, limit=2, offset=2)
 
     assert first["total"] == second["total"] == 4
     assert [u["name"] for u in first["users"] + second["users"]] == [
-        "hiori-fan", "kogane-fan", "mano-fan", "boss",
+        "nagi-fan", "riku-fan", "sora-fan", "boss",
     ]
     for query, names in [
-        ("KOGANE", ["kogane-fan"]),  # name, in any case
-        ("mano-fan@mail", ["mano-fan"]),  # email
-        (hiori["id"], ["hiori-fan"]),  # user id
-        ("-fan", ["hiori-fan", "kogane-fan", "mano-fan"]),
+        ("RIKU", ["riku-fan"]),  # name, in any case
+        ("sora-fan@mail", ["sora-fan"]),  # email
+        (nagi["id"], ["nagi-fan"]),  # user id
+        ("-fan", ["nagi-fan", "riku-fan", "sora-fan"]),
         ("%", []),  # taken as it is, not as a pattern
     ]:
         found = await users(admin, q=query)
@@ -227,7 +227,7 @@ async def test_nothing_the_user_said_or_had_remembered_or_their_profile_shows(
     producer = memory_client(make_client)
     await use_everything(producer)
     conversation = (await producer.get(
-        "/api/conversations", params={"character_id": "mano"}
+        "/api/conversations", params={"character_id": "sora"}
     )).json()[0]["id"]
     producer_id = (await find(admin, "producer"))["id"]
 

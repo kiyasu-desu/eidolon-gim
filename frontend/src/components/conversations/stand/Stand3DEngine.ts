@@ -13,7 +13,7 @@ import {
   type Stand3DPoseState,
 } from "@/lib/stand3d";
 import { FrameGate, MAX_PIXEL_RATIO, pixelRatio } from "@/lib/standFrames";
-import { StandUnavailable, type Framing } from "./StandEngine";
+import { StandUnavailable, type Framing } from "./standTypes";
 import { Stand3DSwing, type SwingSetting } from "./Stand3DSwing";
 import { createActorLighting, configureActorRim, loadActorMaterials, type ActorRimSettings, type ActorLighting, type Stand3DMaterialSource } from "./Stand3DMaterial";
 import {createActorOutlineMaterial,type ActorOutlineSettings} from "./Stand3DOutline";

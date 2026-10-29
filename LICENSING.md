@@ -1,6 +1,6 @@
 # Licensing
 
-Eidolon-SC is free software: you can redistribute it and/or modify it under the
+Eidolon-GIM derives from [Eidolon-SC](https://github.com/Sallyn0225/eidolon-sc) and preserves its upstream copyright notices. It is free software: you can redistribute it and/or modify it under the
 terms of the GNU Affero General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version. The full text of the license is in the [LICENSE](LICENSE) file.
@@ -15,9 +15,7 @@ resulting work. Corresponding Source for a non-source form of such a
 combination shall include the source code for the parts of the Spine Runtimes
 used as well as that of the covered work.
 
-The Spine Runtimes included in `frontend/public/vendor/spine-3.6/` are not part
-of this Program and are not covered by the GNU Affero General Public License;
-they are distributed under their own license, found in that directory.
+This fork no longer bundles or loads the Spine Runtimes. The inherited additional permission above is preserved as part of the upstream license notice.
 
 ## Open Swing Dynamics
 

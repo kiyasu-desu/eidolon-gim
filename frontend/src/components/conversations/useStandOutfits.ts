@@ -14,7 +14,6 @@ import {
   type OutfitCard,
 } from "@/lib/standOutfit";
 
-import { SPINE_RUNTIME_URL } from "./stand/spineRuntime";
 
 export type StandOutfits = {
   /** 她的卡片，按衣装清单的顺序；清单还在读时为 null。 */
@@ -80,7 +79,7 @@ export function useStandOutfits(character: Character): StandOutfits | null {
   const prefetchUrl = prefetchOutfit?.url ?? null;
   useEffect(() => {
     if (!prefetchId || !prefetchUrl || !shouldPrefetch(connection())) return;
-    const files = prefetchedFiles({ id: prefetchId, url: prefetchUrl }, SPINE_RUNTIME_URL);
+    const files = prefetchedFiles({ id: prefetchId, url: prefetchUrl });
     return whenIdle(() => {
       // 读完响应体才算进了缓存；预取失败无所谓，打电话时再下载。
       for (const file of files) fetch(file).then((response) => response.arrayBuffer()).catch(() => {});

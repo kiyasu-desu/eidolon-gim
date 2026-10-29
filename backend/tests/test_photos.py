@@ -167,7 +167,7 @@ action: sitting, smile
         [photo] = photo_events(await send_turn(client, conversation, asked))
         await settled(client, photo["id"])
 
-    head = "1girl, solo, sakuragi mano, idolmaster shiny colors, brown hair, medium hair, brown eyes"
+    head = "1girl, solo, hoshino sora, gakuen idolmaster, brown hair, medium hair, brown eyes"
     tail = "rating:general, very aesthetic, masterpiece, no text"
     negative = (
         "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality,"
@@ -205,7 +205,7 @@ action: sitting, smile
 async def test_a_turn_that_could_have_no_photo_tells_her_she_cannot_send_one(
     make_client: ClientFactory, settings: Settings, deployment: str
 ):
-    character = "kogane" if deployment == "no photo tags" else "mano"
+    character = "riku" if deployment == "no photo tags" else "sora"
     if deployment == "no judge model":
         settings = replace(settings, judge=None)
     if deployment == "no image generation":

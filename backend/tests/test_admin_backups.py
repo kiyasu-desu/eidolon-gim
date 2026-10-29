@@ -16,7 +16,7 @@ from tests.conftest import ClientFactory
 from tests.fakes import START, FakeClock, FakeIdentityProvider, FakeLLM
 from tests.test_activity_records import admin_client, settings  # noqa: F401  (with an admin)
 from tests.test_backup import BACKUP_ENV, backup_env  # noqa: F401  (the fixture)
-from tests.test_stand_upload import FakeBucket
+from tests.test_s3 import FakeBucket
 
 
 @pytest.fixture

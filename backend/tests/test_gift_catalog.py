@@ -3,15 +3,13 @@ checked as the backend starts, read by signed-in users without who likes what, a
 gift with its illustration in the frontend's static files. Each character's liked gifts
 are in her character configuration, checked against the catalog as the backend starts."""
 
-import re
 import tomllib
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
-from eidolon.characters import load_characters
-from eidolon.gift_catalog import GIFTS_FILE, check_liked_gifts, load_gift_catalog
+from eidolon.gift_catalog import GIFTS_FILE
 
 from tests.conftest import REPO_GIFTS, CharacterConfig, ClientFactory
 from tests.fakes import FakeLLM
@@ -90,7 +88,7 @@ def test_a_missing_catalog_keeps_the_backend_from_starting(
         make_client(FakeLLM())
 
 
-HIORI_SHEET = "# 人设\n你是風野灯織。"
+HIORI_SHEET = "# 人设\n你是雨宮ナギ。"
 
 
 @pytest.mark.parametrize(
@@ -109,7 +107,7 @@ def test_wrong_liked_gifts_keep_the_backend_from_starting(
     liked: tuple[str, ...] | None,
     named: str,
 ):
-    characters.add("hiori", "風野灯織", HIORI_SHEET, liked_gifts=liked)
+    characters.add("nagi", "雨宮ナギ", HIORI_SHEET, liked_gifts=liked)
 
     with pytest.raises(RuntimeError, match=named):
         make_client(FakeLLM())
@@ -118,7 +116,7 @@ def test_wrong_liked_gifts_keep_the_backend_from_starting(
 def test_liked_gifts_must_be_a_list_of_gift_ids(
     make_client: ClientFactory, characters: CharacterConfig
 ):
-    characters.add("hiori", "風野灯織", HIORI_SHEET, liked_gifts=None)
+    characters.add("nagi", "雨宮ナギ", HIORI_SHEET, liked_gifts=None)
     characters.path.write_text(
         characters.path.read_text(encoding="utf-8") + 'liked_gifts = "cake"\n', encoding="utf-8"
     )
@@ -127,20 +125,6 @@ def test_liked_gifts_must_be_a_list_of_gift_ids(
         make_client(FakeLLM())
 
 
-def test_repository_characters_each_like_gifts_and_every_gift_is_liked():
-    """Each liked gift has her sources behind it, in order, in her facts' sources file
-    (「喜欢的礼物」); a gift nobody likes would be one no gift could be more welcome for."""
-    characters = load_characters(REPO_GIFTS.parent / "characters.toml")
-    catalog = load_gift_catalog(REPO_GIFTS)
-
-    check_liked_gifts(characters, catalog)
-    assert {g for c in characters.values() for g in c.liked_gifts} == set(catalog)
-    sourced = {}
-    for id in characters:
-        sources = (REPO_GIFTS.parent / "facts" / f"{id}.sources.md").read_text(encoding="utf-8")
-        section = sources.split("\n## 喜欢的礼物\n", 1)[1].split("\n## ", 1)[0]
-        sourced[id] = tuple(re.findall(r"^- [^（\n]+（([a-z0-9_-]+)）：", section, re.M))
-    assert sourced == {id: c.liked_gifts for id, c in characters.items()}
 
 
 def _webp_size(path: Path) -> tuple[int, int]:

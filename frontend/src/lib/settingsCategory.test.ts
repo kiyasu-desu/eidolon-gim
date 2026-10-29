@@ -112,8 +112,8 @@ describe("一级列表上的摘要", () => {
   });
 
   it("外观是备用头像开／关", () => {
-    expect(settingsSummaries({ ...loading, appearance: { scspAvatars: true } }).appearance).toBe("备用头像开");
-    expect(settingsSummaries({ ...loading, appearance: { scspAvatars: false } }).appearance).toBe("备用头像关");
+    expect(settingsSummaries({ ...loading, appearance: { alternateAvatars: true } }).appearance).toBe("备用头像开");
+    expect(settingsSummaries({ ...loading, appearance: { alternateAvatars: false } }).appearance).toBe("备用头像关");
   });
 
   it("搭话是开／关", () => {

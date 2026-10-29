@@ -17,7 +17,7 @@ const t = copy.settings.appearance;
 export function AppearanceSettings() {
   const { account, characters, appearance, changeAppearance } = useDirectory();
   const id = useId();
-  const hasAlternate = characters?.some((character) => character.scsp_avatar_url) ?? false;
+  const hasAlternate = characters?.some((character) => character.alternate_avatar_url) ?? false;
 
   if (!account) return null;
 
@@ -26,15 +26,15 @@ export function AppearanceSettings() {
       <FieldGroup>
         <Field orientation="horizontal" data-disabled={!hasAlternate || undefined}>
           <FieldContent>
-            <FieldLabel htmlFor={`${id}-scsp`}>{t.scspAvatars}</FieldLabel>
+            <FieldLabel htmlFor={`${id}-alternate`}>{t.alternateAvatars}</FieldLabel>
             {!hasAlternate && <FieldDescription id={`${id}-hint`}>{t.noAlternate}</FieldDescription>}
           </FieldContent>
           <Switch
-            id={`${id}-scsp`}
+            id={`${id}-alternate`}
             disabled={!hasAlternate}
             aria-describedby={!hasAlternate ? `${id}-hint` : undefined}
-            checked={appearance.scspAvatars}
-            onCheckedChange={(scspAvatars) => changeAppearance({ ...appearance, scspAvatars })}
+            checked={appearance.alternateAvatars}
+            onCheckedChange={(alternateAvatars) => changeAppearance({ ...appearance, alternateAvatars })}
           />
         </Field>
       </FieldGroup>

@@ -359,8 +359,8 @@ async def test_the_deployers_dashscope_key_is_tried_through_the_proxy_and_a_user
 async def test_each_speech_service_asks_for_the_proxy_as_it_connects(proxy: FakeProxy):
     routes = ProxyRoutes(ProxySettings())
     speech = SpeechServices(routes=routes)
-    deployers_tts = speech.tts("fish-key", "s2.1-pro-free", "mano-voice", 16000, own=False)
-    own_tts = speech.tts("my-fish-key", "s2.1-pro-free", "mano-voice", 16000, own=True)
+    deployers_tts = speech.tts("fish-key", "s2.1-pro-free", "sora-voice", 16000, own=False)
+    own_tts = speech.tts("my-fish-key", "s2.1-pro-free", "sora-voice", 16000, own=True)
     soniox = speech.stt(SttKey("soniox", "soniox-key"), own=False).stt
     bailian = speech.stt(SttKey("bailian", "dashscope-key", "beijing"), own=False).stt
 
@@ -380,11 +380,11 @@ async def test_users_own_speech_keys_go_through_the_proxy_ticked_apart_from_the_
     routes = ProxyRoutes(through(proxy, "own_tts", "own_stt"))
     speech = SpeechServices(DEFAULT_BAILIAN_STT_MODEL, routes=routes)
     own = [
-        speech.tts("my-fish-key", "s2.1-pro-free", "mano-voice", 16000, own=True),
+        speech.tts("my-fish-key", "s2.1-pro-free", "sora-voice", 16000, own=True),
         speech.stt(SttKey("soniox", "my-soniox-key"), own=True).stt,
     ]
     deployers = [
-        speech.tts("fish-key", "s2.1-pro-free", "mano-voice", 16000, own=False),
+        speech.tts("fish-key", "s2.1-pro-free", "sora-voice", 16000, own=False),
         speech.stt(SttKey("soniox", "soniox-key"), own=False).stt,
     ]
 

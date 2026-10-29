@@ -21,7 +21,7 @@ from tests.test_activity_records import admin_client, dashboard, health
 from tests.test_photos import IMAGE, WORDS, asking, photo_events, settled
 from tests.test_text_turn import send_turn, start_conversation
 
-HEAD = "1girl, solo, sakuragi mano, idolmaster shiny colors, brown hair, medium hair, brown eyes"
+HEAD = "1girl, solo, hoshino sora, gakuen idolmaster, brown hair, medium hair, brown eyes"
 TAIL = "rating:general, very aesthetic, masterpiece, no text"
 
 CROSSING = """

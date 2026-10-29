@@ -11,12 +11,12 @@ This guide explains how to turn on and tune each feature, and how the characters
 > |---|---|
 > | Text chat | `CHAT_LLM_*` |
 > | Voice calls | `FISH_AUDIO_API_KEY`, plus a speech recognition key: `SONIOX_API_KEY` (default), or `STT_PROVIDER=bailian` plus `DASHSCOPE_API_KEY` |
-> | Story corpus (sync or import) | An embedding key: `SILICONFLOW_API_KEY` (default), or `EMBEDDING_PROVIDER=gemini` plus `GEMINI_API_KEY` |
+> | Story corpus (local import) | An embedding key: `SILICONFLOW_API_KEY` (default), or `EMBEDDING_PROVIDER=gemini` plus `GEMINI_API_KEY` |
 > | Retrieval and memory | An embedding key, `SILICONFLOW_API_KEY` (reranking), plus a judge: `JEV_API_KEY` (default), or `JUDGE_PROVIDER=cloudflare` plus `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, or `JUDGE_PROVIDER=bailian` plus `BAILIAN_JUDGE_API_KEY` and `BAILIAN_JUDGE_WORKSPACE_ID` |
-> | Affinity and gifts | A judge (the switch is on by default) |
+> | Affinity and gifts | A judge (off by default in GIM) |
 > | Photos | A judge, plus an image generation key: `NOVELAI_API_KEY` |
 > | Reach-outs | `EIDOLON_REACH_OUTS=1` (off by default) |
-> | Stands and the landing page's greetings | `EIDOLON_STAND_ASSETS_URL`, and a bucket holding the assets |
+> | Stands and the landing page's greetings | `EIDOLON_MODEL_ROOT` for local models; `EIDOLON_STAND_ASSETS_URL` for optional hosted assets and greetings |
 > | Google / GitHub sign-in | `GOOGLE_CLIENT_*`, `GITHUB_CLIENT_*` |
 
 ## Contents
@@ -61,65 +61,7 @@ The "chat model" plays the character; the "background model" extracts memories a
 
 ## Characters
 
-Characters are written in [`characters/characters.toml`](../characters/characters.toml), one `[[characters]]` block each. All 28 idols from the game's eight units are already set up, and their character sheets, character facts and avatars are committed with the repository (ADR-0003).
-
-```toml
-[[characters]]
-id = "mano"                          # identifier, used in URLs and the story corpus
-name = "櫻木真乃"
-name_zh = "樱木真乃"                 # the next three are for searching the conversation list
-name_kana = "さくらぎ まの"
-name_romaji = "Sakuragi Mano"
-intro = "illumination STARS 的中心。温柔又有点慢热，喜欢鸟……"
-voice_id = "a1150f3d14ac46fb8ea59c7803cd8357"   # Fish Audio voice, must be set to public
-sheet = "sheets/mano.md"
-avatar = "avatars/mano.jpg"
-color = "#ffbad6"                    # official image color, required
-facts = "facts/mano.md"
-liked_gifts = ["potted-plant", "black-tea"]   # gifts she likes
-speakers = ["真乃"]                  # her speaker names in the scripts
-idol_id = 1                          # the next two are for the stand
-default_outfit = "stand/1030010010"  # 【ナチュラルモード】
-greeting = "[shyly] ほわっ……プロデューサーさん、ですか？　よろしくお願いしますっ"
-greeting_subtitle = "呼哇……你就是制作人吗？请多指教！"
-```
-
-How to write each field is in the comments at the top of the file. A few need extra explanation:
-
-- **`color`**: Everything in the interface that belongs to her (the conversation wallpaper, the call button, the send button, the unread count, the call screen and the call bar) is based on it. The frontend derives a light and a dark set of colors from it, keeping text readable. If it is missing or malformed, the backend refuses to start.
-- **`background`** (optional): The call screen's background image, kept in `characters/backgrounds/`. Without one, a gradient of her image color is used instead.
-- **Character sheet**: If a character sheet file is missing, the backend refuses to start and names the missing one. docker compose mounts `characters/` read-only into the backend container.
-- **`liked_gifts`**: The gifts she likes, by `id` in the gift catalog [`characters/gifts.toml`](../characters/gifts.toml): one to three, not all of them rare. Each needs its story source in the 「喜欢的礼物」 section of her sources file (`facts/<id>.sources.md`). If they are missing, not in the catalog, too many or all rare, the backend refuses to start.
-
-**To add a character**, do the following:
-
-1. Add a block to `characters.toml`. Write her character sheet following [`sheets/example.md`](../characters/sheets/example.md), her character facts (optional) following [`facts/example.md`](../characters/facts/example.md), and put her avatar in `characters/avatars/` as a 224×224 JPEG (shown at 112px at most, doubled for high-density screens).
-2. In `backend/`, run `uv run eidolon reading draft` to add readings for her name (see [Readings and greetings](#readings-and-greetings)).
-3. If she has a greeting, run `uv run --env-file=../.env eidolon greeting upload` in `backend/` to synthesize and upload it.
-4. In `frontend/`, run `node scripts/landing-fonts.mts` to regenerate the landing page's font subsets (see [`frontend/AGENTS.md`](../frontend/AGENTS.md)). Also run it after changing units, greetings or display names. If you forget, the frontend's font coverage test fails and lists the missing characters.
-5. If you have imported the story corpus, sync or import it again, so the episodes she appears in are credited to her.
-6. Restart the backend.
-
-<details>
-<summary><b>Drafting a character sheet with the background model</b></summary>
-
-<br>
-
-You can have the background model read all of her episodes and write a first draft of her character sheet, then proofread it by hand. Import the story corpus first:
-
-```sh
-uv run eidolon --db data/eidolon.db character draft-sheet mano   # in backend/
-# under docker compose, characters/ is read-only: write to the data volume first, then copy it out
-docker compose exec backend eidolon character draft-sheet mano --output /data/drafts/mano.md
-docker compose cp backend:/data/drafts/mano.md characters/sheets/mano.md
-```
-
-- **Material**: Only the episodes she appears in (canon).
-- **Sections**: The draft has, in order, identity, self-reference, how she addresses others, verbal tics, relationships with unit partners, and hard rules. Sections the model misses are left as 「（待补充）」 (to be filled in).
-- **Draft marker**: The first line of a draft is a draft marker. While the marker is there, the character sheet works as usual, but the backend warns at startup that it hasn't been proofread. Once you've proofread it, delete that line. A proofread character sheet is never overwritten; to really rewrite it, add `--force`.
-- **Oversized material**: When the material exceeds one request's limit (`--budget`, 40,000 characters by default), the background model first takes notes batch by batch, then writes the draft from the notes. Mano, for example, has about 220 episodes and 330,000 characters, which takes roughly ten background model requests.
-
-</details>
+The default configuration is `characters/gim/characters.toml`, currently Tsukimura Temari only. Sheets, voice and readings are configured there. Optional `alternate_avatar` and positive `display_order` configure an alternate image and ordering.
 
 ## Readings and greetings
 
@@ -168,103 +110,15 @@ Speech recognition is one of two services, chosen with `STT_PROVIDER`, and the w
 
 ## Stand
 
-The call screen can show her Spine stand from the game (optional). It appears only when all three of these are set; with any one missing, the call screen shows only the background image:
-
-| Setting | Where | What it is |
-|---|---|---|
-| `idol_id` | `characters.toml` | Her idol number in the game (ShinyColorsDB's idolId), e.g. `1` for Mano |
-| `default_outfit` | `characters.toml` | What she wears until the user picks an outfit: `stand/<enzaId>` (everyday clothes) or `stand_costume/<enzaId>` (stage costume) |
-| `EIDOLON_STAND_ASSETS_URL` | `.env` | The public URL of the S3-compatible bucket holding the stand assets. The frontend needs the same value too: the page's CSP only allows loading stands from here |
-
-- **Alive**: She breathes and blinks while idle, moves her lips while her voice plays, looks at you when you start speaking, and nods when you finish.
-- **Emotion**: With a judge set up, each segment she speaks is judged for emotion (calm, happy, shy, surprised, sad, angry, thinking) and for whether she nods or shakes her head, and the stand changes expression and motion to match. Tune the threshold and timeout with `JUDGE_EMOTION_MIN_PROBABILITY` and `JUDGE_EMOTION_TIMEOUT`.
-- **Outfits**: 「更多操作」 (More actions) at the top right of the conversation page has 「换衣装」 (Change outfit). There is one entry per card, switchable between everyday clothes and stage costume, with an animated full-body preview. The chosen outfit is remembered per character on this device.
-- **Asset sync**: The assets are not committed and not covered by the license; they live in object storage ([ADR-0011](adr/0011-stand-assets-fetched-from-shinycolorsdb.md)). `deploy/stand-sync.sh` fetches new cards from ShinyColorsDB, builds the outfit lists, renders thumbnails, then uploads them to the bucket. Running it weekly from cron is recommended.
-
-`stand-sync.sh` runs outside docker and needs uv, Node.js 22.18 or later, and Playwright's Chromium. How to choose a bucket (R2, Tencent Cloud COS, Alibaba Cloud OSS, MinIO, etc.), CORS, exit codes and local preview are covered in "立绘素材" in [`deploy.md`](deploy.md) (Chinese).
+Only optional Three.js 3D model packs are used. Set `EIDOLON_MODEL_ROOT`; each `<root>/<character-id>/` contains `model.json`, `animations.json` and `textures/`. Set `EIDOLON_MODELS_ENABLED=0` to disable. Missing packs do not prevent calls. See [resource packs](local-resource-packs.md) and [pipeline](stand3d-pipeline.md).
 
 ## Story corpus
 
-The episodes she can recall come from two sources, maintained together by one command:
-
-| | Translated episodes | Untranslated episodes |
-|---|---|---|
-| Source | Story CSVs from [SCTranslationData](https://github.com/ShinyGroup/SCTranslationData) | ShinyColorsDB's decoded mirror ([ADR-0004](adr/0004-untranslated-episodes-from-shinycolorsdb-mirror.md)) |
-| Content | Japanese original + fan Chinese translation | Japanese original only |
-| Freshness | Waits for fan translators: weeks to months | Within a week of a game update |
-
-They are two states of the same episode: once the translation arrives, it replaces the untranslated episode by the same script ID. When she recalls them, there is no difference.
-
-Story data is not committed (ADR-0003). Clone SCTranslationData into `corpus/` at the repo root (git-ignored; docker compose mounts it read-only at `/corpus` in the container), set the embedding key, then sync:
-
-```sh
-git clone --depth 1 https://github.com/ShinyGroup/SCTranslationData.git corpus/SCTranslationData
-docker compose exec backend eidolon story sync
-```
-
-The first sync fills in every episode missing from the mirror and takes about one to two hours. If interrupted, rerunning it picks up where it stopped. After that, each sync takes only minutes. For local development, run `uv run eidolon --db data/eidolon.db story sync` in `backend/`. Weekly automatic sync on the server, the cache, and importing CSV or JSON by hand are covered in "同步剧情库" in [`deploy.md`](deploy.md) (Chinese).
-
-<details>
-<summary><b>What the sync does</b></summary>
-
-<br>
-
-`eidolon story sync` first imports the translated episodes, then imports the episodes the story corpus still lacks from the mirror as untranslated episodes. Episodes that already have a translation are never downloaded or overwritten.
-
-- **P-card and S-card episodes**: The source is the card name (e.g. `【ほわっとスマイル】櫻木真乃`, matching SCTranslationData's directory names), and the title is the in-game episode title.
-- **Produce and special episodes**:
-  - Produce episodes (W.I.N.G., the fan appreciation festival, G.R.A.D., Landing Point, S.T.E.P. and the various communications) and special episodes such as birthdays and holidays come from each idol's in-game album. The album has not been updated since March 2024.
-  - The source follows SCTranslationData's directory name for the same part of the album. At the end, the sync lists episodes whose titles contain 「敗」 or 「失敗」 but which the failure-ending rules did not exclude, for you to check by hand.
-- **Event episodes**:
-  - There is no listing, so they are found by script ID (`4001` + a three-digit event number + a two-digit episode number): the sync first fills in what is missing within the known range, then tries a few numbers beyond it.
-  - Event names come from `deploy/event-names.toml` (write it following [`event-names.example.toml`](../deploy/event-names.example.toml); it is not committed). Events not in it show as 「活动剧情 NNN」, and the sync lists those numbers at the end.
-- **Politeness and failures**: Requests go out one at a time, about a second apart, and unchanged cards and albums are not requested again. If the mirror is unreachable, the translated episodes are still imported and the command exits with code 2.
-- **Options**: `--idol 1` syncs only one idol's cards and album (repeatable). The translations directory defaults to `EIDOLON_STORY_PATH`; you can also pass `--story`.
-
-</details>
-
-<details>
-<summary><b>Import rules (shared by translated and untranslated episodes)</b></summary>
-
-<br>
-
-- Each episode is keyed by its raw script ID, and re-importing updates it in place. Unchanged episodes are not re-embedded, so you can re-import at any time.
-- Only canon is kept: failure endings (W.I.N.G. defeat, missed season goals, G.R.A.D. defeat, failed auditions, broken promises) are identified by script ID and excluded. The producer's choices are not recorded, while the character's reaction to every choice is kept.
-- The cast is identified from each line's speaker (`speakers` in `characters.toml`). Re-import after changing `speakers` or adding a character.
-- The story catalog is organized as "character → card or event → episode" and generated straight from the story corpus. An import ends by listing the size of each character's catalog.
-
-</details>
+Import your own permitted Gakuen CSV files with `eidolon story import-gim`. The manifest separates canonical experiences, conditional reactions, failures and unknown material. Use `--offline` for text-only import, then `reembed` once configured. `story migrate` safely exports a separate library from a legacy mixed database. See [import](gim-story-import.md) and [packs](local-resource-packs.md). No automatic download or sync is provided.
 
 ## World setting
 
-Every turn carries a section on the world setting after the character sheet ([ADR-0008](adr/0008-real-world-releases-and-lives-are-in-character.md)):
-
-- the office's president and clerk, the eight units and their idols;
-- her own songs (those she sings alone, and those her whole unit sings), with the releases they are on and their release dates;
-- the lives she has stood on and will stand on: each live day's date and venue, leaving out days her CV was absent.
-
-The data is in [`characters/world.json`](../characters/world.json), committed to the repository. Every character's display name must match an idol in the data, or the backend won't start. Without the file, the backend runs as usual, just without the world setting.
-
-<details>
-<summary><b>Updating the world setting (eidolon world sync)</b></summary>
-
-<br>
-
-Run `uv run eidolon world sync` in `backend/`. It imports from these sources:
-
-| What | Source |
-|---|---|
-| Idols and units | im@sparql, the official unit pages |
-| Releases, tracks and singers | Lantis's Shiny Colors site; ふじわらはじめ's API fills in singers Lantis leaves out |
-| Lives | The official iDOLM@STER portal (the old official site before September 2020) |
-| Each live day's performers and absences | wikiwiki |
-| Each live day's setlist | imas-db |
-
-- **Checking**: At the end, it prints how many entries of each kind there are, what changed since the old file, where the sources disagree, and which singers and performers match none of the idols. Read the `git diff` before committing.
-- **Manual corrections**: Verified corrections go in [`characters/world-corrections.json`](../characters/world-corrections.json), each with its source and a note, and every import applies them.
-- **Failure protection**: If any source fails, the old file is left unchanged.
-
-</details>
+An optional `world.json` beside the character configuration contains deployer-supplied work facts. The current GIM configuration supplies none. Generic loading and retrieval remain; external work synchronization has been removed.
 
 ## Embedding service
 
@@ -488,7 +342,7 @@ EIDOLON_PROXY_SERVICES=chat_llm,tts,stt
 | `own_stt` | Users' own speech recognition (whichever service they chose) |
 | `own_image` | Users' own image generation, only at NovelAI's own HTTPS address `image.novelai.net`; relays always go direct |
 
-- **Only these two**: `HTTPS_PROXY`, `ALL_PROXY` and the like have no effect on the services above; other outgoing requests (sign-in, backups, story sync) still follow them.
+- **Only these two**: `HTTPS_PROXY`, `ALL_PROXY` and the like have no effect on the services above; other outgoing requests (sign-in, backups) still follow them.
 - **Own keys are picked apart**: Keys users bring are ticked apart from the deployer's services, as the two may be with different providers (the deployer's speech recognition on Model Studio, direct, and a user's own on Soniox, say). The requests are the server's, so a proxy or VPN the user runs has no part in them. Unticked, the default, they go direct; ticked, they go through the deployer's proxy, on its traffic.
 - **Own LLMs go through it only to known providers**: The address of a user's own LLM is theirs to type, and may point into the server's own network; through a proxy, the server cannot check where it really connects. So only an address whose host is a known provider's goes through it: the providers the price catalog (models.dev; see [Prices for cost estimates](deploy.md#花费估算用的单价) in the deploy guide) gives an address for, the few the code knows (OpenAI, Anthropic, Google Gemini, xAI, Mistral, Cohere, Groq, Cerebras, DeepInfra, Together, Perplexity, Venice) and OpenRouter; never an IP address or `localhost`. Any other goes direct, checked to be on the public internet ([ADR-0022](adr/0022-own-llms-through-the-proxy-only-to-known-providers.md)). While the catalog cannot be fetched, only the ones the code knows count. Users' own image generation works the same way, with NovelAI itself as the one known provider.
 - **Changeable in the admin console**: The 「网络」 (Network) tab of the config page has 「网络代理」 (Proxy): switch it on or off, change the address and pick the services, with no restart. It holds from the next request on (in turns and calls under way too; voice connections already open stay up). Before saving, each of the deployer's services routed a new way is reached that way once (users' own keys are not: there are none here to try with), and nothing is saved if one cannot be; if one cannot be as the server restarts, `.env`'s value is used and the admin console says so. A password in the address is encrypted like a key; without `EIDOLON_SECRET_KEY`, an address with a password can only be set in `.env`.
@@ -531,12 +385,9 @@ The backend's command line is `eidolon`. Under docker compose, use `docker compo
 | Command | What it does |
 |---|---|
 | `serve` | Start the server (default) |
-| `story sync` / `import-csv` / `import-json` | Sync or import the story corpus |
-| `world sync` | Update the world setting |
 | `character draft-sheet <id>` | Draft a character sheet with the background model |
 | `reading draft` | Fill in phonemes in the readings table (local only) |
 | `greeting upload` | Synthesize and upload the landing page's greetings |
-| `stand fetch` / `outfits` / `upload` | The three steps for stand assets, usually chained by `deploy/stand-sync.sh` |
 | `reembed` | Re-embed after switching embedding service, model or dimensions |
 | `eval rerank` / `judge` / `memory` | Calibrate rerank thresholds and judge thresholds, evaluate memory |
 | `user list` / `ban` / `unban` / `usage` | Manage users |

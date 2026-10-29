@@ -69,19 +69,19 @@ async def test_one_brings_those_below_trust_back_to_it_and_leaves_the_rest(
     clock = FakeClock()
     client = await holding_cards(make_client, clock, 2)
     keep(settings.database_path, "producer", 25, clock.now)
-    keep(settings.database_path, "producer", 40, clock.now, character="kogane")  # just in trust
+    keep(settings.database_path, "producer", 40, clock.now, character="riku")  # just in trust
     before = await state(client)
 
     res = await client.post(USE)
 
     assert (before["reset_cards"], before["resettable"]) == (
-        2, [{"id": "mano", "tier": "distant", "cooling": False}]
+        2, [{"id": "sora", "tier": "distant", "cooling": False}]
     )
     assert res.status_code == 200, res.text
-    assert res.json() == {"brought_back": ["mano"], "reset_cards": 1}
+    assert res.json() == {"brought_back": ["sora"], "reset_cards": 1}
     assert (await status(client)).json() == {"tier": "trust", "cooldown_until": None}
-    assert kept(settings.database_path, "mano") == (50, False)
-    assert kept(settings.database_path, "kogane") == (40, False)
+    assert kept(settings.database_path, "sora") == (50, False)
+    assert kept(settings.database_path, "riku") == (40, False)
     after = await state(client)
     assert (after["reset_cards"], after["resettable"]) == (1, [])
 
@@ -125,7 +125,7 @@ async def test_with_no_one_below_trust_as_it_is_used_it_is_refused_and_the_card_
     clock = FakeClock()
     client = await holding_cards(make_client, clock, 1)
     keep(settings.database_path, "producer", 35, clock.now)
-    assert [c["id"] for c in (await state(client))["resettable"]] == ["mano"]
+    assert [c["id"] for c in (await state(client))["resettable"]] == ["sora"]
 
     clock.advance(hours=12)  # she recovers into trust as the confirmation is open
     res = await client.post(USE)
@@ -151,4 +151,4 @@ async def test_closed_none_can_be_used(
     assert res.status_code == 409
     assert res.json()["gifts_closed"] is True
     assert (read["reset_cards"], read["resettable"]) == (1, [])
-    assert kept(settings.database_path, "mano") == (0, True)
+    assert kept(settings.database_path, "sora") == (0, True)

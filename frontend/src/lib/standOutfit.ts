@@ -16,11 +16,11 @@ export const LOOKS: readonly Look[] = ["everyday", "stage"];
 /** One of her cards: her everyday clothes on it and its stage costume, either of which it may
  * lack (a card whose two are the same is listed with its everyday clothes alone). */
 export type OutfitCard = {
-  /** The card's enzaId. */
+  /** The card's identifier. */
   id: string;
-  /** The card's name as in the game, without the 【】 or her name. */
+  /** A human-readable outfit group name. */
   name: string;
-  /** Its rarity or kind: P_SSR, Special... */
+  /** Its rarity or kind: local, stage... */
   type: string;
   everyday: ListedOutfit | null;
   stage: ListedOutfit | null;
@@ -59,7 +59,7 @@ function readOutfit(outfit: unknown, listUrl: string): ListedOutfit | null {
 
 const STORAGE_KEY = "eidolon.standOutfits";
 
-/** The outfit chosen for her on this device (`stand/<enzaId>` or `stand_costume/<enzaId>`);
+/** The outfit chosen for her on this device (`stand_3d/<slug>`);
  * null when none is, or what is stored cannot be read. */
 export function loadOutfitChoice(characterId: string): string | null {
   const choice = loadChoices()[characterId];
@@ -99,8 +99,8 @@ export function findOutfit(
   return null;
 }
 
-/** An outfit's name as the bucket lays it out: `stand/<enzaId>` or `stand_costume/<enzaId>`. */
-const OUTFIT_ID = /^stand(_costume)?\/\d+$/;
+/** An outfit's name as the bucket lays it out: `stand_3d/<slug>`. */
+const OUTFIT_ID = /^stand_3d\/[a-z0-9][a-z0-9_-]*$/;
 
 /**
  * The outfit she wears: the one chosen for her, as her outfit list (`cards`) gives it; her
@@ -121,7 +121,7 @@ export function wornOutfit(
     return found ? { id: found.outfit.id, url: found.outfit.url } : fallback;
   }
   if (!OUTFIT_ID.test(choice)) return fallback;
-  return { id: choice, url: new URL(`../spine/idols/${choice}/`, listUrl).href };
+  return { id: choice, url: new URL(`../${choice}/`, listUrl).href };
 }
 
 /** The outfits a call tries, in order (spec「通话层」): the one she wears, then her default
@@ -136,13 +136,12 @@ export function shouldPrefetch(connection: { saveData?: boolean } | undefined): 
   return connection?.saveData !== true;
 }
 
-/** What prefetching her stand fetches: the runtime at `runtimeUrl`, and the files of the
- * outfit she wears (or `model.json` and `animations.json` for a 3D stand). */
-export function prefetchedFiles(outfit: Pick<Outfit, "id" | "url">, runtimeUrl: string): string[] {
+/** The JSON files prefetched for a supported 3D stand; unsupported identifiers fetch nothing. */
+export function prefetchedFiles(outfit: Pick<Outfit, "id" | "url">): string[] {
   if (is3DStandOutfit(outfit)) {
     return ["model.json", "animations.json"].map((file) => `${outfit.url}${file}`);
   }
-  return [runtimeUrl, ...["data.json", "data.atlas", "data.png"].map((file) => `${outfit.url}${file}`)];
+  return [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

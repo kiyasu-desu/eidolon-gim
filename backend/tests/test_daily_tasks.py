@@ -104,14 +104,14 @@ async def test_ten_turns_with_them_all_do_the_third_and_more_give_nothing_more(
 ):
     client = make_client(FakeLLM(*[REPLY] * 12), clock=FakeClock())
     await state(client)
-    mano, kogane = await start_conversation(client), await start_conversation(client, "kogane")
+    sora, riku = await start_conversation(client), await start_conversation(client, "riku")
 
-    await turns(client, mano, 4)
-    await turns(client, kogane, 5)
+    await turns(client, sora, 4)
+    await turns(client, riku, 5)
     nine = await state(client)
-    await turns(client, mano, 1)
+    await turns(client, sora, 1)
     ten = await state(client)
-    await turns(client, kogane, 2)
+    await turns(client, riku, 2)
 
     assert nine["daily_tasks"]["tasks"] == tasks(turns=9)
     assert nine["draws"] == 2

@@ -94,7 +94,7 @@ def place(database: Path, conversation: str, at: datetime) -> datetime:
 async def reached_out(
     make_client: ClientFactory, settings: Settings, *replies, **services
 ) -> tuple[httpx.AsyncClient, FakeLLM, FakeClock, str, datetime]:
-    """A client on `settings` whose user has had a turn with Mano, and then she reached
+    """A client on `settings` whose user has had a turn with Sora, and then she reached
     out, an hour ago, the producer living in Tokyo; her chat model then replying with
     `replies`."""
     client, llm, clock, conversation = await talked(
@@ -212,13 +212,13 @@ async def test_the_judge_model_retrieval_and_memory_read_it_as_her_latest_words(
 
     state = clients.judge.states[-1]
     assert state["上文"] == [
-        "制作人：我去练习了", "櫻木真乃：はい", "櫻木真乃：プロデューサーさん！レッスン終わったよ",
+        "制作人：我去练习了", "星野ソラ：はい", "星野ソラ：プロデューサーさん！レッスン終わったよ",
     ]
     assert "制作人！练习结束了哦\n辛苦了" in embedder.queries
     [*_, extraction] = [p for p in memory.prompts if "起标题" not in p[0].content]
     assert extraction[-1].content.endswith(
-        "櫻木真乃：好的\n櫻木真乃：制作人！练习结束了哦\n"
-        "制作人（最新的一句话）：辛苦了\n櫻木真乃：好的"
+        "星野ソラ：好的\n星野ソラ：制作人！练习结束了哦\n"
+        "制作人（最新的一句话）：辛苦了\n星野ソラ：好的"
     )
 
 

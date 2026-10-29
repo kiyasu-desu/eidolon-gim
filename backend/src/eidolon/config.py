@@ -426,6 +426,10 @@ class Settings:
     chat_llm: LLMSettings
     background_llm: LLMSettings = None  # pyright: ignore[reportAssignmentType]  # see below
     """Left out, the background model is the chat model."""
+    story_database_path: Path | None = None
+    stories_enabled: bool = True
+    model_root: Path | None = None
+    models_enabled: bool = True
     call_reasoning_effort: ReasoningEffort | None = None
     """The chat model's in calls (`CHAT_LLM_CALL_REASONING_EFFORT`): see `chat_model`."""
     ice_servers: list[IceServer] = field(default_factory=lambda: list(DEFAULT_ICE_SERVERS))
@@ -513,6 +517,14 @@ class Settings:
             )
 
     @property
+    def story_path(self) -> Path:
+        """A detachable story library, never the account/conversation database."""
+        path = self.story_database_path or self.database_path.with_suffix(".stories.db")
+        if path.resolve() == self.database_path.resolve():
+            raise RuntimeError("EIDOLON_STORY_DATABASE_PATH 不能与应用数据库相同；请运行 story migrate")
+        return path
+
+    @property
     def chat_model(self) -> ChatModelSettings:
         """The chat model, as text turns and calls each use it."""
         return ChatModelSettings(self.chat_llm, self.call_reasoning_effort)
@@ -542,6 +554,10 @@ class Settings:
         chat_llm = LLMSettings.chat_from_env()
         return cls(
             database_path=database_path_from_env(),
+            story_database_path=story_database_path_from_env(),
+            stories_enabled=_switch("EIDOLON_STORIES_ENABLED", default=True),
+            model_root=Path(value) if (value := os.environ.get("EIDOLON_MODEL_ROOT", "").strip()) else None,
+            models_enabled=_switch("EIDOLON_MODELS_ENABLED", default=True),
             characters_path=characters_path_from_env(),
             chat_llm=chat_llm,
             background_llm=LLMSettings.background_from_env(),
@@ -615,23 +631,23 @@ def database_path_from_env() -> Path:
     return Path(os.environ.get("EIDOLON_DATABASE_PATH", "data/eidolon-gim.db"))
 
 
+def story_database_path_from_env() -> Path | None:
+    value = os.environ.get("EIDOLON_STORY_DATABASE_PATH", "").strip()
+    return Path(value) if value else None
+
+
+def stories_enabled_from_env() -> bool:
+    return _switch("EIDOLON_STORIES_ENABLED", default=True)
+
+
 def characters_path_from_env() -> Path:
     return Path(os.environ.get("EIDOLON_CHARACTERS_PATH", "../characters/gim/characters.toml"))
 
 
-def story_path_from_env() -> Path:
-    """SCTranslationData's story directory, which `eidolon story sync` imports from."""
-    return Path(os.environ.get("EIDOLON_STORY_PATH", "../corpus/SCTranslationData/data/story"))
 
 
-def mirror_cache_path_from_env() -> Path:
-    """Where `eidolon story sync` keeps the scripts it downloads from the mirror."""
-    return Path(os.environ.get("EIDOLON_MIRROR_CACHE_PATH", "../corpus/mirror"))
 
 
-def event_names_path_from_env() -> Path:
-    """The admin's table of event names, which `eidolon story sync` names events from."""
-    return Path(os.environ.get("EIDOLON_EVENT_NAMES_PATH", "../deploy/event-names.toml"))
 
 
 def stand_assets_url_from_env() -> str | None:
@@ -647,11 +663,6 @@ def stand_assets_url_from_env() -> str | None:
     return value
 
 
-def stand_build_path_from_env() -> Path:
-    """Where `eidolon stand fetch` keeps the stands it fetched (`source/`), `eidolon stand
-    outfits` writes the outfit lists and the thumbnails are rendered, laid out as the
-    bucket is, before they are uploaded."""
-    return Path(os.environ.get("EIDOLON_STAND_BUILD_PATH", "../corpus/stand"))
 
 
 ADMIN_PROVIDERS = ("github", "google")

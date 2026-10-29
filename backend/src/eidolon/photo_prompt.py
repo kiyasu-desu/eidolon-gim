@@ -36,7 +36,7 @@ from eidolon.characters import Character
 
 log = logging.getLogger(__name__)
 
-WORK_TAG = "idolmaster shiny colors"
+WORK_TAG = "gakuen idolmaster"
 QUALITY_TAGS = ("rating:general", "very aesthetic", "masterpiece", "no text")
 """What every positive prompt ends with: all ages, then V5's standard quality tags."""
 

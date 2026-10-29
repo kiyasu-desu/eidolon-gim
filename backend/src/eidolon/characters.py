@@ -7,10 +7,7 @@ the file, plus the speaker names her lines carry in the story corpus. Adding a
 character or replacing a voice is a configuration change. The sheets, facts,
 avatars and backgrounds are committed with the configuration (ADR-0003).
 
-Optionally, she also names her idol in the original (`idol_id`, as in the Spine
-mirror's `spine_manifest.json`) and the outfit her stand wears unless the user picks
-another (`default_outfit`, e.g. `stand/1030010010`). The stands themselves are not
-committed: they are served from object storage (ADR-0003, revised 2026-09-30).
+Her optional 3D model is mounted separately from the source configuration.
 
 Optionally, she also has the other names the conversation list searches her by
 (`name_zh`, `name_kana`, `name_romaji`): her name as Chinese readers know it, its reading
@@ -31,7 +28,7 @@ visitor answers her call in the landing page's demo: `call_opener` and
 addresses of their own. Only she who calls there needs one.
 
 Optionally, she has what her photos are prompted with (GLOSSARY.md「照片」): her character tag
-as Danbooru writes it (`photo_tag`, e.g. `sakuragi mano`), kept apart rather than made from
+as the image service writes it (`photo_tag`), kept apart rather than made from
 her romaji, which is not how Danbooru writes every name; and her looks as tags
 (`photo_appearance`): hair colour, hairstyle, eye colour, no accessories nor clothes. She
 sends no photos without both.
@@ -63,9 +60,8 @@ log = logging.getLogger(__name__)
 _VALID_ID = re.compile(r"[a-z][a-z0-9_-]*")
 _REQUIRED = ("id", "name", "intro", "voice_id", "sheet", "color")
 _IMAGE_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
-_OUTFIT = re.compile(r"((stand|stand_costume)/[0-9]{10}|stand_3d/[a-z0-9][a-z0-9_-]*)")
-"""An outfit: her everyday clothes on a card (`stand`) or its stage costume
-(`stand_costume`) with the card's ten-digit enzaId, or a 3D stand outfit (`stand_3d/<slug>`)."""
+_OUTFIT = re.compile(r"stand_3d/[a-z0-9][a-z0-9_-]*")
+"""A mounted 3D outfit: stand_3d/<slug>."""
 
 DRAFT_MARKER = "<!-- 人设草稿：由后台模型根据剧情生成，尚未校对。校对完成后删除这一行。 -->"
 
@@ -79,7 +75,7 @@ class Fact:
     """One entry of a character's facts: the section under a heading."""
 
     title: str | None
-    """The headings above it, e.g. `人物关系 / 風野灯織`; None for text before any heading."""
+    """The headings above it, e.g. `人物关系 / 同学`; None for text before any heading."""
     text: str
     """The entry as it is retrieved, headed by its title."""
 
@@ -127,19 +123,18 @@ class Character:
     """Her image colour, the official one from the original, as lower-case `#rrggbb`."""
     background: Path | None = None
     """The picture behind her call screen; None shows a gradient of her image colour."""
-    scsp_avatar: Path | None = None
-    """Her avatar in SCSP's set, which users can switch to in settings; None, and they see
+    alternate_avatar: Path | None = None
+    """Her optional alternate avatar, which users can switch to in settings; None, and they see
     her usual avatar either way."""
     speakers: tuple[str, ...] = ()
-    """Names her lines are credited to in story scripts, e.g. 真乃."""
+    """Names her lines are credited to in story scripts, e.g. 手毬."""
     facts: tuple[Fact, ...] = ()
     """Her character facts, one entry per section of her facts file."""
     sheet_path: Path | None = None
-    idol_id: int | None = None
-    """Who she is in the original's Spine mirror (`idolId` in `spine_manifest.json`)."""
+    display_order: int | None = None
+    """Optional positive display order; unspecified characters follow configuration order."""
     default_outfit: str | None = None
-    """The outfit her stand wears unless the user picks another: `<category>/<enzaId>` for a
-    Spine stand (`stand/1030010010` or `stand_costume/...`), or `stand_3d/<slug>` for a 3D stand."""
+    """The default mounted model identifier, stand_3d/<slug>."""
     stand_model: Path | None = None
     """Local directory of her 3D stand assets (`model.json`, `animations.json`, `textures/`);
     None when she has no local 3D stand."""
@@ -150,7 +145,7 @@ class Character:
     name_zh: str | None = None
     """Her name in simplified Chinese as the community writes it, e.g. 八宫巡."""
     name_kana: str | None = None
-    """Her full name in hiragana, family name and given name a space apart, e.g. さくらぎ まの."""
+    """Her full name in hiragana, family name and given name a space apart, e.g. つきむら てまり."""
     name_romaji: str | None = None
     """Her full name in romaji, family name first, a space apart, e.g. Sakuragi Mano."""
     liked_gifts: tuple[str, ...] = ()
@@ -197,10 +192,10 @@ def load_characters(path: Path, require_sheets: bool = True) -> dict[str, Charac
     return characters
 
 
-def in_idol_order(characters: Iterable[Character]) -> list[Character]:
-    """The characters in the order of their idol numbers in the original, those without one
+def in_display_order(characters: Iterable[Character]) -> list[Character]:
+    """The characters in configured display order, those without one
     after them as given."""
-    return sorted(characters, key=lambda c: (c.idol_id is None, c.idol_id or 0))
+    return sorted(characters, key=lambda c: (c.display_order is None, c.display_order or 0))
 
 
 def _parse_character(
@@ -249,22 +244,22 @@ def _parse_character(
 
     avatar = _optional_file(entry, "avatar", base, label)
     background = _optional_file(entry, "background", base, label)
-    scsp_avatar = _optional_file(entry, "scsp_avatar", base, label)
+    alternate_avatar = _optional_file(entry, "alternate_avatar", base, label)
 
-    idol_id = entry.get("idol_id")
-    # bool is an int in Python, but `idol_id = true` is a mistake all the same.
-    if idol_id is not None and (type(idol_id) is not int or idol_id <= 0):
+    display_order = entry.get("display_order")
+    # bool is an int in Python, but `display_order = true` is a mistake all the same.
+    if display_order is not None and (type(display_order) is not int or display_order <= 0):
         raise CharacterConfigError(
-            f"角色 {label} 的 idol_id 应为原作的偶像编号（spine_manifest.json 的 idolId，正整数），"
-            f"现在是 {idol_id!r}"
+            f"角色 {label} 的 display_order 应为正整数的显示顺序，"
+            f"现在是 {display_order!r}"
         )
     default_outfit = entry.get("default_outfit")
     if default_outfit is not None and not (
         isinstance(default_outfit, str) and _OUTFIT.fullmatch(default_outfit)
     ):
         raise CharacterConfigError(
-            f"角色 {label} 的 default_outfit 应写成 stand/<enzaId>、stand_costume/<enzaId>"
-            f"（enzaId 是十位数字）或 stand_3d/<slug>，现在是 {default_outfit!r}"
+            f"角色 {label} 的 default_outfit 应写成 stand_3d/<slug>"
+            f"，现在是 {default_outfit!r}"
         )
     stand_model = _optional_stand_model(entry, base, label)
 
@@ -277,11 +272,11 @@ def _parse_character(
         avatar=avatar,
         color=entry["color"].lower(),
         background=background,
-        scsp_avatar=scsp_avatar,
+        alternate_avatar=alternate_avatar,
         speakers=tuple(speakers),
         facts=facts,
         sheet_path=sheet_path,
-        idol_id=idol_id,
+        display_order=display_order,
         default_outfit=default_outfit,
         stand_model=stand_model,
         greeting=_greeting(entry, label, readings),
@@ -375,7 +370,7 @@ _HEADING = re.compile(r"(#{1,6})\s+(.+?)\s*#*\s*")
 
 def parse_facts(markdown: str) -> tuple[Fact, ...]:
     """Split a facts file into entries: the text under each heading, titled with the
-    headings above it (e.g. `人物关系 / 風野灯織`). Headings with nothing under them
+    headings above it (e.g. `人物关系 / 同学`). Headings with nothing under them
     make no entry."""
     facts: list[Fact] = []
     titles: list[str] = []

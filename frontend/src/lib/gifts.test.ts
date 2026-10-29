@@ -116,18 +116,18 @@ describe("送出后底部提示的那句话", () => {
     left: 0,
     rewarded: null,
   });
-  const note = (g: Given) => givenNote(g, "凛世", now, "Asia/Tokyo");
+  const note = (g: Given) => givenNote(g, "リン", now, "Asia/Tokyo");
 
   it("有变化：就是变化胶囊的话", () => {
-    expect(note(given(up({ tier_changed: true, tier: "close" })))).toBe("和凛世更近了一步：亲近");
+    expect(note(given(up({ tier_changed: true, tier: "close" })))).toBe("和リン更近了一步：亲近");
   });
 
   it("冷却中送了还没解除：写解除时刻，和对话页的写法一样", () => {
-    expect(note(given(null, "2026-10-14T05:30:00+09:00"))).toBe("凛世还没消气，明天 05:30 就会愿意说话了");
+    expect(note(given(null, "2026-10-14T05:30:00+09:00"))).toBe("リン还没消气，明天 05:30 就会愿意说话了");
   });
 
   it("到顶了没有变化：只写已经送到", () => {
-    expect(note(given(null))).toBe("已经送给凛世");
+    expect(note(given(null))).toBe("已经送给リン");
   });
 });
 
@@ -135,9 +135,9 @@ describe("从对话页跳到礼物页", () => {
   const query = (href: string) => Object.fromEntries(new URL(href, "http://x.invalid").searchParams);
 
   it("地址只带她的角色 id，礼物页读回来", () => {
-    const href = giftsHref("rinze");
-    expect(href).toBe("/gifts?to=rinze");
-    expect(giftsFor(query(href))).toEqual({ to: "rinze" });
+    const href = giftsHref("rin");
+    expect(href).toBe("/gifts?to=rin");
+    expect(giftsFor(query(href))).toEqual({ to: "rin" });
   });
 
   it("没有 to，或者 to 是空的，都当作没有预选", () => {
@@ -147,13 +147,13 @@ describe("从对话页跳到礼物页", () => {
 });
 
 describe("送给谁的顺序", () => {
-  const characters = [{ id: "mano" }, { id: "hiori" }, { id: "rinze" }];
+  const characters = [{ id: "sora" }, { id: "nagi" }, { id: "rin" }];
 
   it("预选的她排第一，其余照原来的顺序", () => {
-    expect(chosenFirst(characters, "rinze").map((c) => c.id)).toEqual(["rinze", "mano", "hiori"]);
+    expect(chosenFirst(characters, "rin").map((c) => c.id)).toEqual(["rin", "sora", "nagi"]);
   });
 
   it("预选的不在里面，照原来的顺序", () => {
-    expect(chosenFirst(characters, "gone").map((c) => c.id)).toEqual(["mano", "hiori", "rinze"]);
+    expect(chosenFirst(characters, "gone").map((c) => c.id)).toEqual(["sora", "nagi", "rin"]);
   });
 });

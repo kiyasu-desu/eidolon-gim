@@ -48,23 +48,23 @@ def seen_in(database: Path, conversation: str) -> list[bool]:
 async def test_her_line_has_one_unseen_till_her_conversation_is_read_and_no_other_is_touched(
     make_client: ClientFactory, settings: Settings
 ):
-    client, _, clock, mano = await talked(
+    client, _, clock, sora = await talked(
         make_client, ["<ja>はい</ja><zh>好</zh>"], REACH_OUT, REACH_OUT,
         random=FakeRandom(MIDDLE, MIDDLE),
     )
-    kogane = await start_conversation(client, "kogane")
-    await send_turn(client, kogane, "你好")
-    for conversation in (mano, kogane):
+    riku = await start_conversation(client, "riku")
+    await send_turn(client, riku, "你好")
+    for conversation in (sora, riku):
         last_contact(settings.database_path, conversation, clock.now - timedelta(hours=28))
-    assert await unseen(client) == {"mano": False, "kogane": False}
+    assert await unseen(client) == {"sora": False, "riku": False}
 
     await backend_of(client).reach_outs.run_due()
-    assert await unseen(client) == {"mano": True, "kogane": True}
+    assert await unseen(client) == {"sora": True, "riku": True}
 
-    [said] = reach_outs(await record(client, mano))  # given back as it is seen
+    [said] = reach_outs(await record(client, sora))  # given back as it is seen
 
     assert said["type"] == "reach_out"
-    assert await unseen(client) == {"mano": False, "kogane": True}
+    assert await unseen(client) == {"sora": False, "riku": True}
 
 
 async def test_a_new_conversation_she_has_not_reached_out_in_has_none_unseen(
@@ -75,11 +75,11 @@ async def test_a_new_conversation_she_has_not_reached_out_in_has_none_unseen(
     )
     last_contact(settings.database_path, conversation, clock.now - timedelta(hours=28))
     await backend_of(client).reach_outs.run_due()
-    assert await unseen(client) == {"mano": True}
+    assert await unseen(client) == {"sora": True}
 
     await start_conversation(client)
 
-    assert await unseen(client) == {"mano": False}
+    assert await unseen(client) == {"sora": False}
 
 
 async def test_reading_a_past_conversation_has_its_reach_outs_seen(

@@ -19,10 +19,23 @@ skills-lock.json
 
 # 剧情库的原始数据和整理后的数据库都不进仓库（ADR-0003）
 /corpus/
-# 活动名对照表属于部署配置，只保留示例
-deploy/event-names.toml
-# 每周同步剧情库的日志（deploy/story-sync.sh）
+# 本机研究、验收、内部协调和运行报告；发布不包含这些目录。
+/.scratch/
+/coordination/
+/docs/research/
 /logs/
+*.log
+*.dmp
+*.dump
+__pycache__/
+*.py[cod]
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+# Unity 原生崩溃产物保留在本机。
+/43781DB5C40ECC39FD718685594F0956/
 
 # 百炼语音识别测量用的录音（.scratch/bailian-stt ticket 01），不进仓库
 /.scratch/bailian-stt/prototype/audio/

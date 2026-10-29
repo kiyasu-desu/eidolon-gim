@@ -18,9 +18,9 @@ WING = Document("WING で優勝した。", "WING")
 DOME = Document("ドームのステージに立った。", "ドーム")
 DOCUMENTS = [PARK, WING, DOME]
 
-SCOPE = character_scope("mano")
+SCOPE = character_scope("sora")
 SCOPES = [SCOPE, WORK_SCOPE]
-FAMILIES = {character_scope("mano"): CHARACTER_SCOPES, WORK_SCOPE: WORK_SCOPE}
+FAMILIES = {character_scope("sora"): CHARACTER_SCOPES, WORK_SCOPE: WORK_SCOPE}
 """What each scope's index forgets other models' vectors of."""
 
 
@@ -135,7 +135,7 @@ async def test_a_removed_text_is_forgotten(database: Path):
 
 
 async def test_other_scopes_are_left_alone(database: Path):
-    other = next(s for s in [*SCOPES, character_scope("kogane")] if s != SCOPE)
+    other = next(s for s in [*SCOPES, character_scope("riku")] if s != SCOPE)
     embedder = FakeEmbedder()
     texts = EmbeddedTexts(database, embedder)
     await nearest_text(texts, embedder, other, [WING], "優勝")
@@ -184,7 +184,7 @@ async def test_forgetting_other_models_keeps_only_the_current_models_vectors(
 
 
 async def test_forgetting_other_models_leaves_other_scopes_alone(database: Path, scope: str):
-    other = WORK_SCOPE if scope != WORK_SCOPE else character_scope("kogane")
+    other = WORK_SCOPE if scope != WORK_SCOPE else character_scope("riku")
     old = EmbeddedTexts(database, FakeEmbedder("old-model"))
     await old.embed_missing(scope, [PARK])
     await old.embed_missing(other, [WING])
@@ -200,7 +200,7 @@ async def test_forgetting_other_models_leaves_other_scopes_alone(database: Path,
 
 async def test_forgetting_other_models_of_the_characters_covers_every_character(database: Path):
     old = EmbeddedTexts(database, FakeEmbedder("old-model"))
-    for scope in [character_scope("mano"), character_scope("kogane"), WORK_SCOPE]:
+    for scope in [character_scope("sora"), character_scope("riku"), WORK_SCOPE]:
         await old.embed_missing(scope, [PARK])
     old.close()
     texts = EmbeddedTexts(database, FakeEmbedder("new-model"))

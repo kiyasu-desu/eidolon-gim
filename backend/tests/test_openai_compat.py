@@ -12,7 +12,7 @@ RECORDED_STREAM = (
     'data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,'
     '"delta":{"role":"assistant","content":""},"finish_reason":null}]}\n\n'
     'data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,'
-    '"delta":{"content":"<ja>ほわっ"},"finish_reason":null}]}\n\n'
+    '"delta":{"content":"<ja>えっと"},"finish_reason":null}]}\n\n'
     ": keep-alive\n\n"
     'data: {"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,'
     '"delta":{"content":"</ja><zh>哇</zh>"},"finish_reason":null}]}\n\n'
@@ -40,7 +40,7 @@ async def test_streams_content_deltas_and_sends_a_chat_completions_request():
 
     chunks = [c async for c in llm.stream([ChatMessage("user", "你好")])]
 
-    assert chunks == ["<ja>ほわっ", "</ja><zh>哇</zh>"]
+    assert chunks == ["<ja>えっと", "</ja><zh>哇</zh>"]
     (request,) = requests
     assert str(request.url) == "https://llm.example/v1/chat/completions"
     assert request.headers["authorization"] == "Bearer sk-test"

@@ -21,7 +21,7 @@ services:
       - eidolon-data:/data
       - ./characters:/characters:ro
       - ./corpus:/corpus:ro
-      - ./deploy:/deploy:ro # 活动名对照表 event-names.toml（同步时读取）
+      - ./deploy:/deploy:ro # 运维脚本
     restart: unless-stopped
     logging: *logging
     stop_grace_period: 30s

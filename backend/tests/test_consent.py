@@ -27,12 +27,12 @@ async def test_until_they_agree_new_users_are_sent_to_agree_first(
     client = await newcomer(make_client, github)
 
     for res in [
-        await client.post("/api/conversations", json={"character_id": "mano"}),
-        await client.get("/api/conversations", params={"character_id": "mano"}),
+        await client.post("/api/conversations", json={"character_id": "sora"}),
+        await client.get("/api/conversations", params={"character_id": "sora"}),
         await client.post("/api/conversations/any/turns", json={"text": "在吗"}),
         await client.get("/api/profile"),
         await client.get("/api/memories"),
-        await client.get("/api/characters/mano/affinity"),
+        await client.get("/api/characters/sora/affinity"),
         await client.get("/api/gifts/catalog"),
         await client.get("/api/gifts"),
         await client.post("/api/gifts/draws", json={}),
@@ -53,7 +53,7 @@ async def test_once_they_agree_they_can_talk(
     )
 
     assert res.status_code == 204
-    created = await client.post("/api/conversations", json={"character_id": "mano"})
+    created = await client.post("/api/conversations", json={"character_id": "sora"})
     events = await send_turn(client, created.json()["id"], "在吗")
     assert events[-1]["type"] == "done"
     with sqlite3.connect(settings.database_path) as db:
@@ -78,7 +78,7 @@ async def test_agreeing_needs_both_the_terms_and_the_age(
     res = await client.post("/api/account/consent", json=consent)
 
     assert res.status_code == 422
-    still = await client.get("/api/conversations", params={"character_id": "mano"})
+    still = await client.get("/api/conversations", params={"character_id": "sora"})
     assert still.status_code == CONSENT_REQUIRED
 
 
@@ -89,7 +89,7 @@ async def test_they_can_sign_out_without_agreeing(
 
     assert (await client.post("/api/auth/logout")).status_code == 204
 
-    res = await client.get("/api/conversations", params={"character_id": "mano"})
+    res = await client.get("/api/conversations", params={"character_id": "sora"})
     assert res.status_code == 401
 
 

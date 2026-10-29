@@ -37,34 +37,34 @@ function pairs(hex: string) {
 
 describe("imageColorScale", () => {
   const officials = {
-    真乃: "#ffbad6",
-    恋鐘: "#f84cad",
-    灯織: "#144384",
-    めぐる: "#ffe012",
-    摩美々: "#a846fb",
-    咲耶: "#006047",
-    結華: "#3b91c4",
-    霧子: "#d9f2ff",
+    ソラ: "#ffbad6",
+    リク: "#f84cad",
+    ナギ: "#144384",
+    ヒナ: "#ffe012",
+    ミナ: "#a846fb",
+    アオ: "#006047",
+    ユキ: "#3b91c4",
+    キリ: "#d9f2ff",
     透: "#50d0d0",
-    円香: "#be1e3e",
-    小糸: "#7967c3",
-    雛菜: "#ffc639",
-    にちか: "#a6ceb6",
-    美琴: "#760f10",
-    あさひ: "#f30100",
-    冬優子: "#5ce626",
-    愛依: "#ff00ff",
-    果穂: "#e5461c",
-    智代子: "#f93b90",
-    樹里: "#ffc602",
-    凛世: "#89c3eb",
-    夏葉: "#90e667",
-    甘奈: "#f54275",
-    甜花: "#e75bec",
-    千雪: "#fbfafa",
-    ルカ: "#24130d",
-    羽那: "#e0b5d3",
-    はるき: "#ead7a4",
+    マド: "#be1e3e",
+    イト: "#7967c3",
+    ヒヨ: "#ffc639",
+    ニコ: "#a6ceb6",
+    ミコ: "#760f10",
+    アサ: "#f30100",
+    フユ: "#5ce626",
+    メイ: "#ff00ff",
+    カナ: "#e5461c",
+    チカ: "#f93b90",
+    ジュン: "#ffc602",
+    リン: "#89c3eb",
+    ナツ: "#90e667",
+    アマ: "#f54275",
+    テン: "#e75bec",
+    チユ: "#fbfafa",
+    ルナ: "#24130d",
+    ハル: "#e0b5d3",
+    アキ: "#ead7a4",
   };
 
   it("官方印象色和任意色相、任意深浅的印象色，每一对颜色在明暗两种模式下都看得清", () => {
@@ -86,16 +86,16 @@ describe("imageColorScale", () => {
   });
 
   it("同为粉色的两位角色，通话层底色仍然分得开", () => {
-    const mano = imageColorScale("#ffbad6");
-    const kogane = imageColorScale("#f84cad");
-    expect(distance(mano.call.deep, kogane.call.deep)).toBeGreaterThan(0.03);
+    const sora = imageColorScale("#ffbad6");
+    const riku = imageColorScale("#f84cad");
+    expect(distance(sora.call.deep, riku.call.deep)).toBeGreaterThan(0.03);
   });
 
   it("分享图的色带铺原色：深的印象色上写白字，浅的写同色相的深色", () => {
-    const hiori = imageColorScale("#144384");
-    expect(hiori.share).toMatchObject({ banner: "#144384", onBanner: "#ffffff" });
-    const mano = imageColorScale("#ffbad6");
-    expect(mano.share).toMatchObject({ banner: "#ffbad6", onBanner: mano.button.fg.light });
+    const nagi = imageColorScale("#144384");
+    expect(nagi.share).toMatchObject({ banner: "#144384", onBanner: "#ffffff" });
+    const sora = imageColorScale("#ffbad6");
+    expect(sora.share).toMatchObject({ banner: "#ffbad6", onBanner: sora.button.fg.light });
   });
 
   it("分享图排行条的底就是主题里的 --share-track", () => {

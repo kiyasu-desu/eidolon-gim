@@ -65,7 +65,7 @@
     {
       "id": "3f2a…",
       "character_id": "mano",
-      "character_name": "櫻木真乃",
+      "character_name": "月村手毬",
       "created_at": "2026-09-25T12:00:00.000000+00:00",
       "title": "商量周末去看海",
       "messages": [
@@ -155,7 +155,7 @@
     {
       "id": 41,
       "source_character_id": "mano",
-      "source_character_name": "櫻木真乃",
+      "source_character_name": "月村手毬",
       "conversation": null,
       "text": "制作人住在大阪",
       "created_at": "2026-09-25T12:00:00.000000+00:00",

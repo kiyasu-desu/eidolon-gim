@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         贴日志和配置前，请删掉 API key、token、OAuth secret、`EIDOLON_SECRET_KEY` 等密钥，以及别人的对话内容。
-        术语见 [GLOSSARY.md](https://github.com/Sallyn0225/eidolon-sc/blob/main/GLOSSARY.md)。
+        术语见 [GLOSSARY.md](https://github.com/kiyasu-desu/eidolon-gim/blob/main/GLOSSARY.md)。
 
   - type: dropdown
     id: area

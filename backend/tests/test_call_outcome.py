@@ -33,7 +33,7 @@ class Limiter(Deployment):
     def call(
         self, limits: CallLimits = CallLimits(), brought: BroughtKeys = BroughtKeys()
     ) -> CallOutcome:
-        admission = self.admissions().call(self.user, "mano", brought)
+        admission = self.admissions().call(self.user, "sora", brought)
         return CallOutcome(
             admission, limits, self.clock, lambda at, lasted: self.kept.append((at, lasted))
         )

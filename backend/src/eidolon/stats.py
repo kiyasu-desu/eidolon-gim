@@ -40,7 +40,7 @@ from fastapi import FastAPI, Header, Query
 
 from eidolon.affinity import TIERS, Tier
 from eidolon.assembly import Backend
-from eidolon.characters import in_idol_order
+from eidolon.characters import in_display_order
 from eidolon.producer import effective_timezone
 from eidolon.sessions import UserId
 from eidolon.store import Contact, KeptCall
@@ -77,7 +77,7 @@ def add_stats_routes(app: FastAPI, backend: Backend) -> None:
         days = RANGE_DAYS[span]
         since = None if days is None else today - timedelta(days=days - 1)
         first = store.first_records(user_id)
-        idols = in_idol_order(backend.characters.values())
+        idols = in_display_order(backend.characters.values())
         affinity_on = backend.config.affinity_on
         return {
             # Since signing up, or since the first thing kept if earlier: conversations imported
@@ -112,7 +112,7 @@ def in_range(
     span: Range,
     within: list[tuple[Contact, datetime]],
     calls: list[KeptCall],
-    known_in_idol_order: dict[str, int],
+    known_in_display_order: dict[str, int],
     *,
     gifts_on: bool,
 ) -> dict:
@@ -136,7 +136,7 @@ def in_range(
                 "character_id": character, "turns": turns[character], "days_known": days,
                 "call_seconds": called[character],
             }
-            for character, days in known_in_idol_order.items()
+            for character, days in known_in_display_order.items()
         ],
         "calls": {"count": len(calls), "seconds": sum(c.duration_s for c in calls)},
         "gifts": {
@@ -145,7 +145,7 @@ def in_range(
             "most": next(
                 (
                     {"character_id": character, "given": most}
-                    for character in known_in_idol_order
+                    for character in known_in_display_order
                     if most and given[character] == most
                 ),
                 None,

@@ -35,11 +35,11 @@ from tests.test_world_retrieval import ENTRIES as WORK_FACTS
 from tests.test_world_setting import write_world
 
 OLD, NEW = "old-model", "new-model@768"
-FACTS = "# 档案\n喜欢鸟。\n\n# 人物关系\n## 風野灯織\n同组合的伙伴。\n"
+FACTS = "# 档案\n喜欢鸟。\n\n# 人物关系\n## 雨宮ナギ\n同组合的伙伴。\n"
 EPISODES = [
     Episode(
-        f"produce_events/10010010{i}", "培育剧情", "W.I.N.G.編", f"第{i}話", frozenset({"mano"}),
-        (Line("真乃", "公園の鳩" if i == 1 else f"台詞 {i}"),),
+        f"produce_events/10010010{i}", "培育剧情", "練習編", f"第{i}話", frozenset({"sora"}),
+        (Line("ソラ", "公園の鳩" if i == 1 else f"台詞 {i}"),),
     )
     for i in range(1, 6)
 ]
@@ -65,19 +65,20 @@ class Deployment:
 
     def __init__(self, tmp_path: Path) -> None:
         self.database = tmp_path / "eidolon.db"
+        self.story_database = self.database.with_suffix(".stories.db")
         config = CharacterConfig(tmp_path / "characters")
-        config.add("mano", "櫻木真乃", "sheet", speakers=["真乃"], facts=FACTS)
-        config.add("kogane", "月岡恋鐘", "sheet", speakers=["恋鐘"])
+        config.add("sora", "星野ソラ", "sheet", speakers=["ソラ"], facts=FACTS)
+        config.add("riku", "青葉リク", "sheet", speakers=["リク"])
         self.characters_path = config.path
         self.characters = load_characters(config.path)
         self.store = Store(self.database)
 
     async def embed_everything_with(self, model: str) -> None:
         embedder = FakeEmbedder(model)
-        corpus = StoryCorpus(self.database, embedder)
+        corpus = StoryCorpus(self.story_database, embedder)
         await corpus.save(EPISODES)
         corpus.close()
-        facts = CharacterFacts(self.database, embedder, [self.mano])
+        facts = CharacterFacts(self.database, embedder, [self.sora])
         await facts.embed_missing()
         facts.close()
         memories = writing_with(
@@ -88,7 +89,7 @@ class Deployment:
             FakeBackgroundLLM(memorized(CAT, TRIP)),
         )
         world = World(self.store, self.characters)
-        await tell(memories, world, world.conversation("mano"), "我家的猫叫小白，下个月去北海道")
+        await tell(memories, world, world.conversation("sora"), "我家的猫叫小白，下个月去北海道")
         await memories.entries(world.producer)  # written down, and embedded
         await memories.aclose()
 
@@ -100,14 +101,14 @@ class Deployment:
         )
 
     @property
-    def mano(self) -> Character:
-        return self.characters["mano"]
+    def sora(self) -> Character:
+        return self.characters["sora"]
 
     def vectors(self, table: str, scope: str | None = None) -> dict[str, int]:
         """How many vectors `table` holds from each model (of the scopes matching `scope`,
         a LIKE pattern, if given)."""
         where, params = ("WHERE scope LIKE ?", (scope,)) if scope is not None else ("", ())
-        with sqlite3.connect(self.database) as db:
+        with sqlite3.connect(self.story_database if table == "episode_passages" else self.database) as db:
             rows = db.execute(
                 f"SELECT model, count(*) FROM {table} {where} GROUP BY model", params
             ).fetchall()
@@ -133,7 +134,7 @@ async def test_everything_is_embedded_again_and_then_the_old_vectors_dropped(
     await deployment.embed_everything_with(OLD)
     embedder = FakeEmbedder(NEW)
 
-    report = await reembed(deployment.database, deployment.characters.values(), embedder)
+    report = await reembed(deployment.database, deployment.characters.values(), embedder, story_path=deployment.story_database)
 
     assert report.counts() == {"剧情库": 5, "角色资料": 2, "作品资料": 0, "记忆": 2}
     assert report.forgotten == 4  # 2 facts and 2 memories; each passage kept only one
@@ -141,19 +142,19 @@ async def test_everything_is_embedded_again_and_then_the_old_vectors_dropped(
     assert deployment.vectors("embedded_texts", "character:%") == {NEW: 2}
     assert deployment.vectors("memory_vectors") == {NEW: 2}
     # Each passage is re-embedded from its text, under its title.
-    assert "W.I.N.G.編「第1話」" in embedder.titles
-    corpus = StoryCorpus(deployment.database, embedder)
-    [park] = await corpus.search("鳩", "mano", 1)
+    assert "練習編「第1話」" in embedder.titles
+    corpus = StoryCorpus(deployment.story_database, embedder)
+    [park] = await corpus.search("鳩", "sora", 1)
     corpus.close()
     assert park.episode.id == "produce_events/100100101"
 
 
 async def test_a_second_run_has_nothing_to_do(deployment: Deployment):
     await deployment.embed_everything_with(OLD)
-    await reembed(deployment.database, deployment.characters.values(), FakeEmbedder(NEW))
+    await reembed(deployment.database, deployment.characters.values(), FakeEmbedder(NEW), story_path=deployment.story_database)
     embedder = FakeEmbedder(NEW)
 
-    report = await reembed(deployment.database, deployment.characters.values(), embedder)
+    report = await reembed(deployment.database, deployment.characters.values(), embedder, story_path=deployment.story_database)
 
     assert report.counts() == {"剧情库": 0, "角色资料": 0, "作品资料": 0, "记忆": 0}
     assert report.forgotten == 0
@@ -167,14 +168,14 @@ async def test_an_interrupted_run_keeps_what_it_finished_and_drops_nothing(
     failing = FailingEmbedder(NEW, batches=2)
 
     with pytest.raises(EmbeddingError):
-        await reembed(deployment.database, deployment.characters.values(), failing, batch=2)
+        await reembed(deployment.database, deployment.characters.values(), failing, batch=2, story_path=deployment.story_database)
 
     assert deployment.vectors("episode_passages") == {NEW: 4, OLD: 1}
     assert deployment.vectors("embedded_texts", "character:%") == {OLD: 2}  # not reached, nothing dropped
     assert deployment.vectors("memory_vectors") == {OLD: 2}
 
     embedder = FakeEmbedder(NEW)
-    report = await reembed(deployment.database, deployment.characters.values(), embedder, batch=2)
+    report = await reembed(deployment.database, deployment.characters.values(), embedder, batch=2, story_path=deployment.story_database)
 
     assert report.counts()["剧情库"] == 1  # only what the first run did not finish
     assert len([t for t in embedder.titles if t is not None and "「" in t]) == 1
@@ -193,7 +194,7 @@ async def test_deleted_memories_are_not_embedded(deployment: Deployment):
     await memories.aclose()
     embedder = FakeEmbedder(NEW)
 
-    report = await reembed(deployment.database, deployment.characters.values(), embedder)
+    report = await reembed(deployment.database, deployment.characters.values(), embedder, story_path=deployment.story_database)
 
     assert report.counts()["记忆"] == 1
     assert CAT not in embedder.documents and TRIP in embedder.documents
@@ -281,8 +282,8 @@ def test_the_command_fails_without_dropping_anything(
 async def test_an_import_meanwhile_is_not_overwritten(deployment: Deployment):
     await deployment.embed_everything_with(OLD)
     rewritten = Episode(
-        EPISODES[0].id, "培育剧情", "W.I.N.G.編", "第1話", frozenset({"mano"}),
-        (Line("真乃", "優勝しました"),),
+        EPISODES[0].id, "培育剧情", "練習編", "第1話", frozenset({"sora"}),
+        (Line("ソラ", "優勝しました"),),
     )
 
     class ImportingMeanwhile(FakeEmbedder):
@@ -290,16 +291,16 @@ async def test_an_import_meanwhile_is_not_overwritten(deployment: Deployment):
 
         async def embed_documents(self, documents: Sequence[Document]) -> list[list[float]]:
             if not self.documents:
-                importer = StoryCorpus(deployment.database, FakeEmbedder(NEW))
+                importer = StoryCorpus(deployment.story_database, FakeEmbedder(NEW))
                 await importer.save([rewritten])
                 importer.close()
             return await super().embed_documents(documents)
 
     embedder = ImportingMeanwhile(NEW)
-    await reembed(deployment.database, deployment.characters.values(), embedder)
+    await reembed(deployment.database, deployment.characters.values(), embedder, story_path=deployment.story_database)
 
-    corpus = StoryCorpus(deployment.database, embedder)
-    [found] = await corpus.search("優勝", "mano", 1)
+    corpus = StoryCorpus(deployment.story_database, embedder)
+    [found] = await corpus.search("優勝", "sora", 1)
     corpus.close()
     assert found.episode.id == EPISODES[0].id and "優勝しました" in found.text
     assert deployment.vectors("episode_passages") == {NEW: 5}

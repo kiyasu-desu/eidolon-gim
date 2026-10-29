@@ -15,8 +15,8 @@ only passages embedded with the current model are searched. After the model chan
 The story catalog is read from the same tables: each character's episodes, grouped
 by the card or event they belong to, so it is always in step with the last import.
 
-Everything lives in the same SQLite file as the rest of the relational data, which
-stays out of the repository (ADR-0003).
+Episodes live in a detachable local SQLite story library, separate from user data.
+The library and its vectors stay out of the repository.
 """
 
 import sqlite3
@@ -71,7 +71,7 @@ REEMBED_BATCH = 200
 
 
 ImportFormat = Literal["csv", "json", "gim-csv", "gim-conditional-csv"]
-"""`csv` for SCTranslationData, `json` for the game's own scripts."""
+"""Legacy format values remain readable for existing private databases. New imports use GIM formats."""
 
 
 @dataclass(frozen=True)
@@ -206,11 +206,6 @@ class StoryCorpus:
                 "SELECT imported_from FROM episodes WHERE id = ?", (episode_id,)
             ).fetchone()
             return typing.cast(ImportFormat, row["imported_from"]) if row else None
-
-    def is_translated(self, episode_id: str) -> bool:
-        """Whether the corpus has the episode's translation (from SCTranslationData), not
-        just its untranslated script."""
-        return self.imported_from(episode_id) == "csv"
 
     def episode_ids(self, prefix: str = "") -> list[str]:
         """The identifiers of the episodes whose identifier starts with `prefix`, in order."""

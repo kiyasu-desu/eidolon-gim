@@ -33,7 +33,7 @@ async def methods(client: httpx.AsyncClient) -> list[tuple[str, str]]:
 
 
 async def conversations(client: httpx.AsyncClient) -> list[str]:
-    res = await client.get("/api/conversations", params={"character_id": "mano"})
+    res = await client.get("/api/conversations", params={"character_id": "sora"})
     return [c["id"] for c in res.json()]
 
 
@@ -170,6 +170,6 @@ async def test_signing_out_everywhere_ends_every_session_of_the_user(
 
     assert res.status_code == 204
     for client in (desktop, phone):
-        listed = await client.get("/api/conversations", params={"character_id": "mano"})
+        listed = await client.get("/api/conversations", params={"character_id": "sora"})
         assert listed.status_code == 401
-    assert (await friend.get("/api/conversations", params={"character_id": "mano"})).status_code == 200
+    assert (await friend.get("/api/conversations", params={"character_id": "sora"})).status_code == 200

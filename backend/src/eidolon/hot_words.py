@@ -1,11 +1,11 @@
 """Hot words: the names a call's speech recognition is told to listen out for, so that 灯織,
-恋鐘, L'Antica or 283プロ said in a call are written as they are, not as something else that
+手毬, 初星学園 or 月村 said in a call are written as they are, not as something else that
 sounds the same.
 
 They are made once, as the server starts, from what is already kept: every way of writing
 in the readings file (`readings`); each character's Chinese name (`name_zh`), and her
 Chinese given name, the Chinese name without as many characters at its start as her
-Japanese surname has (樱木真乃 → 真乃, 有栖川夏叶 → 夏叶), her Japanese surname being the
+Japanese surname has (月村手毬 → 手毬), her Japanese surname being the
 reading that starts her full name without being it; and the names of the world setting's
 units. Lone surnames (田中, 鈴木) and single characters (巡) are left out: they would have
 ordinary words heard as names. So are words the services take none of, as Alibaba Cloud

@@ -507,7 +507,7 @@ class Catalog:
         self._starting = threading.Lock()
         self._closed = False
         self._http = httpx.Client(
-            transport=transport, timeout=60, headers={"User-Agent": "eidolon-sc"},
+            transport=transport, timeout=60, headers={"User-Agent": "eidolon-gim"},
             follow_redirects=True,
         )
         self._load()

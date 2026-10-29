@@ -79,7 +79,7 @@ async def test_original_fixture_catalog_audit_idempotency_and_reembed(tmp_path: 
         assert episode.lines[3].speaker is None
         assert len(episode.lines) == 5
         assert corpus.catalog("temari")[0].episodes[0].episode_id == ID
-        assert corpus.catalog("mano") == []
+        assert corpus.catalog("sora") == []
         entry = first.files[0]
         assert entry.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
         assert entry.line_rows == [3, 5, 6, 7, 10]  # quoted multiline translation takes 2 physical rows
@@ -101,7 +101,7 @@ async def test_original_fixture_catalog_audit_idempotency_and_reembed(tmp_path: 
         assert await corpus.embed_missing() == 1
         assert corpus.count_missing_vectors() == 0
         assert (await corpus.search("公園", "temari"))[0].episode.id == ID
-        assert await corpus.search("公園", "mano") == []
+        assert await corpus.search("公園", "sora") == []
         assert "休憩する？" not in embedder.documents[0]
         assert "__title__" not in embedder.documents[0]
         assert (await run(root, corpus, meta)).unchanged == 1
@@ -379,7 +379,7 @@ async def test_manifest_rejects_bad_outcome_and_duplicate_keys(tmp_path: Path):
         corpus.close()
 
 
-def test_gim_defaults_and_legacy_sync_guards(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]):
+def test_gim_defaults(monkeypatch: pytest.MonkeyPatch):
     for name in ("EIDOLON_CHARACTERS_PATH", "EIDOLON_DATABASE_PATH", "EIDOLON_AFFINITY_AND_GIFTS"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("CHAT_LLM_API_KEY", "test")
@@ -391,6 +391,3 @@ def test_gim_defaults_and_legacy_sync_guards(monkeypatch: pytest.MonkeyPatch, ca
     assert not settings.affinity_and_gifts
     assert list(load_characters(settings.characters_path)) == ["temari"]
     assert load_world(world_path(settings.characters_path)) is None
-    assert main(["story", "sync"]) == 1
-    assert main(["world", "sync"]) == 1
-    assert "legacy SC" in capsys.readouterr().err

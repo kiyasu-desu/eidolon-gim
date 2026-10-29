@@ -8,9 +8,7 @@
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "stand:thumbnails": "node --env-file-if-exists=../.env scripts/stand-thumbnails.mts",
-    "screenshots": "node --env-file-if-exists=../.env scripts/screenshots.mts",
-    "readme-media": "node scripts/readme-media.mts"
+    "screenshots": "node --env-file-if-exists=../.env scripts/screenshots.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -20,11 +18,9 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "fflate": "^0.8.3",
-    "lenis": "^1.3.26",
     "lucide-react": "^1.55.0",
     "modern-screenshot": "^4.7.0",
     "next": "^16.4.3",
-    "ogl": "^1.0.11",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
@@ -35,15 +31,11 @@
     "uqr": "^0.1.3"
   },
   "devDependencies": {
-    "@gltf-transform/core": "^4.5.1",
-    "@gltf-transform/extensions": "^4.5.1",
-    "@gltf-transform/functions": "^4.5.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.186.0",
-    "meshoptimizer": "^1.3.0",
     "playwright": "^1.64.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",

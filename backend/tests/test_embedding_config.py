@@ -136,6 +136,6 @@ def test_commands_name_the_missing_gemini_key(
     monkeypatch.setenv("EMBEDDING_PROVIDER", "gemini")
     monkeypatch.setenv("SILICONFLOW_API_KEY", "sk-test")
 
-    err = admin.fails("story", "import-csv", str(story), "--characters", str(characters.path))
+    err = admin.fails("reembed", "--characters", str(characters.path))
 
     assert "GEMINI_API_KEY" in err

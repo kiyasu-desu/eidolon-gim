@@ -13,7 +13,7 @@ from eidolon.characters import load_characters
 from eidolon.config import Settings
 from eidolon.corpus import StoryCorpus
 from eidolon.retrieval import FALLBACK_REFERENCES, MAX_REFERENCES
-from eidolon.story_import import import_csv_directory
+from tests.stories import seed_sample_stories
 from tests.conftest import KOGANE_SHEET, MANO_SHEET, CharacterConfig, ClientFactory
 from tests.fakes import FakeBackgroundLLM, FakeEmbedder, FakeJudge, FakeLLM, FakeReranker, context_of, system_of
 from tests.test_live_config import until
@@ -27,28 +27,28 @@ MANO_FACTS = """\
 生日是3月4日，喜欢鸟。
 
 # 人物关系
-## 風野灯織
-illumination STARS 的伙伴，性格认真。
-## 八宮めぐる
-illumination STARS 的伙伴，总是很有精神。
+## 雨宮ナギ
+Sample Stars 的伙伴，性格认真。
+## 晴川ヒナ
+Sample Stars 的伙伴，总是很有精神。
 
 # 鸟
-## ピーちゃん
-常和真乃在一起的鸽子。
+## サンプルくん
+常和ソラ在一起的鸽子。
 ## 公園
-真乃常去公园看鸟。
+ソラ常去公园看鸟。
 """
 KOGANE_FACTS = "# 家乡\n来自长崎，最喜欢什锦面。"
 
-PARK_LINE = "公園で鳩と一緒に歌っていました"
+PARK_LINE = "公園で新しい練習をしていました"
 
 
 @pytest.fixture
 def characters(tmp_path: Path) -> CharacterConfig:
     return (
         CharacterConfig(tmp_path / "characters")
-        .add("mano", "櫻木真乃", MANO_SHEET, speakers=["真乃"], facts=MANO_FACTS)
-        .add("kogane", "月岡恋鐘", KOGANE_SHEET, speakers=["恋鐘"], facts=KOGANE_FACTS)
+        .add("sora", "星野ソラ", MANO_SHEET, speakers=["ソラ"], facts=MANO_FACTS)
+        .add("riku", "青葉リク", KOGANE_SHEET, speakers=["リク"], facts=KOGANE_FACTS)
     )
 
 
@@ -56,17 +56,17 @@ def characters(tmp_path: Path) -> CharacterConfig:
 async def embedder(settings: Settings, story: Path) -> FakeEmbedder:
     """The embedder the sample stories were imported with."""
     embedder = FakeEmbedder()
-    corpus = StoryCorpus(settings.database_path, embedder)
+    corpus = StoryCorpus(settings.story_path, embedder)
     try:
         characters = load_characters(settings.characters_path)
-        await import_csv_directory(story, corpus, characters.values())
+        await seed_sample_stories(story, corpus, characters.values())
     finally:
         corpus.close()
     return embedder
 
 
 async def system_prompt(
-    client: httpx.AsyncClient, llm: FakeLLM, text: str, character: str = "mano"
+    client: httpx.AsyncClient, llm: FakeLLM, text: str, character: str = "sora"
 ) -> str:
     conversation_id = await start_conversation(client, character)
     events = await send_turn(client, conversation_id, text)
@@ -86,7 +86,7 @@ async def test_small_talk_retrieves_nothing(
 
     system = await system_prompt(client, llm, "早上好")
 
-    assert jev.asked == [("櫻木真乃", "早上好")]
+    assert jev.asked == [("星野ソラ", "早上好")]
     # The judge model answering at once, nothing was looked up before it did: embedded only
     # to show the background model the memories nearest the turn, after it.
     assert embedder.queries == ["早上好"]
@@ -105,7 +105,7 @@ async def test_a_character_recalls_episodes_she_is_cast_in(
 
     assert "# 回忆与资料" in system
     references = system[system.index("# 回忆与资料") :]
-    assert references.index("## 剧情\nW.I.N.G.編「公園の歌声」") < references.index("## 角色资料")
+    assert references.index("## 剧情\n練習編「公園の歌声」") < references.index("## 角色资料")
     assert PARK_LINE in references
 
 
@@ -115,50 +115,50 @@ async def test_a_character_cannot_recall_episodes_she_is_not_in(
     llm, reranker = FakeLLM(REPLY, REPLY), FakeReranker()
     client = make_client(llm, retrieval_judge=FakeJudge(), embedder=embedder, reranker=reranker)
 
-    # Mano's park episode is the closest match, but Kogane is not in it.
-    kogane = await system_prompt(client, llm, "公園の鳩のこと覚えてる？", "kogane")
+    # Sora's park episode is the closest match, but Riku is not in it.
+    riku = await system_prompt(client, llm, "公園の鳩のこと覚えてる？", "riku")
     candidates = reranker.calls[-1][1]
     assert not any(PARK_LINE in c for c in candidates)
-    assert PARK_LINE not in kogane
-    assert "ちゃんぽん" in kogane  # her own card is still there
+    assert PARK_LINE not in riku
+    assert "手作りのご飯" in riku  # her own story is still there
 
-    # Hiori's event is about a photo shoot in the park; no configured character is in it.
-    mano = await system_prompt(client, llm, "公園で写真を撮ったこと", "mano")
-    assert "撮影、頑張ります" not in mano
-    assert not any("撮影、頑張ります" in c for _, docs in reranker.calls for c in docs)
+    # Nagi's event is about a photo shoot in the park; no configured character is in it.
+    sora = await system_prompt(client, llm, "公園で写真を撮ったこと", "sora")
+    assert "準備の手順を確認します" not in sora
+    assert not any("準備の手順を確認します" in c for _, docs in reranker.calls for c in docs)
 
 
 async def test_character_facts_are_retrieved_for_their_own_character(
     make_client: ClientFactory, embedder: FakeEmbedder
 ):
     llm = FakeLLM(REPLY)
-    client = make_client(llm, retrieval_judge=FakeJudge(), embedder=embedder, reranker=FakeReranker("風野灯織"))
+    client = make_client(llm, retrieval_judge=FakeJudge(), embedder=embedder, reranker=FakeReranker("雨宮ナギ"))
 
-    system = await system_prompt(client, llm, "灯織ちゃんは元気？")
+    system = await system_prompt(client, llm, "ナギちゃんは元気？")
 
     references = system[system.index("# 回忆与资料") :]
-    assert references.index("## 角色资料\n人物关系 / 風野灯織\nillumination STARS 的伙伴，性格认真。") < (
+    assert references.index("## 角色资料\n人物关系 / 雨宮ナギ\nSample Stars 的伙伴，性格认真。") < (
         references.index("## 剧情")
     )
-    assert "来自长崎" not in system  # Kogane's facts are hers alone
+    assert "来自长崎" not in system  # Riku's facts are hers alone
 
 
 async def test_references_are_reranked_then_capped(
     make_client: ClientFactory, embedder: FakeEmbedder
 ):
-    reranker, llm = FakeReranker("ピーちゃん"), FakeLLM(REPLY)
+    reranker, llm = FakeReranker("サンプルくん"), FakeLLM(REPLY)
     client = make_client(llm, retrieval_judge=FakeJudge(), embedder=embedder, reranker=reranker)
 
     system = await system_prompt(client, llm, "鳩の話をしよう")
 
     [(query, candidates)] = reranker.calls
     assert query == "鳩の話をしよう"
-    # Mano's three episodes and five facts all go to the reranker...
+    # Sora's three episodes and five facts all go to the reranker...
     assert len(candidates) == 8 > MAX_REFERENCES
     # ...but only the best few reach the prompt, in the reranker's order.
     assert reference_count(system) == MAX_REFERENCES
     references = system[system.index("# 回忆与资料") :]
-    assert references.index("ピーちゃん") < references.index("## 剧情")
+    assert references.index("サンプルくん") < references.index("## 剧情")
 
 
 PARK_REPLY = ["<ja>[happy] 公園で鳩さんと歌った日ですね</ja><zh>[happily] 是和鸽子一起在公园唱歌的那天吧</zh>"]
@@ -185,7 +185,7 @@ async def test_references_are_looked_up_with_her_previous_reply_as_people_see_it
     assert query in embedder.queries
     assert "那时候累吗？" not in embedder.queries  # nor are memories found without it
     # The judge model is told what it was before: the latest messages and what was said.
-    assert jev.asked[-1] == ("櫻木真乃", "那时候累吗？")
+    assert jev.asked[-1] == ("星野ソラ", "那时候累吗？")
     assert PARK_LINE in context_of(llm.prompts[-1])
 
 
@@ -223,14 +223,14 @@ async def test_irrelevant_references_are_left_out(
 async def test_edited_facts_take_effect_on_restart(
     make_client: ClientFactory, embedder: FakeEmbedder, characters: CharacterConfig
 ):
-    characters.write("facts/mano.md", "# 鸟\n## ピーちゃん\n最近学会了说「ほわっ」。")
+    characters.write("facts/sora.md", "# 鸟\n## サンプルくん\n最近学会了说「えっと」。")
     llm = FakeLLM(REPLY)
     client = make_client(llm, retrieval_judge=FakeJudge(), embedder=embedder, reranker=FakeReranker())
 
-    system = await system_prompt(client, llm, "ピーちゃんは元気？")
+    system = await system_prompt(client, llm, "サンプルくんは元気？")
 
-    assert "最近学会了说「ほわっ」。" in system
-    assert "常和真乃在一起的鸽子。" not in system
+    assert "最近学会了说「えっと」。" in system
+    assert "常和ソラ在一起的鸽子。" not in system
 
 
 async def test_retrieval_goes_ahead_when_jev_is_down(
@@ -274,7 +274,7 @@ async def test_with_the_reranker_down_the_nearest_references_are_brought_but_no_
     assert sorted(len(docs) for _, docs in reranker.calls) == [1, 8]  # it was asked
     assert reference_count(system) == FALLBACK_REFERENCES == 3
     references = system[system.index("# 回忆与资料") :]
-    assert PARK_LINE in references and "真乃常去公园看鸟。" in references
+    assert PARK_LINE in references and "ソラ常去公园看鸟。" in references
     # A memory the reranker never judged might be what the user never said.
     assert "# 关于制作人的记忆" not in system and CAT not in system
 
@@ -284,7 +284,7 @@ async def test_with_the_reranker_down_the_nearest_references_are_brought_but_no_
 
 
 async def tell_of_the_cat(client: httpx.AsyncClient) -> None:
-    """A turn in which the user tells Mano of their cat, which is written down."""
+    """A turn in which the user tells Sora of their cat, which is written down."""
     await send_turn(client, await start_conversation(client), "我家的猫叫小白哦")
     memories = (await client.get("/api/memories")).json()  # once written down
     assert [m["text"] for m in memories] == [CAT]
@@ -373,5 +373,5 @@ async def test_a_recall_question_is_recalled_though_her_facts_cannot_be_embedded
 
     system = await system_prompt(client, llm, "那次在公园唱歌是怎么回事？")
 
-    assert "培育剧情 / W.I.N.G.編 /「公園の歌声」" in system
-    assert f"真乃：{PARK_LINE}" in system
+    assert "培育剧情 / 練習編 /「公園の歌声」" in system
+    assert f"ソラ：{PARK_LINE}" in system

@@ -1,7 +1,7 @@
 """Drafting the readings file (`eidolon reading draft`, `readings`).
 
 The first draft has each character's full name, her surname and her given name, those
-with kanji in them, read as the first line of her sheet has it, `櫻木真乃（さくらぎ まの）`:
+with kanji in them, read as the first line of her sheet has it, `月村手毬（つきむら てまり）`:
 the surname is what her name has ahead of her given name, which is the first of her
 `speakers`. Then the units and the office's staff, as the world setting reads them. A name
 already in the file is not drafted again; nor is a given name that is a word of its own
@@ -16,7 +16,7 @@ written anew each time: comments other than its heading are not kept.
 
 The phonemes are made with pyopenjtalk as Fish Audio's documentation does it
 (Fine-grained Control → Japanese), each part of the kana on its own and in katakana:
-OpenJTalk reads hiragana as a sentence, はちみや with the particle は, read わ.
+OpenJTalk reads hiragana as a sentence, はやかわ with the particle は, read わ.
 pyopenjtalk is in the development dependencies only: the server does not need it.
 """
 
@@ -41,7 +41,7 @@ HEADING = """\
 # 都把 phonemes 不为空的全部条目放进请求的 pronunciation_dictionary（readings.py）。
 #
 # written：原文写法，Fish Audio 按字面子串、区分大小写匹配，所以别收会和普通词撞上的写法
-#   （「透」「天井」）。kana：读音；用空格隔开的每一段分别转成音素再拼起来，人设里的名字在姓和名
+#   （「透」など）。kana：读音；用空格隔开的每一段分别转成音素再拼起来，人设里的名字在姓和名
 #   之间空一格。phonemes：发给 Fish Audio 的音素串。
 #
 # 改读音：改 kana，把 phonemes 清空成 ""，在 backend 下运行 `uv run eidolon reading draft`

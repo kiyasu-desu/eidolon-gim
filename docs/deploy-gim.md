@@ -1,15 +1,30 @@
 # Eidolon-GIM 部署
 
-当前范围为本地私用；以下部署步骤是配置说明，尚无本项目容器或公网验收结论。完整状态见 [PROJECT-STATUS](../coordination/PROJECT-STATUS.md)。
+本项目支持本地 Docker 与 Linux 部署。本文使用示例域名和身份标识；实际地址、账号、凭据及私有资源由部署者单独配置。
 
 默认月村手毬单角色，数据库和角色路径与参考 SC 项目分开。应用从当前源码构建，不拉取上游 SC 镜像。需要 Docker Compose v2；生产配置使用 Linux host 网络。
 
 ## 与参考项目共存
 
-- Compose 项目名默认 `eidolon-gim`，卷为 `eidolon-gim_eidolon-data`。不要用 `-p eidolon-sc`、`COMPOSE_PROJECT_NAME=eidolon-sc` 或外部卷把两个项目合并。
-- 本地入口默认 `127.0.0.1:3001`；生产前后端为 `127.0.0.1:3001/8001`，可用 `EIDOLON_FRONTEND_PORT`、`EIDOLON_BACKEND_PORT` 调整。
-- 生产 Caddy/coturn 仍用标准 80/443、3478 等端口。同一服务器已有它们时，只启动本项目的 `backend frontend`，在现有反向代理增加学马域名→`127.0.0.1:3001`，并另配可用 STUN/TURN。不要启动第二套占相同端口的服务。
-- `characters/`、`corpus/` 只读挂载；原始 `E:\gakumas` 不挂入容器，`corpus/` 不作为公开静态文件目录。本地 3D 模型已接入通话层；容器需另外提供相同相对路径的派生模型、animations.json 与贴图，本项目尚未做容器运行验收。
+- **项目与卷隔离**：Compose 项目名默认 `eidolon-gim`，卷为独立持久卷 `eidolon-gim_eidolon-data`。不要用 `-p eidolon-sc`、`COMPOSE_PROJECT_NAME=eidolon-sc` 或把两个项目合并到同一个数据卷。
+- **端口分配**：本地入口默认 `127.0.0.1:3001`；生产前后端为 `127.0.0.1:3001/8001`，由环境变量 `EIDOLON_FRONTEND_PORT`、`EIDOLON_BACKEND_PORT` 分别指定，与参考项目的 `3000/8000` 端口完全避开。
+- **反向代理与 TURN 共用**：同机已有 Caddy（80/443）和 coturn（3478 等端口）时，本项目通过 Compose 覆盖配置（`.env.server-compose.yml`）将自身的 `caddy` 与 `coturn` 服务置于 `standalone` profile 下，默认不启动，避免端口冲突。
+- **Caddy 反代配置**：在宿主原有的 Caddyfile 中为新域名追加独立反代块：
+  ```caddyfile
+  gim.example.com {
+      bind {$EIDOLON_PRIVATE_IP}
+
+      request_body /api/account/data-package {
+          max_size 201MiB
+      }
+
+      handle {
+          reverse_proxy 127.0.0.1:3001
+      }
+  }
+  ```
+  修改后先验证 Caddy 配置，再按宿主已有服务的方式重载；核对其他站点仍可访问。
+- **资源路径**：模型和导入来源可在只读 `/corpus`；剧情 SQLite 使用 WAL，应放在可写目录，推荐 `EIDOLON_STORY_DATABASE_PATH=/data/gim.stories.db`。模型根目录可设置 `EIDOLON_MODEL_ROOT=/corpus/local-packs/models`。详见[资源包说明](local-resource-packs.md)。
 
 ## 本地 Docker
 
@@ -24,56 +39,54 @@ docker compose exec backend python -c "import urllib.request; print(urllib.reque
 
 打开 [本地对话列表](http://127.0.0.1:3001/conversations)。入口只绑定回环地址；后端通过数据库健康检查后再启动前端。
 
-容器强制使用 `/characters/gim/characters.toml`、`/data/eidolon-gim.db`，避免宿主 Windows 路径覆盖。Linux 容器不能运行 System.Speech，Compose 会关闭本机语音开关；需要中性语音时按 [README](../README.md#windows-本机中性语音) 原生启动。当前角色已绑定 Fish Audio voice_id，宿主本地真实通话已有验收；容器仍需配置远程 STT/TTS 凭据并另行验收。
+容器强制使用 `/characters/gim/characters.toml`、`/data/eidolon-gim.db`，避免宿主 Windows 路径覆盖。Linux 容器不能运行 System.Speech，Compose 会关闭本机语音开关；需要中性语音时按 [README](../README.md#windows-本机中性语音) 原生启动。当前角色已绑定 Fish Audio voice_id，容器需配置远程 STT/TTS 凭据。
 
 `docker compose down` 只停止当前项目；不加 `-v`，保留数据卷。
 
-## Linux 服务器
+## Linux 服务器（生产部署）
 
-准备当前源码、域名/DNS、Docker/Compose v2 和自己的 `.env`。除模型配置外，还需：
+生产部署采用本地预先构建并导出镜像、打包应用与过滤数据、上传远端服务器并执行导入与恢复的幂等流水线。除外部模型与语音配置外，核心运行环境配置如下：
 
 ```dotenv
-EIDOLON_DOMAIN=<学马域名>
-EIDOLON_PUBLIC_IP=<服务器公网IPv4>
-EIDOLON_TURN_SECRET=<随机密钥>
-EIDOLON_SECRET_KEY=<另一随机密钥>
+EIDOLON_DOMAIN=gim.example.com
+EIDOLON_FRONTEND_PORT=3001
+EIDOLON_BACKEND_PORT=8001
+EIDOLON_PUBLIC_IP=<服务器公网IP>
+EIDOLON_TURN_SECRET=<同机 coturn 共享密钥>
+EIDOLON_SECRET_KEY=<独立生成的 64 位十六进制密钥>
 EIDOLON_PRIVATE_MODE=1
-EIDOLON_ALLOWED_IDENTITIES=github:<固定数字ID>
-GITHUB_CLIENT_ID=<OAuth应用ID>
-GITHUB_CLIENT_SECRET=<OAuth密钥>
+EIDOLON_ALLOWED_IDENTITIES=google:<your-sub>
+EIDOLON_ADMINS=google:<your-sub>
+GOOGLE_CLIENT_ID=<Google OAuth Client ID>
+GOOGLE_CLIENT_SECRET=<Google OAuth Client Secret>
 ```
 
-GitHub 回调为 `https://<学马域名>/api/auth/github/callback`；Google 为 `/api/auth/google/callback`，至少配一家。白名单使用 GitHub 数字 ID 或 Google `sub`，不是昵称/邮箱。private 模式空白名单拒启；开发登录与白名单互斥；已有未获准会话也会失效。`EIDOLON_ADMINS` 只授予管理权限，另行配置。固定 ID 未知时先在仅本机可访问的环境确认身份，不能先开放注册再补限制。
+### 部署与安全规范
 
-公网 IP 不在网卡上时填写 `EIDOLON_PRIVATE_IP`；NAT、TURN、OAuth 细节见 [上游部署资料](deploy.md)。保持 `.env` 私有。本轮不代表服务器、NAT 或云语音实测。
+1. **OAuth 与回调**：Google OAuth 回调路径为 `https://gim.example.com/api/auth/google/callback`。可与同机参考项目复用同一 OAuth 客户端（在 Google Cloud Console 中追加 Authorized redirect URIs）。
+2. **私密模式与白名单**：生产开启 `EIDOLON_PRIVATE_MODE=1` 时，未在 `EIDOLON_ALLOWED_IDENTITIES` 白名单中的陌生用户登录后会被拒绝（返回 403）；未登录访问 `/api/account` 返回 401；`EIDOLON_DEV_LOGIN` 与域名互斥，生产构建访问 `/api/auth/dev-login` 恒为 404。
+3. **数据卷恢复**：在首次部署或数据迁移时，通过备份归档将清洗后的 SQLite 数据库导入独立数据卷 `eidolon-gim_eidolon-data`，并校验 `PRAGMA integrity_check` 为 `ok`，绑定主账号的 Google `sub`，保留历史对话记录。
+4. **服务共存部署命令**：
+   ```sh
+   # 校验配置
+   docker compose -f docker-compose.prod.yml config --quiet
+   # 仅启动 backend 与 frontend 容器（pull_policy: never，使用已加载的镜像构建标签）
+   docker compose -f docker-compose.prod.yml up -d --build backend frontend
+   # 查看状态
+   docker compose -f docker-compose.prod.yml ps
+   ```
 
-### 独立主机
+## 线上验收基准
 
-```sh
-docker compose -f docker-compose.prod.yml config --quiet
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
-```
+部署完成后需逐项执行以下线上验收：
 
-应用镜像为 `eidolon-gim-backend:local`、`eidolon-gim-frontend:local`；`EIDOLON_IMAGE_TAG` 仅改变构建标签，配置仍从当前源码构建。Caddy 读取同一 `EIDOLON_FRONTEND_PORT`，默认代理到 3001。
-
-### 已有反向代理的服务器
-
-```sh
-docker compose -f docker-compose.prod.yml up -d --build backend frontend
-```
-
-这条命令不启动本配置的 Caddy/coturn。部署者须在现有服务完成域名路由及 TURN 配置，并检查端口、共享密钥；应用容器启动不等于外网通话验收。
-
-## 更新与观察
-
-更新确认过的当前源码后，重新执行对应 `up -d --build`；改 `.env` 后重建服务，不只 `restart`。没有本项目镜像发布流水线时，不使用上游 GHCR `pull` 代替构建。
-
-```sh
-docker compose -f docker-compose.prod.yml logs --tail 100 backend
-docker compose -f docker-compose.prod.yml exec backend eidolon user list
-```
-
-`/api/health` 实际检查数据库可读性，失败返回503；Docker健康状态不会自动重启。容器日志最多5×10 MB；后端停止宽限30秒，先给请求最多20秒完成，再清理通话/连接。通话全局上限默认10，由 `EIDOLON_CONCURRENT_CALLS` 或后台调整；每用户同时一通。
-
-备份沿用应用的加密备份/数据导出机制，详见 [备份](deploy.md#备份)，上线前独立验证恢复。不要恢复SC数据库覆盖GIM原型库。剧情使用 [import-gim](gim-story-import.md)，不运行SC的 `story-sync.sh`、`world sync` 或 ShinyColorsDB 同步。
+1. **健康检查**：`GET https://gim.example.com/api/health` 返回 `200 {"ok":true}`（实测健康检查涵盖数据库可读性）。
+2. **安全防护**：匿名 `GET /api/account` 返回 401；`GET /api/auth/dev-login` 返回 404。
+3. **OAuth 启动**：`GET /api/auth/google/start` 返回 302 重定向至 `accounts.google.com` 且携带安全 state cookie。
+4. **外部服务全链路探测**：通过后端执行 `/api/service-status`，验证 7 项服务状态全为 `ok`：
+   - `chat_llm` / `memory_llm` / `tts` / `stt` / `judge` / `embedding` / `rerank`
+5. **手毬 3D 资产可达性**：
+   - `GET /api/characters/temari/stand/model.json` -> 200 OK（约 20.3MB）
+   - `GET /api/characters/temari/stand/animations.json` -> 200 OK（约 3.8MB）
+   - `GET /api/characters/temari/stand/textures/*.png` -> 200 OK
+6. **宿主隔离性**：确认宿主机原有 既有容器保持持续正常运行，无端口或卷冲突。

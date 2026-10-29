@@ -99,7 +99,7 @@ def gifting(settings: Settings, characters: CharacterConfig) -> Settings:
 
 async def give_cakes(
     make_client: ClientFactory, gifting: Settings, clock: FakeClock, database: Path,
-    *when: datetime, character: str = "mano",
+    *when: datetime, character: str = "sora",
 ) -> None:
     """Have the user give her a cake at each of `when`, drawing them first."""
     await give_gifts(make_client, gifting, clock, database, *[(character, "cake", at) for at in when])
@@ -130,10 +130,10 @@ async def give_gifts(
 
 
 @pytest.fixture
-def meguru(characters: CharacterConfig) -> None:
-    """Meguru as well, configured after Kogane but before her in the idols' order, as Kogane
+def hina(characters: CharacterConfig) -> None:
+    """Hina as well, configured after Riku but before her in the idols' order, as Riku
     has no idol number."""
-    characters.add("meguru", "八宮めぐる", "# 人设\n你是八宮めぐる。", idol_id=2)
+    characters.add("hina", "晴川ヒナ", "# 人设\n你是晴川ヒナ。", display_order=2)
 
 
 async def test_stats_need_a_session(make_client: ClientFactory):
@@ -322,7 +322,7 @@ async def test_the_range_is_the_past_30_or_365_days_where_the_user_is_or_all_of_
 
 async def test_each_character_has_her_turns_and_the_days_since_the_first_thing_left_with_her(
     make_client: ClientFactory, settings: Settings, gifting: Settings, clock: FakeClock,
-    meguru: None,
+    hina: None,
 ):
     database = settings.database_path
     client = make_client(FakeLLM(*[REPLY] * 5), clock=clock)
@@ -331,15 +331,15 @@ async def test_each_character_has_her_turns_and_the_days_since_the_first_thing_l
     await say(client, database, past, "上个月", tokyo(TODAY - timedelta(days=40), 12))
     current = await start_conversation(client)
     await say(client, database, current, "这周", tokyo(TODAY - timedelta(days=4), 12))
-    # Kogane first had a gift, before a word was said to her.
+    # Riku first had a gift, before a word was said to her.
     await give_cakes(
         make_client, gifting, clock, database, tokyo(TODAY - timedelta(days=9), 12),
-        character="kogane",
+        character="riku",
     )
-    with_kogane = await start_conversation(client, "kogane")
-    await say(client, database, with_kogane, "恋鐘", tokyo(TODAY - timedelta(days=2), 12))
-    with_meguru = await start_conversation(client, "meguru")
-    await say(client, database, with_meguru, "めぐる", tokyo(TODAY, 12))
+    with_riku = await start_conversation(client, "riku")
+    await say(client, database, with_riku, "リク", tokyo(TODAY - timedelta(days=2), 12))
+    with_hina = await start_conversation(client, "hina")
+    await say(client, database, with_hina, "ヒナ", tokyo(TODAY, 12))
 
     everything = (await stats(client))["range"]["characters"]
     recent = (await stats(client, range="30d"))["range"]["characters"]
@@ -348,38 +348,38 @@ async def test_each_character_has_her_turns_and_the_days_since_the_first_thing_l
 
     # In the idols' order, those without a number after them.
     assert everything == [
-        {"character_id": "mano", "turns": 3, "days_known": 100, "call_seconds": 0},
-        {"character_id": "meguru", "turns": 1, "days_known": 1, "call_seconds": 0},
-        {"character_id": "kogane", "turns": 1, "days_known": 10, "call_seconds": 0},
+        {"character_id": "sora", "turns": 3, "days_known": 100, "call_seconds": 0},
+        {"character_id": "hina", "turns": 1, "days_known": 1, "call_seconds": 0},
+        {"character_id": "riku", "turns": 1, "days_known": 10, "call_seconds": 0},
     ]
     assert [(c["character_id"], c["turns"], c["days_known"]) for c in recent] == [
-        ("mano", 1, 100), ("meguru", 1, 1), ("kogane", 1, 10),
+        ("sora", 1, 100), ("hina", 1, 1), ("riku", 1, 10),
     ]
-    assert after[0] == {"character_id": "mano", "turns": 1, "days_known": 5, "call_seconds": 0}
+    assert after[0] == {"character_id": "sora", "turns": 1, "days_known": 5, "call_seconds": 0}
 
 
 async def test_the_gifts_given_in_the_range_she_liked_and_whom_they_went_to_most(
     make_client: ClientFactory, settings: Settings, gifting: Settings, clock: FakeClock,
-    meguru: None,
+    hina: None,
 ):
     database = settings.database_path
     client = make_client(FakeLLM(), settings=gifting, clock=clock)
     await give_gifts(
         make_client, gifting, clock, database,
-        ("kogane", "cake", tokyo(TODAY - timedelta(days=3), 12)),
-        ("meguru", "cocoa", tokyo(TODAY - timedelta(days=5), 12)),
-        ("mano", "cake", tokyo(TODAY - timedelta(days=40), 12)),
-        ("mano", "cocoa", tokyo(TODAY - timedelta(days=41), 12)),
+        ("riku", "cake", tokyo(TODAY - timedelta(days=3), 12)),
+        ("hina", "cocoa", tokyo(TODAY - timedelta(days=5), 12)),
+        ("sora", "cake", tokyo(TODAY - timedelta(days=40), 12)),
+        ("sora", "cocoa", tokyo(TODAY - timedelta(days=41), 12)),
     )
 
     everything = (await stats(client))["range"]
     recent = (await stats(client, range="30d"))["range"]
 
     assert everything["gifts"] == {
-        "given": 4, "liked": 2, "most": {"character_id": "mano", "given": 2},
+        "given": 4, "liked": 2, "most": {"character_id": "sora", "given": 2},
     }
     # Tied, the first in the idols' order, not as configured.
     assert recent["gifts"] == {
-        "given": 2, "liked": 1, "most": {"character_id": "meguru", "given": 1},
+        "given": 2, "liked": 1, "most": {"character_id": "hina", "given": 1},
     }
     assert recent["turns"] == 0 and sum(recent["by_hour"]) == 2

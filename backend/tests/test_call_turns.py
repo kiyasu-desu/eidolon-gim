@@ -69,11 +69,11 @@ from tests.test_affinity_turns import value
 from tests.test_text_turn import start_conversation
 
 NOW = datetime(2026, 9, 25, 12, 30, tzinfo=UTC)
-MANO_REPLY = ["<ja>ほわっ、", "おはようございます！</ja><zh>哇，早上好！</zh><ja>今日も</ja><zh>今天也</zh>"]
+MANO_REPLY = ["<ja>えっと、", "おはようございます！</ja><zh>哇，早上好！</zh><ja>今日も</ja><zh>今天也</zh>"]
 
 
 class CallUnderTest:
-    """One call into a fresh conversation with Mano, and the API to read its record."""
+    """One call into a fresh conversation with Sora, and the API to read its record."""
 
     def __init__(self, settings: Settings, client: httpx.AsyncClient, conversation_id: str):
         self._settings = settings
@@ -150,9 +150,9 @@ class CallUnderTest:
             **remembering,
         )
         try:
-            mano = backend.characters["mano"]
-            admission = backend.admissions.call(self.conversation.user_id, "mano", BroughtKeys())
-            call = Call(self.conversation, mano, admission.llms, muted, "standard")
+            sora = backend.characters["sora"]
+            admission = backend.admissions.call(self.conversation.user_id, "sora", BroughtKeys())
+            call = Call(self.conversation, sora, admission.llms, muted, "standard")
             outcome = CallOutcome(
                 admission, limits, backend.clock,
                 partial(backend.store.keep_call, self.conversation.id),
@@ -180,9 +180,9 @@ class CallUnderTest:
         the call is settled before the turn is over."""
         backend = build_faked(self._settings, llm, clock=lambda: NOW)
         try:
-            mano = backend.characters["mano"]
-            admission = backend.admissions.call(self.conversation.user_id, "mano", BroughtKeys())
-            call = Call(self.conversation, mano, admission.llms, False, "standard")
+            sora = backend.characters["sora"]
+            admission = backend.admissions.call(self.conversation.user_id, "sora", BroughtKeys())
+            call = Call(self.conversation, sora, admission.llms, False, "standard")
             outcome = CallOutcome(
                 admission, CallLimits(), backend.clock,
                 partial(backend.store.keep_call, self.conversation.id),
@@ -246,9 +246,9 @@ class HoldsUpCancelling(FrameProcessor):
 
 
 @pytest.fixture
-async def mano_call(make_client: ClientFactory, settings: Settings):
+async def sora_call(make_client: ClientFactory, settings: Settings):
     client = make_client(FakeLLM())
-    under_test = CallUnderTest(settings, client, await start_conversation(client, "mano"))
+    under_test = CallUnderTest(settings, client, await start_conversation(client, "sora"))
     yield under_test
     under_test.close()
 
@@ -274,8 +274,8 @@ def mute(muted: bool) -> RTVIClientMessageFrame:
     return RTVIClientMessageFrame(msg_id="m2", type="mute", data={"muted": muted})
 
 
-async def test_each_reply_is_one_tts_response(mano_call: CallUnderTest):
-    down = await mano_call.run_frames(FakeLLM(MANO_REPLY), [spoken("早上好")])
+async def test_each_reply_is_one_tts_response(sora_call: CallUnderTest):
+    down = await sora_call.run_frames(FakeLLM(MANO_REPLY), [spoken("早上好")])
 
     voiced = [type(f) for f in down if not isinstance(f, RTVIServerMessageFrame)]
     assert voiced[0] is LLMFullResponseStartFrame and voiced[-1] is LLMFullResponseEndFrame
@@ -299,25 +299,25 @@ def to_tts(down: Sequence[Frame]) -> list[tuple]:
 
 
 async def test_each_segment_of_each_reply_goes_to_tts_under_its_numbers(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm = FakeLLM(MANO_REPLY, ["<ja>うん。</ja><zh>嗯。</zh>"])
 
-    down = await mano_call.run_frames(llm, [spoken("早上好"), SleepFrame(0.5), spoken("在吗")])
+    down = await sora_call.run_frames(llm, [spoken("早上好"), SleepFrame(0.5), spoken("在吗")])
 
     assert to_tts(down) == [
         ("reply",),
-        ("ほわっ、", 1, 0), ("おはようございます！", 1, 0), ("complete", 1, 0),
+        ("えっと、", 1, 0), ("おはようございます！", 1, 0), ("complete", 1, 0),
         ("今日も", 1, 1), ("complete", 1, 1),
         ("reply",),
         ("うん。", 2, 0), ("complete", 2, 0),
     ]
 
 
-async def test_muted_call_sends_subtitles_but_nothing_to_voice(mano_call: CallUnderTest):
+async def test_muted_call_sends_subtitles_but_nothing_to_voice(sora_call: CallUnderTest):
     llm = FakeLLM(["<ja>一</ja><zh>一</zh>"], ["<ja>二</ja><zh>二</zh>"], ["<ja>三</ja><zh>三</zh>"])
 
-    spoken_text, messages = await mano_call.run(
+    spoken_text, messages = await sora_call.run(
         llm,
         one_by_one(spoken("第一句"), mute(False), spoken("第二句"), mute(True), typed("第三句")),
         muted=True,
@@ -327,14 +327,14 @@ async def test_muted_call_sends_subtitles_but_nothing_to_voice(mano_call: CallUn
     assert [m["message"]["ja"] for m in messages if m["type"] == "done"] == ["一", "二", "三"]
 
 
-async def test_blank_input_is_ignored(mano_call: CallUnderTest):
-    spoken_text, messages = await mano_call.run(FakeLLM(), [spoken("  "), typed("")])
+async def test_blank_input_is_ignored(sora_call: CallUnderTest):
+    spoken_text, messages = await sora_call.run(FakeLLM(), [spoken("  "), typed("")])
 
     assert spoken_text == [] and messages == []
-    assert await mano_call.record() == []
+    assert await sora_call.record() == []
 
 
-INTERRUPTED_REPLY = ["<ja>ほわっ</ja><zh>哇</zh>", "<ja>今日", HANG]
+INTERRUPTED_REPLY = ["<ja>えっと</ja><zh>哇</zh>", "<ja>今日", HANG]
 """A reply with one complete segment, then half of the next, then nothing, ever."""
 INTERRUPTIBLE = [SleepFrame(0.1), BotStartedSpeakingFrame(), SleepFrame(0.3)]
 """The character starts speaking, and goes on until the second segment is started."""
@@ -343,54 +343,54 @@ INTERRUPTING = [*INTERRUPTIBLE, InterruptionFrame()]
 
 
 async def test_an_interruption_stops_the_reply_which_is_recorded_with_its_complete_segments(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     memory = FakeBackgroundLLM()
 
-    spoken_text, messages = await mano_call.run(
+    spoken_text, messages = await sora_call.run(
         FakeLLM(INTERRUPTED_REPLY, delay=0.3), [spoken("早上好"), *INTERRUPTING],
         memory=memory, limits=CallLimits(turns=1),
     )
     messages = without_emotions(messages)
 
-    assert spoken_text == ["ほわっ"]  # the unvalidated partial segment never reaches speech
+    assert spoken_text == ["えっと"]  # the unvalidated partial segment never reaches speech
     assert kinds(messages) == ["user", "done", "ended"]  # it counts as a turn
-    assert (messages[-2]["message"]["ja"], messages[-2]["message"]["zh"]) == ("ほわっ", "哇")
-    assert await mano_call.record() == [
-        ("user", "早上好", None, None), ("character", None, "ほわっ", "哇"),
+    assert (messages[-2]["message"]["ja"], messages[-2]["message"]["zh"]) == ("えっと", "哇")
+    assert await sora_call.record() == [
+        ("user", "早上好", None, None), ("character", None, "えっと", "哇"),
     ]
     assert len(memory.prompts) == 1
 
 
-async def test_what_interrupts_the_character_is_taken_up_at_once(mano_call: CallUnderTest):
+async def test_what_interrupts_the_character_is_taken_up_at_once(sora_call: CallUnderTest):
     llm = FakeLLM(INTERRUPTED_REPLY, MANO_REPLY, delay=0.3)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm, [spoken("早上好"), *INTERRUPTING, SleepFrame(0.1), spoken("在吗")]
     )
 
     assert said(messages) == ["早上好", "在吗"]
-    assert await mano_call.said() == ["早上好", None, "在吗", None]
+    assert await sora_call.said() == ["早上好", None, "在吗", None]
 
 
 async def test_what_is_typed_once_the_reply_can_be_interrupted_interrupts_the_character(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm = FakeLLM(INTERRUPTED_REPLY, MANO_REPLY, delay=0.3)
 
-    down = await mano_call.run_frames(llm, [spoken("早上好"), *INTERRUPTIBLE, typed("在吗")])
+    down = await sora_call.run_frames(llm, [spoken("早上好"), *INTERRUPTIBLE, typed("在吗")])
 
     messages = [f.data for f in down if isinstance(f, RTVIServerMessageFrame)]
     assert said(messages) == ["早上好", "在吗"]
     assert InterruptionFrame in frame_types(down)
-    assert await mano_call.record() == [
-        ("user", "早上好", None, None), ("character", None, "ほわっ", "哇"),
+    assert await sora_call.record() == [
+        ("user", "早上好", None, None), ("character", None, "えっと", "哇"),
         ("user", "在吗", None, None),
-        ("character", None, "ほわっ、おはようございます！今日も", "哇，早上好！今天也"),
+        ("character", None, "えっと、おはようございます！今日も", "哇，早上好！今天也"),
     ]
 
 
-SLOW_REPLY = ["<ja>ほわっ", "</ja><zh>哇</zh>", "<ja>今日も</ja><zh>今天也</zh>"]
+SLOW_REPLY = ["<ja>えっと", "</ja><zh>哇</zh>", "<ja>今日も</ja><zh>今天也</zh>"]
 """A reply slow enough to be followed on: its first segment completes 0.3 s in."""
 
 
@@ -404,13 +404,13 @@ def without_emotions(messages: list[dict]) -> list[dict]:
     return [m for m in messages if m["type"] != "emotion"]
 
 
-async def test_what_is_said_before_the_character_speaks_joins_the_turn(mano_call: CallUnderTest):
+async def test_what_is_said_before_the_character_speaks_joins_the_turn(sora_call: CallUnderTest):
     # Slower than the others: her first reply must have begun, taking the first of the
     # script, before the user goes on, and a slow runner may take a while to begin it.
     llm = FakeLLM(SLOW_REPLY, MANO_REPLY, delay=0.6)
     memory = FakeBackgroundLLM()
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         [spoken("早上好"), SleepFrame(0.3), InterruptionFrame(), SleepFrame(0.1), spoken("在吗")],
         memory=memory,
@@ -420,21 +420,21 @@ async def test_what_is_said_before_the_character_speaks_joins_the_turn(mano_call
     assert said(messages) == ["早上好", "早上好\n在吗"]
     assert kinds(messages) == ["user", "user", "done"]
     assert llm.prompts[-1][-1].content == "早上好\n在吗"
-    assert await mano_call.record() == [
+    assert await sora_call.record() == [
         ("user", "早上好\n在吗", None, None),
-        ("character", None, "ほわっ、おはようございます！今日も", "哇，早上好！今天也"),
+        ("character", None, "えっと、おはようございます！今日も", "哇，早上好！今天也"),
     ]
     assert len(memory.prompts) == 1  # the reply dropped was not written down
 
 
 async def test_a_follow_on_drops_what_the_turn_was_looking_up_and_looks_up_the_whole_of_it(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm, judge, embedder = FakeLLM(MANO_REPLY), FakeJudge(), FakeEmbedder()
     judge.hold("早上好")  # still judging, and looking up, when the user goes on
     embedder.hanging = {"早上好"}
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         [spoken("早上好"), SleepFrame(0.1), InterruptionFrame(), SleepFrame(0.1), spoken("在吗")],
         memory=FakeBackgroundLLM(), retrieval_judge=judge, embedder=embedder,
@@ -445,15 +445,15 @@ async def test_a_follow_on_drops_what_the_turn_was_looking_up_and_looks_up_the_w
     assert embedder.abandoned == ["早上好"]
     assert embedder.queries == ["早上好", "早上好\n在吗"]
     assert len(llm.prompts) == 1
-    assert await mano_call.said() == ["早上好\n在吗", None]
+    assert await sora_call.said() == ["早上好\n在吗", None]
 
 
 async def test_a_turn_with_a_follow_on_changes_affinity_as_the_whole_of_it_is_judged(
-    mano_call: CallUnderTest, settings: Settings
+    sora_call: CallUnderTest, settings: Settings
 ):
     llm = FakeLLM(SLOW_REPLY, MANO_REPLY, delay=0.3)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         [spoken("早上好"), SleepFrame(0.1), InterruptionFrame(), SleepFrame(0.1), spoken("在吗")],
         affinity=[level(0), level(4)],
@@ -472,16 +472,16 @@ async def test_a_turn_with_a_follow_on_changes_affinity_as_the_whole_of_it_is_ju
 
 
 async def test_what_is_typed_before_the_character_speaks_joins_the_turn_and_stops_its_voice(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     """The turn is replied to afresh, going to TTS under a number of its own."""
     llm = FakeLLM(SLOW_REPLY, ["<ja>うん。</ja><zh>嗯。</zh>"], delay=0.3)
 
-    down = await mano_call.run_frames(llm, [spoken("早上好"), SleepFrame(0.1), typed("在吗")])
+    down = await sora_call.run_frames(llm, [spoken("早上好"), SleepFrame(0.1), typed("在吗")])
 
     messages = [f.data for f in down if isinstance(f, RTVIServerMessageFrame)]
     assert said(messages) == ["早上好", "早上好\n在吗"]
-    assert await mano_call.said() == ["早上好\n在吗", None]
+    assert await sora_call.said() == ["早上好\n在吗", None]
     voiced = [type(f) for f in down if not isinstance(f, RTVIServerMessageFrame)]
     assert voiced[:3] == [
         LLMFullResponseStartFrame, LLMFullResponseEndFrame, InterruptionFrame
@@ -493,17 +493,17 @@ async def test_what_is_typed_before_the_character_speaks_joins_the_turn_and_stop
 
 
 async def test_a_follow_on_never_transcribed_has_the_turn_replied_to_again_in_time(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm = FakeLLM(SLOW_REPLY, MANO_REPLY, delay=0.3)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm, [spoken("早上好"), SleepFrame(0.1), InterruptionFrame(), SleepFrame(0.1)],
         follow_on_timeout=0.3,
     )
 
     assert said(messages) == ["早上好", "早上好"]
-    assert await mano_call.said() == ["早上好", None]
+    assert await sora_call.said() == ["早上好", None]
 
 
 def frame_types(frames: Sequence[Frame]) -> list[type[Frame]]:
@@ -514,10 +514,10 @@ def kinds(messages: list[dict]) -> list[str]:
     return [m["type"] for m in messages if m["type"] != "delta"]
 
 
-async def test_call_hangs_up_after_its_last_allowed_turn(mano_call: CallUnderTest):
+async def test_call_hangs_up_after_its_last_allowed_turn(sora_call: CallUnderTest):
     llm = FakeLLM(MANO_REPLY, MANO_REPLY)
 
-    spoken_text, messages = await mano_call.run(
+    spoken_text, messages = await sora_call.run(
         llm,
         one_by_one(spoken("早上好"), typed("在吗"), spoken("还在吗")),
         limits=CallLimits(turns=2),
@@ -525,16 +525,16 @@ async def test_call_hangs_up_after_its_last_allowed_turn(mano_call: CallUnderTes
 
     assert kinds(messages) == ["user", "done", "user", "done", "ended"]
     assert messages[-1]["reason"] == "turn_limit"
-    assert "".join(spoken_text).count("ほわっ") == 2  # the last reply is still voiced
-    assert len(await mano_call.record()) == 4
+    assert "".join(spoken_text).count("えっと") == 2  # the last reply is still voiced
+    assert len(await sora_call.record()) == 4
 
 
 async def test_call_hangs_up_when_time_is_up_once_the_reply_in_progress_is_done(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm = FakeLLM(MANO_REPLY, delay=0.2)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         [spoken("早上好"), SleepFrame(0.6), spoken("还在吗")],
         limits=CallLimits(duration=timedelta(seconds=0.1)),
@@ -542,12 +542,12 @@ async def test_call_hangs_up_when_time_is_up_once_the_reply_in_progress_is_done(
 
     assert kinds(messages) == ["user", "done", "ended"]
     assert messages[-1]["reason"] == "duration_limit"
-    assert len(await mano_call.record()) == 2
+    assert len(await sora_call.record()) == 2
 
 
-async def test_a_calls_time_is_counted_from_when_it_connects(mano_call: CallUnderTest):
+async def test_a_calls_time_is_counted_from_when_it_connects(sora_call: CallUnderTest):
     """The call screen counts from 接通 (GLOSSARY.md), so the time limit does too."""
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(MANO_REPLY),
         [SleepFrame(0.3), spoken("早上好")],
         limits=CallLimits(duration=timedelta(seconds=0.1)),
@@ -558,12 +558,12 @@ async def test_a_calls_time_is_counted_from_when_it_connects(mano_call: CallUnde
 
 
 async def test_turns_that_fail_or_are_rejected_do_not_count_and_the_call_goes_on(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm = FakeLLM(["  "], MANO_REPLY)  # the first reply is empty
     too_long = "啊" * (MAX_INPUT_LENGTH + 1)
 
-    spoken_text, messages = await mano_call.run(
+    spoken_text, messages = await sora_call.run(
         llm,
         one_by_one(spoken(too_long), typed(too_long), spoken("在吗"), spoken("在吗？")),
         limits=CallLimits(turns=1),
@@ -572,6 +572,6 @@ async def test_turns_that_fail_or_are_rejected_do_not_count_and_the_call_goes_on
     assert kinds(messages) == ["user", "error"] * 3 + ["user", "done", "ended"]
     assert messages[-1]["reason"] == "turn_limit"
     assert len(llm.prompts) == 2  # what was too long never reached the model
-    assert "".join(spoken_text).count("ほわっ") == 1
-    assert await mano_call.said() == ["在吗？", None]
+    assert "".join(spoken_text).count("えっと") == 1
+    assert await sora_call.said() == ["在吗？", None]
 

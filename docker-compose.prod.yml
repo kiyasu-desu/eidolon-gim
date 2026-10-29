@@ -65,8 +65,8 @@ services:
     volumes:
       - eidolon-data:/data # 数据库（用户、对话、记忆、剧情库）和同步下载的原始剧本缓存 /data/mirror
       - ./characters:/characters:ro # 人设、角色资料、头像
-      - ./corpus:/corpus:ro # SCTranslationData 等剧情库的原始数据，导入和同步时读取（deploy/story-sync.sh 在主机上更新）
-      - ./deploy:/deploy:ro # 活动名对照表 event-names.toml（同步时读取）
+      - ./corpus:/corpus:ro # 可选本地模型与剧情包；容器内路径须在环境变量中显式配置
+      - ./deploy:/deploy:ro # 运维脚本
     restart: unless-stopped
     logging: *logging
     stop_grace_period: 30s

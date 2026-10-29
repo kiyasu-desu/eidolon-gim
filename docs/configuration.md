@@ -11,12 +11,12 @@
 > |---|---|
 > | 文字对话 | `CHAT_LLM_*` |
 > | 语音通话 | `FISH_AUDIO_API_KEY`，加语音识别的 key：`SONIOX_API_KEY`（默认），或 `STT_PROVIDER=bailian` 加 `DASHSCOPE_API_KEY` |
-> | 剧情库（同步或导入） | 向量化的 key：`SILICONFLOW_API_KEY`（默认），或 `EMBEDDING_PROVIDER=gemini` 加 `GEMINI_API_KEY` |
+> | 剧情库（本地导入） | 向量化的 key：`SILICONFLOW_API_KEY`（默认），或 `EMBEDDING_PROVIDER=gemini` 加 `GEMINI_API_KEY` |
 > | 检索与记忆 | 向量化的 key、`SILICONFLOW_API_KEY`（重排），加判断模型：`JEV_API_KEY`（默认），或 `JUDGE_PROVIDER=cloudflare` 加 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`，或 `JUDGE_PROVIDER=bailian` 加 `BAILIAN_JUDGE_API_KEY`、`BAILIAN_JUDGE_WORKSPACE_ID` |
-> | 好感度和礼物 | 判断模型（开关默认打开） |
+> | 好感度和礼物 | 判断模型（GIM 开关默认关闭） |
 > | 照片 | 判断模型，加生图的 key：`NOVELAI_API_KEY` |
 > | 搭话 | `EIDOLON_REACH_OUTS=1`（默认关） |
-> | 立绘与落地页的招呼 | `EIDOLON_STAND_ASSETS_URL`，以及存放素材的存储桶 |
+> | 立绘与落地页的招呼 | 本地模型用 `EIDOLON_MODEL_ROOT`；可选的托管资源和招呼用 `EIDOLON_STAND_ASSETS_URL` |
 > | Google / GitHub 登录 | `GOOGLE_CLIENT_*`、`GITHUB_CLIENT_*` |
 
 ## 目录
@@ -62,65 +62,7 @@
 
 ## 角色
 
-角色写在 [`characters/characters.toml`](../characters/characters.toml) 里，每位一段 `[[characters]]`。现在原作的八个组合、28 位偶像都已经配好，人设、角色资料和头像也都随仓库提交（ADR-0003）。
-
-```toml
-[[characters]]
-id = "mano"                          # 标识，用在网址和剧情库里
-name = "櫻木真乃"
-name_zh = "樱木真乃"                 # 以下三项给对话列表的搜索用
-name_kana = "さくらぎ まの"
-name_romaji = "Sakuragi Mano"
-intro = "illumination STARS 的中心。温柔又有点慢热，喜欢鸟……"
-voice_id = "a1150f3d14ac46fb8ea59c7803cd8357"   # Fish Audio 音色，要设为公开
-sheet = "sheets/mano.md"
-avatar = "avatars/mano.jpg"
-color = "#ffbad6"                    # 官方印象色，必填
-facts = "facts/mano.md"
-liked_gifts = ["potted-plant", "black-tea"]   # 喜欢的礼物
-speakers = ["真乃"]                  # 剧本里她的说话人名字
-idol_id = 1                          # 以下两项用于立绘
-default_outfit = "stand/1030010010"  # 【ナチュラルモード】
-greeting = "[shyly] ほわっ……プロデューサーさん、ですか？　よろしくお願いしますっ"
-greeting_subtitle = "呼哇……你就是制作人吗？请多指教！"
-```
-
-每一项的写法见文件开头的注释。几项需要额外说明的：
-
-- **`color`**：界面上属于她的地方（对话壁纸、电话键、发送键、未读数、通话层和通话条）都以它为基调。前端从它推出浅色、深色两套颜色，并保证文字看得清。缺这一项或格式不对时，后端拒绝启动。
-- **`background`**（可选）：通话层的背景图，放在 `characters/backgrounds/`。没配时用印象色的渐变代替。
-- **人设**：缺人设文件时后端拒绝启动，并指出缺哪一份。docker compose 把 `characters/` 只读挂载进后端容器。
-- **`liked_gifts`**：她喜欢的礼物，写礼物目录 [`characters/gifts.toml`](../characters/gifts.toml) 里的 `id`，1–3 件，不能全是稀有。每一件都要在她的出处文件（`facts/<标识>.sources.md`）的「喜欢的礼物」一节写明剧情出处。没配、礼物不在目录里、件数不对或全是稀有时，后端拒绝启动。
-
-**新增一位角色**要做这几件事：
-
-1. 在 `characters.toml` 里加一段，参照 [`sheets/example.md`](../characters/sheets/example.md) 写人设，资料（可选）参照 [`facts/example.md`](../characters/facts/example.md) 写，头像缩到 224×224 的 JPEG（界面上最大显示 112px，按两倍屏取）再放进 `characters/avatars/`。
-2. 在 `backend/` 下运行 `uv run eidolon reading draft`，给她的名字补上读音（见[读音与招呼](#读音与招呼)）。
-3. 配了招呼的话，在 `backend/` 下运行 `uv run --env-file=../.env eidolon greeting upload` 合成上传。
-4. 在 `frontend/` 下运行 `node scripts/landing-fonts.mts`，重新生成落地页的字体子集（见 [`frontend/AGENTS.md`](../frontend/AGENTS.md)）。改了组合、招呼或显示名也要跑；忘了的话，前端的字体覆盖测试会失败并列出缺的字。
-5. 导入过剧情库的，重新同步或导入一次，她出场的剧情才会算到她名下。
-6. 重启后端。
-
-<details>
-<summary><b>用后台模型生成人设初稿</b></summary>
-
-<br>
-
-人设可以先让后台模型读完她的全部剧情写一份初稿，再人工校对。要先导入剧情库：
-
-```sh
-uv run eidolon --db data/eidolon.db character draft-sheet mano   # 在 backend/ 下
-# docker compose 下 characters/ 是只读的，先写到数据卷再拷出来：
-docker compose exec backend eidolon character draft-sheet mano --output /data/drafts/mano.md
-docker compose cp backend:/data/drafts/mano.md characters/sheets/mano.md
-```
-
-- **素材**：只用她出场过的剧情（正式经历）。
-- **小节**：初稿依次是身份、自称、对他人的称呼、口癖、与组合伙伴的关系、硬性规则；模型漏掉的小节留下「（待补充）」。
-- **草稿标记**：初稿第一行是草稿标记。标记在的时候人设照常可用，后端启动时会提醒这份人设还没校对；校对完删掉这一行即可。已经校对过的人设不会被覆盖，确实要重写时加 `--force`。
-- **素材超长**：素材超出一次请求的上限（`--budget`，默认 40000 字）时，先分批做笔记，再根据笔记写初稿。以真乃为例，约 220 段剧情、33 万字，大约要请求后台模型十次。
-
-</details>
+默认角色文件为 `characters/gim/characters.toml`，当前仅月村手毬。角色人设、音色和读音在该目录配置；可选 `alternate_avatar` 和正整数 `display_order` 分别设置备用头像与显示顺序。
 
 ## 读音与招呼
 
@@ -169,103 +111,15 @@ docker compose cp backend:/data/drafts/mano.md characters/sheets/mano.md
 
 ## 立绘
 
-通话层可以叠上原作的 Spine 立绘（可选）。下面三项都配好才显示，缺一项时通话层只显示背景图：
-
-| 配置 | 写在哪里 | 说明 |
-|---|---|---|
-| `idol_id` | `characters.toml` | 原作的偶像编号（ShinyColorsDB 的 idolId），如真乃是 `1` |
-| `default_outfit` | `characters.toml` | 用户没选过衣装时穿的那套：`stand/<enzaId>`（私服）或 `stand_costume/<enzaId>`（演出服） |
-| `EIDOLON_STAND_ASSETS_URL` | `.env` | 存放立绘素材的 S3 兼容存储桶的公开地址；前端也要带上同一个值，页面的 CSP 只许从这里加载立绘 |
-
-- **动起来**：待机时呼吸、眨眼；她的声音播放时动嘴；你开口时她看向你，说完点头。
-- **情绪**：配好判断模型时，她每说一段话，判断模型都会判断这段的情绪（平静、开心、害羞、惊讶、难过、生气、思考）和要不要点头或摇头，立绘跟着换表情和动作。阈值和超时用 `JUDGE_EMOTION_MIN_PROBABILITY`、`JUDGE_EMOTION_TIMEOUT` 调整。
-- **换衣装**：对话页右上角的「更多操作」里有「换衣装」。每张卡一项，可以在私服和演出服之间切换，有会动的全身预览；选好的那套按角色记在这台设备上。
-- **素材同步**：素材不进仓库，也不在许可证范围内，放在对象存储里（[ADR-0011](adr/0011-stand-assets-fetched-from-shinycolorsdb.md)）。`deploy/stand-sync.sh` 从 ShinyColorsDB 拉新卡、整理衣装清单、渲染缩略图，再上传到存储桶。建议用 cron 每周跑一次。
-
-`stand-sync.sh` 不经过 docker，要用 uv、Node.js 22.18 以上和 Playwright 的 Chromium。存储桶怎么选（R2、腾讯云 COS、阿里云 OSS、MinIO 等）、CORS、退出码和本地预览的方法见 [`deploy.md`](deploy.md) 的「立绘素材」。
+仅使用可选 Three.js 3D 模型包。设置 `EIDOLON_MODEL_ROOT`，按 `<root>/<角色ID>/` 存放 `model.json`、`animations.json` 和 `textures/`。`EIDOLON_MODELS_ENABLED=0` 停用，缺包回退为无模型界面。详见[装卸说明](local-resource-packs.md)和[模型流水线](stand3d-pipeline.md)。
 
 ## 剧情库
 
-她能回忆的原作剧情有两个来源，由同一条命令一起维护：
-
-| | 汉化版 | 原文剧情 |
-|---|---|---|
-| 来源 | [SCTranslationData](https://github.com/ShinyGroup/SCTranslationData) 的剧情 CSV | ShinyColorsDB 的解码镜像（[ADR-0004](adr/0004-untranslated-episodes-from-shinycolorsdb-mirror.md)） |
-| 内容 | 日语原文 + 粉丝中文翻译 | 只有日语原文 |
-| 时效 | 等粉丝翻译，几周到几个月 | 游戏更新后一周内 |
-
-两者是同一段剧情的两个状态：汉化版到位后，按同一剧本编号取代原文剧情。她回忆时两者没有区别。
-
-剧情数据不进仓库（ADR-0003）。把 SCTranslationData 克隆到仓库根目录的 `corpus/` 下（已被 git 忽略，docker compose 会把它只读挂载到容器的 `/corpus`），填好向量化的 key，然后同步：
-
-```sh
-git clone --depth 1 https://github.com/ShinyGroup/SCTranslationData.git corpus/SCTranslationData
-docker compose exec backend eidolon story sync
-```
-
-首次同步要补齐镜像上缺的全部剧情，大约一到两个小时，中断后重新运行会接着做；之后每次只要几分钟。本地开发时在 `backend/` 下用 `uv run eidolon --db data/eidolon.db story sync`。服务器上的每周自动同步、缓存和手动导入 CSV 或 JSON 见 [`deploy.md`](deploy.md) 的「同步剧情库」。
-
-<details>
-<summary><b>同步做了什么</b></summary>
-
-<br>
-
-`eidolon story sync` 先导入汉化版，再从镜像把剧情库里还缺的剧情作为原文剧情导入。已有汉化版的剧情不会被下载，也不会被覆盖。
-
-- **P 卡、S 卡剧情**：出处是卡名（如 `【ほわっとスマイル】櫻木真乃`，和 SCTranslationData 的目录名一致），标题是游戏里的剧情标题。
-- **培育剧情与特别剧情**：
-  - 培育剧情（W.I.N.G.、感谢祭、G.R.A.D.、Landing Point、S.T.E.P. 及各类交流）和生日、节日等特别剧情来自各偶像的游戏内相册，相册 2024 年 3 月之后不再更新。
-  - 出处沿用 SCTranslationData 对相册同一部分的目录名；同步结束时会列出标题带「敗」「失敗」、却没有被失败结局规则排除的剧情，请人工核对。
-- **活动剧情**：
-  - 没有目录，按剧本编号（`4001` + 三位活动编号 + 两位话数）推算：先补齐已知范围内缺的，再往后试探几个编号。
-  - 活动名来自 `deploy/event-names.toml`（参照 [`event-names.example.toml`](../deploy/event-names.example.toml) 编写，不进仓库）。没填的活动显示为「活动剧情 NNN」，同步结束时会列出这些编号。
-- **礼貌与容错**：请求一个一个发，间隔约一秒，没有变化的卡和相册不再请求。镜像连不上时汉化版照常导入，命令以退出码 2 结束。
-- **参数**：`--idol 1` 只同步某位偶像的卡和相册（可重复）；汉化版目录默认取 `EIDOLON_STORY_PATH`，也可以用 `--story` 指定。
-
-</details>
-
-<details>
-<summary><b>导入规则（汉化版与原文剧情通用）</b></summary>
-
-<br>
-
-- 每段剧情以原始剧本编号为主键，重复导入会覆盖更新；内容没变的剧情不会重新向量化，所以随时可以重新导入。
-- 只收录正式经历：失败结局（W.I.N.G. 敗退、季度目标未达成、G.R.A.D. 败退、试镜落败、约定未遵守）按剧本编号识别并排除；制作人的选项不收录，角色对每个选项的反应都保留。
-- 出场角色按台词的说话人识别（`characters.toml` 的 `speakers`）。改了 `speakers` 或新增角色后要重新导入。
-- 剧情目录按「角色 → 卡或活动 → 话」分层，直接由剧情库生成，导入结束时会列出每位角色的目录规模。
-
-</details>
+自备学马 CSV 使用 `eidolon story import-gim` 导入独立剧情库，来源清单须区分正式经历、条件反应、失败和待核对资料。`--offline` 只导入文本，配置向量化后执行 `reembed`。旧共库用 `story migrate` 备份并无损导出。详见[导入规则](gim-story-import.md)和[资源包](local-resource-packs.md)。没有自动下载或同步任务。
 
 ## 世界设定
 
-每个回合都在人设后面带上一节世界设定（[ADR-0008](adr/0008-real-world-releases-and-lives-are-in-character.md)）：
-
-- 事务所的社长和事务员、八个组合和各自的偶像；
-- 她自己的歌（她一个人唱的、她所在组合全员唱的），附收录的唱片和发售日；
-- 她上过和将要站上的演出：每个演出日的日期和会场，声优缺席的日子不算。
-
-资料在 [`characters/world.json`](../characters/world.json)，已提交进仓库。每位角色的显示名都要和资料里的偶像对得上，否则后端不会启动；没有这个文件时照常运行，只是不带世界设定。
-
-<details>
-<summary><b>更新世界设定（eidolon world sync）</b></summary>
-
-<br>
-
-在 `backend/` 下运行 `uv run eidolon world sync`，它从以下来源导入：
-
-| 内容 | 来源 |
-|---|---|
-| 偶像和组合 | im@sparql、官方组合页 |
-| 唱片、曲目和演唱者 | Lantis 的闪耀色彩站点；Lantis 没写的演唱者由 ふじわらはじめ 的 API 补齐 |
-| 演出 | 偶像大师官方门户（2020 年 9 月以前是旧官方站） |
-| 每个演出日的出演者和缺席 | wikiwiki |
-| 每个演出日的曲目单 | imas-db |
-
-- **核对**：导入结束时打印各类条目的数量、与旧文件相比的增减、来源之间对不上的地方，以及没能对应到偶像的演唱者和出演者。看过 `git diff` 再提交。
-- **人工更正**：查证过的更正写在 [`characters/world-corrections.json`](../characters/world-corrections.json) 里，每条附出处和说明，每次导入都会套用。
-- **失败保护**：任何一个来源失败时，旧文件不会改动。
-
-</details>
+可选的 `world.json` 是部署者提供的作品资料，放在角色配置旁；当前手毬配置不附带世界文件。通用加载和检索保留，不再提供任何外部作品同步入口。
 
 ## 向量化服务
 
@@ -489,7 +343,7 @@ EIDOLON_PROXY_SERVICES=chat_llm,tts,stt
 | `own_stt` | 用户自带的语音识别（用户自己选的那家） |
 | `own_image` | 用户自带的生图，只有 HTTPS 的 NovelAI 官方地址 `image.novelai.net`；中转一律直连 |
 
-- **只看这两项**：环境变量 `HTTPS_PROXY`、`ALL_PROXY` 等对上面这几项服务不起作用；登录、备份、剧情同步这些其他的对外请求仍然按环境变量走。
+- **只看这两项**：环境变量 `HTTPS_PROXY`、`ALL_PROXY` 等对上面这几项服务不起作用；登录、备份这些其他的对外请求仍然按环境变量走。
 - **自带密钥分开选**：用户自带的密钥和部署者的服务分开勾，因为两边用的服务商可以不同（比如部署者的语音识别用百炼直连，用户自带的是 Soniox）。请求都是服务器发出的，用户自己开的代理或 VPN 管不到。默认不勾，也就是照旧直连；勾上以后，这部分流量走的是部署者的代理。
 - **自带的 LLM 只有连已知服务商时才走代理**：用户自带的 LLM 地址是用户自己填的，可能指向服务器所在的内网，而经过代理时，服务器查不到实际连到了哪里。所以只有服务地址的主机名属于已知服务商时才交给代理：价格目录（models.dev，见部署文档的[花费估算用的单价](deploy.md#花费估算用的单价)）里写了服务地址的服务商，加上代码里认得的几家（OpenAI、Anthropic、Google Gemini、xAI、Mistral、Cohere、Groq、Cerebras、DeepInfra、Together、Perplexity、Venice）和 OpenRouter；IP 地址、`localhost` 不算。其他地址照旧直连，并检查是不是公网地址（[ADR-0022](adr/0022-own-llms-through-the-proxy-only-to-known-providers.md)）。价格目录拉不到时，只认代码里的那几家。自带的生图同理，已知服务商只有 NovelAI 官方一家。
 - **后台可以改**：后台配置页的「网络」标签里有「网络代理」，可以开关代理、改地址和逐项选择，不用重启，从下一次请求起生效（进行中的回合和通话也是，已经连上的语音连接不断）。保存前把换了路线的部署者服务按新路线各连一次（用户自带的几项手里没有 key，不试），有一项连不上就不保存；服务器重启时连不上，回退到 `.env` 的值并在后台标出来。地址里的密码和 key 一样加密保存，没有 `EIDOLON_SECRET_KEY` 时带密码的地址只能在 `.env` 里改。
@@ -532,12 +386,9 @@ EIDOLON_STATUS_WINDOW_MINUTES=30
 | 命令 | 做什么 |
 |---|---|
 | `serve` | 启动服务（默认） |
-| `story sync` / `import-csv` / `import-json` | 同步或导入剧情库 |
-| `world sync` | 更新世界设定 |
 | `character draft-sheet <id>` | 用后台模型写人设初稿 |
 | `reading draft` | 给读音表补上音素（只在本机跑） |
 | `greeting upload` | 合成并上传落地页的招呼 |
-| `stand fetch` / `outfits` / `upload` | 立绘素材的三步，通常由 `deploy/stand-sync.sh` 串起来 |
 | `reembed` | 换了向量化服务、模型或维度后重新向量化 |
 | `eval rerank` / `judge` / `memory` | 校准重排阈值、判断模型阈值，评测记忆 |
 | `user list` / `ban` / `unban` / `usage` | 管理用户 |

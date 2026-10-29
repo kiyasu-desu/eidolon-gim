@@ -191,7 +191,7 @@ class FishUnderTest(FishTTS):
         super().__init__(
             api_key="fish-key",
             sample_rate=16000,
-            settings=FishAudioTTSService.Settings(voice="mano-voice", model=model),
+            settings=FishAudioTTSService.Settings(voice="sora-voice", model=model),
             readings=fish.readings,
             stop_frame_timeout_s=CONTEXT_IDLE,
         )
@@ -265,13 +265,13 @@ def reply(number: int, *segments: list[str]) -> list[Frame]:
 
 async def test_each_segment_is_voiced_in_a_session_of_its_own_announced_as_it_plays():
     """The next segment's connection is open before the last one finishes."""
-    fish = await run(*reply(1, ["ほわっ。", "おはよう。"], ["今日も。"]))
+    fish = await run(*reply(1, ["えっと。", "おはよう。"], ["今日も。"]))
 
     assert heard(fish) == [
-        "playing 1/0", "audio ほわっ。", "audio おはよう。", "playing 1/1", "audio 今日も。"
+        "playing 1/0", "audio えっと。", "audio おはよう。", "playing 1/1", "audio 今日も。"
     ]
     assert fish.of(1) == [
-        "connected", "start", "text ほわっ。", "flush", "text おはよう。", "flush", "stop",
+        "connected", "start", "text えっと。", "flush", "text おはよう。", "flush", "stop",
         "finished", "closed",
     ]
     assert fish.of(2) == [
@@ -295,7 +295,7 @@ async def test_paired_tags_reach_only_a_model_that_reads_them():
 async def test_a_segment_is_voiced_in_full_once_complete_without_waiting_for_the_next():
     fish = await run(
         LLMFullResponseStartFrame(),
-        SegmentTextFrame("ほわっ。", 1, 0),
+        SegmentTextFrame("えっと。", 1, 0),
         SegmentCompleteFrame(1, 0),
         SleepFrame(SYNTHESIS * 3),
         SegmentTextFrame("今日も。", 1, 1),
@@ -303,25 +303,25 @@ async def test_a_segment_is_voiced_in_full_once_complete_without_waiting_for_the
         LLMFullResponseEndFrame(),
     )
 
-    assert fish.of(1)[2:5] == ["text ほわっ。", "flush", "stop"]
+    assert fish.of(1)[2:5] == ["text えっと。", "flush", "stop"]
     assert fish.at["1 finished"] < fish.at["2 text 今日も。"] - SYNTHESIS
-    assert heard(fish) == ["playing 1/0", "audio ほわっ。", "playing 1/1", "audio 今日も。"]
+    assert heard(fish) == ["playing 1/0", "audio えっと。", "playing 1/1", "audio 今日も。"]
 
 
 async def test_the_connection_left_open_after_a_reply_voices_the_next_with_one_more_opened():
-    fish = await run(*reply(1, ["ほわっ。"]), SleepFrame(SYNTHESIS * 2), *reply(2, ["うん。"]))
+    fish = await run(*reply(1, ["えっと。"]), SleepFrame(SYNTHESIS * 2), *reply(2, ["うん。"]))
 
     assert len(fish.sockets) == 3
     assert fish.of(2) == [
         "connected", "start", "text うん。", "flush", "stop", "finished", "closed"
     ]
     assert fish.of(3) == ["connected", "start", "closed"]  # hung up
-    assert heard(fish) == ["playing 1/0", "audio ほわっ。", "playing 2/0", "audio うん。"]
+    assert heard(fish) == ["playing 1/0", "audio えっと。", "playing 2/0", "audio うん。"]
 
 
 async def test_a_connection_closed_while_left_open_is_replaced_as_the_next_reply_starts():
     fish = await run(
-        *reply(1, ["ほわっ。"]),
+        *reply(1, ["えっと。"]),
         SleepFrame(SYNTHESIS * 4),
         *reply(2, ["うん。"]),
         fish=FakeFish(idle_timeout=SYNTHESIS * 2),
@@ -336,7 +336,7 @@ async def test_a_session_fish_audio_closes_early_is_logged_without_the_reason_it
     caplog: pytest.LogCaptureFixture,
 ):
     """The reason is the server's, and may repeat the key."""
-    fish = await run(*reply(1, ["ほわっ。"]), fish=FakeFish(cut_off="invalid api key fish-key"))
+    fish = await run(*reply(1, ["えっと。"]), fish=FakeFish(cut_off="invalid api key fish-key"))
 
     assert fish.of(1)[-1] == "closed" and "finished" not in fish.of(1)
     assert "closed a session before it finished (code 1008)" in caplog.text
@@ -345,34 +345,34 @@ async def test_a_session_fish_audio_closes_early_is_logged_without_the_reason_it
 
 async def test_a_segment_no_connection_voices_is_not_announced():
     fish = await run(
-        *reply(1, ["ほわっ。"], ["今日も。", "ね。"]),
+        *reply(1, ["えっと。"], ["今日も。", "ね。"]),
         fish=FakeFish(refused=(2, 3)),  # the next segment's opening and its one retry
     )
 
     assert fish.log.count("refused") == 2
-    assert heard(fish) == ["playing 1/0", "audio ほわっ。"]
+    assert heard(fish) == ["playing 1/0", "audio えっと。"]
 
 
 async def test_a_transient_connection_failure_retries_without_losing_the_segment():
     fish = await run(
-        *reply(1, ["ほわっ。"], ["今日も。", "ね。"]),
+        *reply(1, ["えっと。"], ["今日も。", "ね。"]),
         fish=FakeFish(refused=(2,)),  # the second segment's connection, tried again
     )
 
     assert fish.log.count("refused") == 1
     assert heard(fish) == [
-        "playing 1/0", "audio ほわっ。", "playing 1/1", "audio 今日も。", "audio ね。",
+        "playing 1/0", "audio えっと。", "playing 1/1", "audio 今日も。", "audio ね。",
     ]
 
 
 async def test_an_interruption_stops_her_at_once_and_drops_the_spare_connection_too():
     fish = await run(
         LLMFullResponseStartFrame(),
-        SegmentTextFrame("ほわっ。", 1, 0),
+        SegmentTextFrame("えっと。", 1, 0),
         SegmentTextFrame("おはよう。", 1, 0),
         SegmentCompleteFrame(1, 0),  # waits for the segment to finish
         SegmentTextFrame("今日も。", 1, 1),  # waits behind it
-        SleepFrame(SYNTHESIS * 0.7),  # ほわっ is in, おはよう is not
+        SleepFrame(SYNTHESIS * 0.7),  # えっと is in, おはよう is not
         BotStartedSpeakingFrame(),
         InterruptionFrame(),
         LLMFullResponseEndFrame(),
@@ -380,7 +380,7 @@ async def test_an_interruption_stops_her_at_once_and_drops_the_spare_connection_
         *reply(2, ["うん。"]),
     )
 
-    assert heard(fish) == ["playing 1/0", "audio ほわっ。", "interrupted", "playing 2/0", "audio うん。"]
+    assert heard(fish) == ["playing 1/0", "audio えっと。", "interrupted", "playing 2/0", "audio うん。"]
     assert "finished" not in fish.of(1) and fish.of(1)[-1] == "closed"
     assert fish.of(2) == ["connected", "start", "closed"]
     assert fish.log.index("interrupted") < fish.log.index("3 connected")
@@ -393,7 +393,7 @@ async def test_hanging_up_while_a_segment_finishes_closes_every_connection_at_on
 
     fish = await run(
         LLMFullResponseStartFrame(),
-        SegmentTextFrame("ほわっ。", 1, 0),
+        SegmentTextFrame("えっと。", 1, 0),
         SegmentCompleteFrame(1, 0),  # waits for the segment to finish
         hang_up=True,
     )
@@ -405,9 +405,9 @@ async def test_hanging_up_while_a_segment_finishes_closes_every_connection_at_on
 
 
 async def test_hanging_up_while_her_last_reply_plays_closes_every_connection():
-    fish = await run(*reply(1, ["ほわっ。"]), SleepFrame(SYNTHESIS * 2), hang_up=True, pausing=True)
+    fish = await run(*reply(1, ["えっと。"]), SleepFrame(SYNTHESIS * 2), hang_up=True, pausing=True)
 
-    assert heard(fish) == ["playing 1/0", "audio ほわっ。"]
+    assert heard(fish) == ["playing 1/0", "audio えっと。"]
     assert all(socket.state is State.CLOSED for socket in fish.sockets)
 
 
@@ -415,26 +415,26 @@ async def test_hanging_up_while_her_last_reply_plays_closes_every_connection():
 # dictionary; what she is to say goes as written.
 
 READINGS = (
-    Reading("櫻木真乃", "さくらぎ まの", "sa0ku1ra1gi0ma1no0"),
+    Reading("星野ソラ", "さくらぎ まの", "sa0ku1ra1gi0ma1no0"),
     Reading("283", "つばさ", "tsu0ba1sa1"),
 )
 DICTIONARY = [{"items": [
-    {"key": "櫻木真乃", "value": "sa0ku1ra1gi0ma1no0", "case_sensitive": True},
+    {"key": "星野ソラ", "value": "sa0ku1ra1gi0ma1no0", "case_sensitive": True},
     {"key": "283", "value": "tsu0ba1sa1", "case_sensitive": True},
 ]}]
 
 
 async def test_each_session_starts_with_the_readings_as_its_pronunciation_dictionary():
-    fish = await run(*reply(1, ["櫻木真乃です。"], ["283の、"]), fish=FakeFish(readings=READINGS))
+    fish = await run(*reply(1, ["星野ソラです。"], ["283の、"]), fish=FakeFish(readings=READINGS))
 
     assert len(fish.starts) == len(fish.sockets) >= 2
     assert all(start["pronunciation_dictionary"] == DICTIONARY for start in fish.starts)
-    assert "text 櫻木真乃です。" in fish.of(1)
+    assert "text 星野ソラです。" in fish.of(1)
     assert "text 283の、" in fish.of(2)
 
 
 async def test_without_readings_sessions_start_with_no_pronunciation_dictionary():
-    fish = await run(*reply(1, ["ほわっ。"]))
+    fish = await run(*reply(1, ["えっと。"]))
 
     assert fish.starts and all("pronunciation_dictionary" not in start for start in fish.starts)
 
@@ -449,11 +449,11 @@ async def test_calls_speak_with_the_readings_whoever_s_key_they_are_on(monkeypat
 
     monkeypatch.setattr(FishTTS, "_websocket_connect", connect)
     tts = SpeechServices(readings=READINGS).tts(
-        "users-own-fish-key", "s2.1-pro-free", "mano-voice", 16000, own=True
+        "users-own-fish-key", "s2.1-pro-free", "sora-voice", 16000, own=True
     )
     tts._pause_frame_processing = False  # as `FishUnderTest`: no transport says she stopped
 
-    await run(*reply(1, ["櫻木真乃です。"]), fish=fish, tts=tts)  # pyright: ignore[reportArgumentType]
+    await run(*reply(1, ["星野ソラです。"]), fish=fish, tts=tts)  # pyright: ignore[reportArgumentType]
 
     assert fish.starts and all(start["pronunciation_dictionary"] == DICTIONARY for start in fish.starts)
 

@@ -2,7 +2,7 @@
 // talks to no one but this site, so a script slipped in through XSS has a hard time
 // sending the user's own API keys elsewhere. Inline scripts are allowed, since a nonce
 // would make every page render on each request. The one other place pages load from is
-// where the stands are kept (`EIDOLON_STAND_ASSETS_URL`): their outfit lists and Spine
+// where the stands are kept (`EIDOLON_STAND_ASSETS_URL`): their outfit lists and 3D model
 // files, thumbnails and the landing page's greetings. Images may also be `data:` and `blob:`:
 // the share card is turned into a PNG through them, in the page.
 

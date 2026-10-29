@@ -1,6 +1,6 @@
 # 学园 CSV 本机导入
 
-`eidolon story import-gim` 是独立 adapter，复用 `StoryCorpus`，不采用 SC 的剧本编号、类别或失败正则。自动化测试使用原创夹具；当前本机 214 份来源已完成审计、完整性修复及分支还原，79 篇正式经历与 129 篇条件反应资料入库，6 个明确失败排除。见 [审计报告](../.scratch/gim-classification-audit/README.md) 与 [分支还原](../.scratch/gim-branch-restoration/README.md)。技术验证不证明素材使用许可。
+`eidolon story import-gim` 是独立 adapter，复用 `StoryCorpus`，不采用 SC 的剧本编号、类别或失败正则。自动化测试使用原创夹具；当前本机 214 份来源已完成审计、完整性修复及分支还原，79 篇正式经历与 129 篇条件反应资料入库，6 个明确失败排除。见 审计报告（本地记录，不随源码发布） 与 分支还原（本地记录，不随源码发布）。技术验证不证明素材使用许可。
 
 ## 准备
 
@@ -67,4 +67,4 @@ uv run --frozen --env-file=../.env eidolon story import-gim ../corpus/gim-local/
 
 `backend/tests/test_gim_story_import.py` 使用原创磁盘 CSV、实际 SQLite corpus、CLI 和测试 embedder，核对 speaker/行数/译文/选择组、重复导入、更新、failure/unknown、错误 CSV/info/index、离线检索排除及 reembed。测试 embedder 只验证接口契约，不代表真实云服务验收。Windows 没有符号链接创建权限时相应检查会 skip；路径越界仍有独立测试。
 
-格式依据与来源记录见 [.scratch/gim-completion/research.md](../.scratch/gim-completion/research.md) 和 [coordination/SOURCES.md](../coordination/SOURCES.md)。当前 129 篇原暂缓资料已从原始脚本恢复分支结构并作为 conditional 准入，未确认的实际触发仍不当作正式经历；素材使用条件独立待核实。不要运行会把转换成功自动标为 canon 的旧版批转换器；新来源仍应默认 unknown，核验后再分类。
+格式依据与来源记录见 .scratch/gim-completion/research.md（本地记录，不随源码发布） 和 coordination/SOURCES.md（本地记录，不随源码发布）。当前 129 篇原暂缓资料已从原始脚本恢复分支结构并作为 conditional 准入，未确认的实际触发仍不当作正式经历；素材使用条件独立待核实。不要运行会把转换成功自动标为 canon 的旧版批转换器；新来源仍应默认 unknown，核验后再分类。

@@ -83,7 +83,7 @@ async def test_her_current_conversation_is_not_deleted(make_client: ClientFactor
     await start_conversation(client)
     current = await start_conversation(client)
     await turn(client, current, "早上好")
-    other = await start_conversation(client, "kogane")  # someone else's current is not hers
+    other = await start_conversation(client, "riku")  # someone else's current is not hers
 
     res = await client.delete(f"/api/conversations/{current}")
 

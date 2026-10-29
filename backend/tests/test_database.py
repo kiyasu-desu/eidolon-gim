@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 
 from eidolon import database
+from eidolon.story_library import STORY_TABLES
 from eidolon.config import Settings
 from tests.conftest import ClientFactory
 from tests.fakes import FakeEmbedder, FakeJudge, FakeLLM, FakeReranker
@@ -47,7 +48,8 @@ async def test_every_table_is_either_a_users_data_or_not(
     users = {table for table, _ in database.USER_DATA}
     users |= {table for table, *_ in database.ANONYMIZED_USER_DATA}
     assert not users & database.NOT_USER_DATA
-    assert users | database.NOT_USER_DATA == tables
+    assert users | (database.NOT_USER_DATA - STORY_TABLES) == tables
+    assert not tables & STORY_TABLES
 
 
 def test_only_the_database_module_connects_to_the_database():

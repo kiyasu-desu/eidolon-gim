@@ -23,9 +23,9 @@ const stats: Stats = {
     span: "30d",
     turns: 12,
     by_hour: hours({ 1: 12 }),
-    characters: [known("mano", 2), known("hiori", 7, 600), known("meguru", 3)],
+    characters: [known("sora", 2), known("nagi", 7, 600), known("hina", 3)],
     calls: { count: 2, seconds: 3900 },
-    gifts: { given: 4, liked: 1, most: { character_id: "mano", given: 4 } },
+    gifts: { given: 4, liked: 1, most: { character_id: "sora", given: 4 } },
   },
 };
 
@@ -43,7 +43,7 @@ describe("分享按钮", () => {
   it("当前跨度里一个回合都没有时隐藏：只打过电话、只送过礼的也一样", () => {
     const quiet: Stats = {
       ...stats,
-      range: { ...stats.range, turns: 0, characters: [known("mano", 0, 600)] },
+      range: { ...stats.range, turns: 0, characters: [known("sora", 0, 600)] },
     };
     expect(canShare(quiet)).toBe(false);
     expect(shareCard(quiet, null)).toBeNull();
@@ -52,20 +52,20 @@ describe("分享按钮", () => {
 
 describe("分享图的内容", () => {
   it("主角是这个跨度里聊得最多的那位", () => {
-    expect(card().hero).toBe("hiori");
+    expect(card().hero).toBe("nagi");
   });
 
   it("前 3 位按回合数排", () => {
     const four: Stats = {
       ...stats,
-      range: { ...stats.range, characters: [...stats.range.characters, known("kogane", 5)] },
+      range: { ...stats.range, characters: [...stats.range.characters, known("riku", 5)] },
     };
-    expect(card(four).top.map((c) => c.character_id)).toEqual(["hiori", "kogane", "meguru"]);
+    expect(card(four).top.map((c) => c.character_id)).toEqual(["nagi", "riku", "hina"]);
   });
 
   it("不满三人时有几位列几位", () => {
-    const two: Stats = { ...stats, range: { ...stats.range, characters: [known("mano", 1), known("hiori", 3)] } };
-    expect(card(two).top.map((c) => c.character_id)).toEqual(["hiori", "mano"]);
+    const two: Stats = { ...stats, range: { ...stats.range, characters: [known("sora", 1), known("nagi", 3)] } };
+    expect(card(two).top.map((c) => c.character_id)).toEqual(["nagi", "sora"]);
   });
 
   it("写设了的称呼，前后空白去掉", () => {

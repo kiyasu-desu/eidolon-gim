@@ -25,21 +25,21 @@ export type Character = {
   name: string;
   intro: string;
   avatar_url: string | null;
-  /** Her avatar in SCSP's set, which settings can switch the app's avatars to (lib/appearance); null when not configured. */
-  scsp_avatar_url: string | null;
+  /** Her optional alternate avatar, which settings can switch the app's avatars to (lib/appearance); null when not configured. */
+  alternate_avatar_url: string | null;
   /** Her image colour, `#rrggbb`; the interface only uses what `herVars()` derives from it. */
   color: string;
   background_url: string | null;
-  /** Her Spine stand on the call layer; null (her call background alone) unless the deployment
-   * configures her idol, her default outfit and where the stands are served from. */
+  /** Her 3D stand on the call layer; null (her call background alone) unless the deployment
+   * mounts a default model pack. */
   stand: Stand | null;
-  /** Her idol number in the original; the list comes in their order, those without one last. */
-  idol_id: number | null;
-  /** Her name in simplified Chinese as the community writes it (八宫巡); null when not configured. */
+  /** Optional display order; characters without one retain configuration order. */
+  display_order: number | null;
+  /** Her name in simplified Chinese as the community writes it (月村手毬); null when not configured. */
   name_zh: string | null;
-  /** Her full name in hiragana, family and given name a space apart (さくらぎ まの); null when not configured. */
+  /** Her full name in hiragana, family and given name a space apart (つきむら てまり); null when not configured. */
   name_kana: string | null;
-  /** Her full name in romaji, family name first, a space apart (Sakuragi Mano); null when not configured. */
+  /** Her full name in romaji, family name first, a space apart (Tsukimura Temari); null when not configured. */
   name_romaji: string | null;
   /** The name of her unit, from the world setting; null when there is none or it does not say. */
   unit: string | null;
@@ -52,15 +52,6 @@ export type Character = {
   /** What she says first once a visitor answers her call in the landing page's demo; null when
    * she has none (only she who calls there needs one). */
   call_opener: CallOpener | null;
-  /** Her card on the incoming call in the landing page's demo, a portrait WebP in the stands'
-   * bucket; null unless the deployment serves the stand assets. The server does not check that it
-   * was put there: when it fails to load, show her colour and name instead. */
-  call_poster_url: string | null;
-  /** Her voxel figure in the landing page's act about memory, a JSON file in the stands' bucket
-   * (`Voxels` in `scripts/glb-voxelize.mts`); null unless the deployment serves the stand assets. The
-   * server does not check that it was put there: when it fails to load, show her colour and name
-   * instead. */
-  voxels_url: string | null;
 };
 
 /** A character's greeting (GLOSSARY.md「招呼」). */
@@ -83,14 +74,14 @@ export type CallOpener = Greeting;
 export type Stand = {
   /** The outfit she wears unless the user picks another. */
   default_outfit: Outfit;
-  /** Her outfit list: `{idol_id, cards}`, each card with its `everyday` clothes and `stage`
+  /** Her outfit list: `{display_order, cards}`, each card with its `everyday` clothes and `stage`
    * costume (either may be null), whose `url` and `thumbnail` are relative to the list
    * (docs/deploy.md「立绘素材」); `null` when she has a single default outfit and no list. */
   outfits_url: string | null;
 };
 
-/** One outfit of her stand: `id` is `stand/<enzaId>` or `stand_costume/<enzaId>`, and `url` the
- * directory (ending in `/`) holding its `data.json`, `data.atlas` and `data.png`. */
+/** One outfit of her stand: `id` is `stand_3d/<slug>`, and `url` the
+ * directory (ending in `/`) holding its `model.json`, `animations.json` and textures. */
 export type Outfit = { id: string; url: string };
 
 export type Conversation = {
@@ -417,11 +408,7 @@ export async function api(path: string, init: RequestInit = {}): Promise<Respons
  * deployer gave none), which a banned user is told. */
 export type SignInOptions = { providers: Provider[]; dev_login: boolean; contact: string | null };
 
-/** What the landing page shows that belongs to no one character. `memory_still_url`: its act about
- * memory as one picture, for visitors who see no animation, in the stands' bucket; null unless the
- * deployment serves the stand assets. The server does not check that it was put there: when it
- * fails to load, show only the words. */
-export type LandingAssets = { memory_still_url: string | null };
+
 
 export async function getSignInOptions(): Promise<SignInOptions> {
   return json(await api("/api/auth/providers"));

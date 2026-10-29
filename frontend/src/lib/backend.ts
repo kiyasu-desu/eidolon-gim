@@ -1,7 +1,7 @@
 // Server side only: where the backend is, for the API proxy and the server components
 // that ask the backend before rendering.
 
-import { CONSENT_REQUIRED, type Character, type LandingAssets, type SignInOptions } from "@/lib/api";
+import { CONSENT_REQUIRED, type Character, type SignInOptions } from "@/lib/api";
 
 export const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
@@ -54,7 +54,3 @@ export const getCharacters = (): Promise<Character[]> => forLanding("/api/charac
 /** The ways to sign in the backend offers, for the landing page to say which there are. Null when
  * the backend fails; the landing page then does not say. */
 export const getSignInOptions = (): Promise<SignInOptions | null> => forLanding("/api/auth/providers", null);
-
-/** The landing page's pictures that belong to no one character. None of them when the backend
- * fails; the landing page then goes without them. */
-export const getLandingAssets = (): Promise<LandingAssets> => forLanding("/api/landing", { memory_still_url: null });

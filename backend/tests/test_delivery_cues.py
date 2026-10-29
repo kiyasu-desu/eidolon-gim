@@ -53,17 +53,17 @@ def test_cues_written_any_other_way_are_neither_voiced_nor_shown():
 
 
 def test_a_cue_split_between_chunks_never_shows_a_piece_of_itself():
-    shown, voiced, _ = parse("<ja>ほわっ、[sh", "y", "ly] えへ", "へ</ja>")
+    shown, voiced, _ = parse("<ja>えっと、[sh", "y", "ly] えへ", "へ</ja>")
 
-    assert shown == [(0, "ja", "ほわっ、"), (0, "ja", " えへ"), (0, "ja", "へ")]
-    assert "".join(text for _, text in voiced) == "ほわっ、[shyly] えへへ"
+    assert shown == [(0, "ja", "えっと、"), (0, "ja", " えへ"), (0, "ja", "へ")]
+    assert "".join(text for _, text in voiced) == "えっと、[shyly] えへへ"
 
 
 def test_a_bracket_that_never_closes_goes_on_as_written():
-    shown, voiced, _ = parse("<ja>ほわっ(", "えへへ</ja><zh>哇（嘿", "</zh>")
+    shown, voiced, _ = parse("<ja>えっと(", "えへへ</ja><zh>哇（嘿", "</zh>")
 
-    assert joined(shown) == "ほわっ(えへへ"
-    assert "".join(text for _, text in voiced) == "ほわっ(えへへ"
+    assert joined(shown) == "えっと(えへへ"
+    assert "".join(text for _, text in voiced) == "えっと(えへへ"
     assert joined(shown, "zh") == "哇（嘿"
 
 
@@ -163,20 +163,20 @@ async def test_the_conversation_list_shows_the_last_reply_without_cues(
 
     res = await client.get("/api/conversations/latest")
 
-    [mano] = [c for c in res.json() if c["conversation_id"] == conversation_id]
-    assert (mano["last_message"]["ja"], mano["last_message"]["zh"]) == ("えへへ、ありがとう", "嘿嘿，谢谢")
+    [sora] = [c for c in res.json() if c["conversation_id"] == conversation_id]
+    assert (sora["last_message"]["ja"], sora["last_message"]["zh"]) == ("えへへ、ありがとう", "嘿嘿，谢谢")
 
 
 async def test_a_call_voices_well_formed_cues_and_shows_and_remembers_none(
     make_client: ClientFactory, settings
 ):
     client = make_client(FakeLLM())
-    mano_call = CallUnderTest(settings, client, await start_conversation(client, "mano"))
+    sora_call = CallUnderTest(settings, client, await start_conversation(client, "sora"))
     memory = FakeBackgroundLLM()
     try:
-        spoken_text, messages = await mano_call.run(FakeLLM(REPLY), [spoken("谢谢你")], memory=memory)
+        spoken_text, messages = await sora_call.run(FakeLLM(REPLY), [spoken("谢谢你")], memory=memory)
     finally:
-        mano_call.close()
+        sora_call.close()
 
     assert "".join(spoken_text) == "[shyly]えへへ、ありがとう"
     deltas = [m["text"] for m in messages if m["type"] == "delta"]
@@ -192,9 +192,9 @@ async def test_a_call_voices_well_formed_cues_and_shows_and_remembers_none(
 async def test_jev_reads_earlier_replies_without_cues():
     requests: list[dict] = []
 
-    await judge_answering(requests, 0.1).judge(MANO, [message("character", "[shyly] ほわっ")], "嗯")
+    await judge_answering(requests, 0.1).judge(MANO, [message("character", "[shyly] えっと")], "嗯")
 
-    assert requests[0]["state"]["上文"] == ["櫻木真乃：ほわっ"]
+    assert requests[0]["state"]["上文"] == ["星野ソラ：えっと"]
 
 
 @pytest.mark.parametrize(

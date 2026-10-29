@@ -1,9 +1,9 @@
 """The world setting: the facts of the original that belong to no one character, from the
-data file `eidolon world sync` writes (`world_sync`) beside the character configuration.
+optional deployer-supplied data file beside the character configuration.
 
 The file holds the date the data runs to, the office's president and clerk, the idols
 (with their CV, which is only for telling which lives an idol stood on and for people
-checking the data: it never reaches a prompt, ADR-0008), the eight units, the
+checking the data: it never reaches a prompt, ADR-0008), the configured units, the
 releases and their songs, and the lives with who stood on each day and what was performed
 on it (its setlist, covers of other brands' songs included, which are none of the
 songs), each entry with the URLs it came from. Every character is one
@@ -40,9 +40,6 @@ class WorldError(RuntimeError):
     """The data file cannot be read, or a character is not one of its idols."""
 
 
-class WorldSyncError(RuntimeError):
-    """A source `eidolon world sync` imports from could not be reached, or answered with
-    something unexpected."""
 
 
 @dataclass(frozen=True)
@@ -57,7 +54,7 @@ class Staff:
 @dataclass(frozen=True)
 class Idol:
     name: str
-    """Her full name in Japanese, without a space, e.g. 櫻木真乃."""
+    """Her full name in Japanese, without a space, e.g. 月村手毬."""
     reading: str
     unit: str | None
     """The name of her unit; None only if the sources could not agree on one."""
@@ -134,7 +131,7 @@ class LiveDay:
     not among the performers."""
     sources: tuple[str, ...]
     setlist: tuple[SetlistItem, ...] = ()
-    """What was performed that day with any of Shiny Colors' idols in it, in order;
+    """What was performed that day with any of the configured idols in it, in order;
     empty if it is not known (a day still to come, or one of two shows)."""
 
 
@@ -236,7 +233,7 @@ class World:
                     f"出演偶像：{performers}",
                 ]
                 if day.setlist:
-                    lines.append("曲目单（标着别的品牌的是翻唱，不是闪耀色彩的歌）：")
+                    lines.append("曲目单（标着别的品牌的是翻唱，不是本作品的歌）：")
                     lines += [
                         f"{i}. {self._setlist_line(item, day)}"
                         for i, item in enumerate(day.setlist, 1)
@@ -288,7 +285,7 @@ class World:
             if self.idol(character.name) is None:
                 raise WorldError(
                     f"角色 {character.id} 的显示名「{character.name}」在世界设定资料 {path} 的偶像名单里找不到"
-                    "（显示名要和资料里的日文全名一致，例如「櫻木真乃」）"
+                    "（显示名要和资料里的日文全名一致，例如「月村手毬」）"
                 )
 
     def prompt(self, name: str, today: date) -> str:
@@ -469,4 +466,4 @@ def load_world(path: Path) -> World | None:
     try:
         return World.from_json(data)
     except (KeyError, TypeError, ValueError) as e:
-        raise WorldError(f"世界设定资料 {path} 缺少或写错了字段：{e!r}（重新运行 eidolon world sync）") from None
+        raise WorldError(f"世界设定资料 {path} 缺少或写错了字段：{e!r}（请核对提供的 world.json）") from None

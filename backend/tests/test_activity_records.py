@@ -110,7 +110,7 @@ async def test_the_dashboard_counts_turns_by_how_they_turned_out_and_says_nothin
     failed = await send_turn(producer, conversation_id, "在吗")
     await leave_turn(producer, conversation_id, "你好", after="delta")  # once asked
     refused = await post_turn(producer, conversation_id)
-    await send_turn(friend, await start_conversation(friend, "kogane"), "早上好")
+    await send_turn(friend, await start_conversation(friend, "riku"), "早上好")
     board = await dashboard(admin)
 
     assert (succeeded[-1]["type"], failed[-1]["type"], refused.status_code) == (
@@ -123,7 +123,7 @@ async def test_the_dashboard_counts_turns_by_how_they_turned_out_and_says_nothin
     assert board["active_users"] == 2
     assert turns["time_to_speak_ms"]["p50"] is not None
     assert [(c["character_id"], c["name"], c["turns"]) for c in board["characters"]] == [
-        ("mano", "櫻木真乃", 4), ("kogane", "月岡恋鐘", 1)
+        ("sora", "星野ソラ", 4), ("riku", "青葉リク", 1)
     ]
     assert sum(point["turns"] for point in board["trend"]) == 5
     # Each turn that reached the model called it once; only the one that failed failed.
@@ -529,7 +529,7 @@ async def test_a_database_from_before_reach_outs_were_answered_has_none_answered
         )
         db.execute(
             "INSERT INTO activity_records (kind, anonymous_id, character_id, started_at, result)"
-            " VALUES ('reach_out', 'someone', 'mano', ?, 'success')",
+            " VALUES ('reach_out', 'someone', 'sora', ?, 'success')",
             ((START - timedelta(hours=1)).timestamp(),),
         )
 

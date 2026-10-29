@@ -54,7 +54,7 @@ def deployment(make_client: ClientFactory, settings: Settings, tmp_path: Path, n
 
 
 async def photos_in(client: httpx.AsyncClient) -> list[dict | None]:
-    """The photo of each reply in Mano's conversations, oldest first: its status and reason,
+    """The photo of each reply in Sora's conversations, oldest first: its status and reason,
     and its picture's size if sent; None for a reply with none."""
     photos: list[dict | None] = []
     for conversation in reversed(await hers(client)):

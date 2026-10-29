@@ -1,3 +1,5 @@
+> 历史决定：当前 GIM 已停止采用此方案，见 [ADR-0029](0029-remove-sc-specific-content.md)。
+
 # 通话层立绘用官方 Spine 3.6 runtime，暂不购买 Spine Editor 许可证
 
 通话层的立绘是原作的 Spine 3.6.53 素材，能读它的只有官方 spine-ts 3.6 runtime，pixi-spine 等其他选择也受同一份 Spine 许可证约束。现行的 Spine Runtimes 许可证要求集成 runtime 的人持有有效的 Spine Editor 许可证；3.6 文件自带的 v2.5 许可证更严，只允许个人或内部使用。系统对公众开放，浏览器会下载 runtime，这就算分发。我们选择**不买 Editor 许可证、接受这层风险**：素材本身就是未经授权使用的原作素材，runtime 许可证只是在同一种风险上多加一层；真有人追究时，再买一份 Editor 许可证就能补上，不需要改代码。

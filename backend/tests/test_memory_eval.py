@@ -42,14 +42,14 @@ EVAL = """
 [[extraction]]
 id = "moved"
 category = "supersede"
-character = "mano"
+character = "sora"
 memories = [
-  { key = "osaka", source = "kogane", text = "制作人住在大阪" },
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
+  { key = "osaka", source = "riku", text = "制作人住在大阪" },
+  { key = "cat", source = "sora", text = "制作人养了一只叫小白的猫" },
 ]
 history = [{ user = "最近好忙" }, { ja = "[softly]おつかれさまです", zh = "辛苦了" }]
 said = "我上个月搬到东京了"
-reply = { ja = "ほわっ、東京に！", zh = "哇，搬到东京了！" }
+reply = { ja = "えっと、東京に！", zh = "哇，搬到东京了！" }
 must = [["东京", "東京"], "搬"]
 must_not = ["很累"]
 keeps = ["cat"]
@@ -57,7 +57,7 @@ keeps = ["cat"]
 [[extraction]]
 id = "tired"
 category = "transient"
-character = "kogane"
+character = "riku"
 said = "今天好累啊"
 reply = { ja = "おつかれさまばい", zh = "辛苦啦" }
 nothing = true
@@ -65,8 +65,8 @@ nothing = true
 [[extraction]]
 id = "osaka-superseded"
 category = "supersede"
-character = "mano"
-memories = [{ key = "osaka", source = "kogane", text = "制作人住在大阪" }]
+character = "sora"
+memories = [{ key = "osaka", source = "riku", text = "制作人住在大阪" }]
 said = "我搬到东京了"
 reply = { ja = "東京ですか！", zh = "东京吗！" }
 must = ["东京"]
@@ -75,10 +75,10 @@ supersedes = ["osaka"]
 [[recall]]
 id = "it-cat"
 category = "pronoun"
-character = "mano"
+character = "sora"
 memories = [
-  { key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" },
-  { key = "dog", source = "kogane", text = "制作人老家养了一只柴犬" },
+  { key = "cat", source = "sora", text = "制作人养了一只叫小白的猫" },
+  { key = "dog", source = "riku", text = "制作人老家养了一只柴犬" },
 ]
 history = [{ user = "回来了" }, { ja = "[happily]猫ちゃん、元気ですか？", zh = "猫咪还好吗？" }]
 said = "它昨晚又叫了一夜"
@@ -88,8 +88,8 @@ not_found = ["dog"]
 [[recall]]
 id = "it-cat-unjudged"
 category = "pronoun"
-character = "mano"
-memories = [{ key = "cat", source = "mano", text = "制作人养了一只叫小白的猫" }]
+character = "sora"
+memories = [{ key = "cat", source = "sora", text = "制作人养了一只叫小白的猫" }]
 history = [{ ja = "猫ちゃん、元気ですか？", zh = "猫咪还好吗？" }]
 said = "它又叫了"
 found = ["cat"]
@@ -97,8 +97,8 @@ found = ["cat"]
 [[recall]]
 id = "back-home"
 category = "continuity"
-character = "kogane"
-memories = [{ key = "interview", source = "mano", text = "制作人10月8日下午有一场面试" }]
+character = "riku"
+memories = [{ key = "interview", source = "sora", text = "制作人10月8日下午有一场面试" }]
 said = "我回来了"
 found = ["interview"]
 """
@@ -171,7 +171,7 @@ async def test_a_run_goes_through_the_memories_module_and_is_summed_up_by_catego
     # is taken as a conversation takes it.
     first = background.prompts[0][-1].content
     assert "制作人住在大阪" in first and "制作人养了一只叫小白的猫" in first
-    assert "制作人：最近好忙" in first and "櫻木真乃：辛苦了" in first
+    assert "制作人：最近好忙" in first and "星野ソラ：辛苦了" in first
     assert "我上个月搬到东京了" in first and "哇，搬到东京了！" in first
     # Each run starts afresh, not with what the run before wrote down.
     assert "制作人从大阪搬到了东京" not in background.prompts[1][-1].content
@@ -189,7 +189,7 @@ async def test_a_run_goes_through_the_memories_module_and_is_summed_up_by_catego
 
     # Recall cases are judged as a conversation judges them, the previous reply among
     # what came before, and found through the memories.
-    assert judge.states[0]["上文"] == ["制作人：回来了", "櫻木真乃：猫ちゃん、元気ですか？"]
+    assert judge.states[0]["上文"] == ["制作人：回来了", "星野ソラ：猫ちゃん、元気ですか？"]
     cat, unjudged, back_home = results.recall
     assert cat.passed and cat.found == ("cat",) and cat.judged.need == "memories"
     assert cat.judged.answer is not None and cat.judged.answer.about_producer == 0.9
@@ -232,10 +232,10 @@ SUPERSEDED = """
 [[recall]]
 id = "kitten-named"
 category = "supersede"
-character = "mano"
+character = "sora"
 memories = [
-  { key = "kitten", source = "mano", text = "制作人养了一只小猫", superseded_by = "shiro" },
-  { key = "shiro", source = "kogane", text = "制作人养了一只叫小白的猫" },
+  { key = "kitten", source = "sora", text = "制作人养了一只小猫", superseded_by = "shiro" },
+  { key = "shiro", source = "riku", text = "制作人养了一只叫小白的猫" },
 ]
 history = [{ ja = "猫ちゃん、元気ですか？", zh = "猫咪还好吗？" }]
 said = "它昨晚又叫了一夜"
@@ -295,8 +295,8 @@ CASE = """
 [[recall]]
 id = "a"
 category = "pronoun"
-character = "mano"
-memories = [{ key = "cat", source = "mano", text = "制作人养了猫" }]
+character = "sora"
+memories = [{ key = "cat", source = "sora", text = "制作人养了猫" }]
 history = [{ ja = "猫ちゃん", zh = "猫咪" }]
 said = "它叫了"
 found = ["cat"]
@@ -306,7 +306,7 @@ EXTRACTION = """
 [[extraction]]
 id = "b"
 category = "transient"
-character = "mano"
+character = "sora"
 said = "好累"
 reply = { ja = "おつかれさまです", zh = "辛苦了" }
 nothing = true
@@ -318,25 +318,25 @@ nothing = true
     [
         (CASE + CASE, "用例 a 重复"),
         (CASE.replace('category = "pronoun"', 'category = "trivia"'), "category"),
-        (CASE.replace('character = "mano"', 'character = "rin"'), "rin"),
+        (CASE.replace('character = "sora"', 'character = "rin"'), "rin"),
         (CASE.replace('found = ["cat"]', 'found = ["dog"]'), "dog"),
         (CASE.replace('found = ["cat"]', 'not_found = ["cat"]\nfound = ["cat"]'), "cat"),
         (CASE.replace('found = ["cat"]', ""), "found"),
         (CASE.replace('said = "它叫了"\n', ""), "said"),
-        (CASE.replace('source = "mano"', 'source = "rin"'), "rin"),
+        (CASE.replace('source = "sora"', 'source = "rin"'), "rin"),
         (CASE.replace(', text = "制作人养了猫"', ""), "text"),
-        (CASE.replace('[{ key = "cat", source = "mano", text = "制作人养了猫" }]',
-                      '[{ key = "cat", source = "mano", text = "制作人养了猫" },'
-                      ' { key = "cat", source = "mano", text = "制作人养了狗" }]'), "cat"),
-        (CASE.replace('[{ key = "cat", source = "mano", text = "制作人养了猫" }]',
-                      '[{ key = "cat", source = "mano", text = "制作人养了猫" },'
-                      ' { key = "kitty", source = "mano", text = "制作人养了猫" }]'), "制作人养了猫"),
+        (CASE.replace('[{ key = "cat", source = "sora", text = "制作人养了猫" }]',
+                      '[{ key = "cat", source = "sora", text = "制作人养了猫" },'
+                      ' { key = "cat", source = "sora", text = "制作人养了狗" }]'), "cat"),
+        (CASE.replace('[{ key = "cat", source = "sora", text = "制作人养了猫" }]',
+                      '[{ key = "cat", source = "sora", text = "制作人养了猫" },'
+                      ' { key = "kitty", source = "sora", text = "制作人养了猫" }]'), "制作人养了猫"),
         (CASE.replace('text = "制作人养了猫" }', 'text = "制作人养了猫", superseded_by = "dog" }'),
          "dog"),
         # What supersedes a memory is written down after it.
-        (CASE.replace('[{ key = "cat", source = "mano", text = "制作人养了猫" }]',
-                      '[{ key = "kitten", source = "mano", text = "制作人养了小猫" },'
-                      ' { key = "cat", source = "mano", text = "制作人养了猫",'
+        (CASE.replace('[{ key = "cat", source = "sora", text = "制作人养了猫" }]',
+                      '[{ key = "kitten", source = "sora", text = "制作人养了小猫" },'
+                      ' { key = "cat", source = "sora", text = "制作人养了猫",'
                       ' superseded_by = "kitten" }]'), "kitten"),
         # Recall is looked up after the character's previous reply.
         (CASE.replace('history = [{ ja = "猫ちゃん", zh = "猫咪" }]', 'history = [{ user = "嗯" }]'),
@@ -347,7 +347,7 @@ nothing = true
         (EXTRACTION.replace("nothing = true", ""), "检查"),
         (EXTRACTION.replace("nothing = true", 'nothing = true\nmust = ["累"]'), "nothing"),
         (EXTRACTION.replace("nothing = true", 'nothing = true\nmust_nto = ["累"]'), "must_nto"),
-        (CASE.replace('text = "制作人养了猫" }', 'text = "制作人养了猫", source_character = "mano" }'),
+        (CASE.replace('text = "制作人养了猫" }', 'text = "制作人养了猫", source_character = "sora" }'),
          "source_character"),
         (EXTRACTION.replace("nothing = true", "must = [[]]"), "must"),
         ("[[recall", "格式"),
@@ -373,7 +373,7 @@ def test_a_continuity_case_may_begin_the_conversation(
 
 
 def test_the_committed_set_covers_every_category():
-    characters = load_characters(REPO / "characters" / "characters.toml")
+    characters = load_characters(REPO / "characters" / "gim" / "characters.toml")
     memory_eval = load_memory_eval(REPO / "backend" / "eval" / "memory.toml", characters)
 
     cases = [*memory_eval.extraction, *memory_eval.recall]
@@ -406,7 +406,7 @@ def test_the_command_needs_the_services_memory_runs_on(
 
     err = admin.fails(
         "eval", "memory", "--file", str(REPO / "backend" / "eval" / "memory.toml"),
-        "--characters", str(REPO / "characters" / "characters.toml"),
+        "--characters", str(REPO / "characters" / "gim" / "characters.toml"),
     )
 
     assert missing in err and "记忆评测" in err

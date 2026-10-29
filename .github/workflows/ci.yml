@@ -5,7 +5,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/gim-release]
     tags: ["v*"]
 
 # 同一个 PR 推了新提交时取消旧的运行；main 上的每次推送都跑完，免得漏发镜像
@@ -33,7 +33,10 @@ jobs:
       # --locked：uv.lock 和 pyproject.toml 对不上时失败
       - run: uv sync --locked
       - run: uv run ruff check
-      - run: uv run ruff check --config pyproject.toml ../scripts/stand3d ../scripts/check-stand3d.py
+      - run: uv run python ../scripts/check-gim-scope.py
+      - run: uv run python ../scripts/check-release.py --ref HEAD
+      - run: uv run python -m unittest discover -s ../scripts/tests -v
+      - run: uv run ruff check --config pyproject.toml ../scripts/stand3d ../scripts/check-stand3d.py ../scripts/check-gim-scope.py ../scripts/check-release.py ../scripts/tests
       - run: uv run pyright
       # 单个测试 2 分钟还没结束时打印所有线程的栈，挂住时能看出卡在哪里
       - run: uv run pytest -o faulthandler_timeout=120
@@ -100,7 +103,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -114,12 +117,12 @@ jobs:
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
             type=sha
-      # PR 上只构建、不推送
+      # PR 与发布检查分支只构建；只有 main 和版本标签推送镜像。
       - uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.service }}
           platforms: linux/amd64
-          push: ${{ github.event_name == 'push' }}
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}

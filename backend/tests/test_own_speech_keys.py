@@ -109,13 +109,13 @@ async def test_a_call_hears_and_speaks_on_the_keys_it_brings(
 
     await browser.call(
         client,
-        conversation_id=await start_conversation(client, "kogane"),
+        conversation_id=await start_conversation(client, "riku"),
         own_keys=own_keys("tts", "stt"),
     )
     await browser.connect()
 
     assert [stt.key for stt in speech.stts] == [SttKey("soniox", MY_SONIOX)]
-    assert [(tts.api_key, tts.voice_id) for tts in speech.ttss] == [(MY_FISH, "kogane-voice")]
+    assert [(tts.api_key, tts.voice_id) for tts in speech.ttss] == [(MY_FISH, "riku-voice")]
 
 
 async def test_the_deployers_keys_serve_what_the_call_did_not_bring(

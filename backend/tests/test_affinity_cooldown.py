@@ -75,8 +75,8 @@ async def test_the_turn_that_takes_it_to_0_has_her_part_and_begins_a_cooldown(
     llm = FakeLLM(REPLY, REPLY)
     unlimited = replace(settings, usage_limits=UsageLimits())
     client = make_client(llm, clients=clients, clock=clock, settings=unlimited)
-    other = await start_conversation(client, "kogane")
-    keep(settings.database_path, "producer", 45, clock.now, character="kogane")
+    other = await start_conversation(client, "riku")
+    keep(settings.database_path, "producer", 45, clock.now, character="riku")
     conversation = await start_conversation(client)
     keep(settings.database_path, "producer", 5, clock.now)
 
@@ -136,7 +136,7 @@ async def test_in_a_cooldown_turns_and_calls_are_refused_counting_towards_nothin
 
 async def test_a_cooldown_is_hers_alone(make_client: ClientFactory, settings: Settings):
     client = make_client(FakeLLM(REPLY), clock=FakeClock())
-    other = await start_conversation(client, "kogane")
+    other = await start_conversation(client, "riku")
     keep(settings.database_path, "producer", 0, START, cooling=True)
 
     events = await send_turn(client, other, "在吗")

@@ -118,6 +118,18 @@ def connect(path: Path) -> sqlite3.Connection:
     return db
 
 
+def readonly(path: Path) -> sqlite3.Connection:
+    """Read an existing database without creating it or changing its schema."""
+    db = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True, timeout=30)
+    try:
+        db.execute("PRAGMA query_only = ON")
+        db.execute("PRAGMA foreign_keys = ON")
+    except sqlite3.Error:
+        db.close()
+        raise
+    return db
+
+
 def readable(path: Path) -> bool:
     """Whether the database at `path` can be read now, on a read-only connection of its
     own, so as to wait on no module's lock, nor make a database where there is none; for

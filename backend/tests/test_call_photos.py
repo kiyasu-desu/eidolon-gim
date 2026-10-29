@@ -57,7 +57,7 @@ def settings(settings: Settings) -> Settings:
 @pytest.fixture
 async def conversation(make_client: ClientFactory) -> tuple[httpx.AsyncClient, str]:
     client = make_client(FakeLLM())
-    return client, await start_conversation(client, "mano")
+    return client, await start_conversation(client, "sora")
 
 
 async def call(
@@ -78,9 +78,9 @@ async def call(
     try:
         conversation = backend.store.get_conversation(conversation_id)
         assert conversation is not None
-        admission = backend.admissions.call(conversation.user_id, "mano", BroughtKeys())
-        mano = backend.characters["mano"]
-        on = Call(conversation, mano, admission.llms, False, "standard")
+        admission = backend.admissions.call(conversation.user_id, "sora", BroughtKeys())
+        sora = backend.characters["sora"]
+        on = Call(conversation, sora, admission.llms, False, "standard")
         outcome = CallOutcome(
             admission, CallLimits(), backend.clock,
             partial(backend.store.keep_call, conversation.id),
@@ -125,7 +125,7 @@ async def test_a_call_bringing_the_users_own_image_generation_has_her_photo_on_i
 ):
     image = FakeImageService()
     client = make_client(FakeLLM(REPLY), clients=asking(), image_transport=image.transport())
-    conversation_id = await start_conversation(client, "mano")
+    conversation_id = await start_conversation(client, "sora")
 
     async with open_browser() as browser:
         await browser.call(client, conversation_id=conversation_id, own_keys={"image": MINE})

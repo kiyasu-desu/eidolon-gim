@@ -103,8 +103,8 @@ async def test_hurt_turn_after_turn_she_warns_once_then_ends_the_conversation_af
     assert turns[-1][-1]["affinity"]["cooldown_until"] is None
     assert shape(recorded)[-3:] == ["user:第5句", "character:好的", "ended"]
     assert turns[-1][-1]["ended"] == recorded[-1]
-    [mano] = listed
-    assert mano["last_message"]["role"] == "character"
+    [sora] = listed
+    assert sora["last_message"]["role"] == "character"
     assert ended_kept(settings.database_path) == [None] * 5 + ["fed_up"]
 
 

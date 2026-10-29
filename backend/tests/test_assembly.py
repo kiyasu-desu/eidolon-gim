@@ -62,10 +62,10 @@ async def backends() -> AsyncIterator[list[Backend]]:
         await backend.aclose()
 
 
-async def tell_mano(backend: Backend, text: str) -> tuple[str, list[dict]]:
-    """Take one turn in a new conversation with Mano; returns its user and events."""
+async def tell_sora(backend: Backend, text: str) -> tuple[str, list[dict]]:
+    """Take one turn in a new conversation with Sora; returns its user and events."""
     user = backend.store.create_user("producer")
-    conversation = backend.store.create_conversation(user.id, "mano")
+    conversation = backend.store.create_conversation(user.id, "sora")
     llms = backend.own_keys.for_turn(BroughtKeys()).llms
     return user.id, [asdict(e) async for e in backend.engine.turn(conversation, text, llms)]
 
@@ -81,10 +81,10 @@ async def test_with_every_service_turns_retrieve_and_remember(
     )
     backends.append(backend)
 
-    user_id, events = await tell_mano(backend, "我家的猫叫小白哦")
+    user_id, events = await tell_sora(backend, "我家的猫叫小白哦")
 
     assert events[-1]["type"] == "done"
-    assert services.retrieval_judge.asked == [("櫻木真乃", "我家的猫叫小白哦")]
+    assert services.retrieval_judge.asked == [("星野ソラ", "我家的猫叫小白哦")]
     assert services.chat.tools == [[RECALL_STORY_TOOL]]
     assert [m.text for m in await backend.memories.entries(user_id)] == [CAT]
 
@@ -101,7 +101,7 @@ async def test_without_any_one_of_them_retrieval_and_memory_are_off(
     )
     backends.append(backend)
 
-    user_id, events = await tell_mano(backend, "我家的猫叫小白哦")
+    user_id, events = await tell_sora(backend, "我家的猫叫小白哦")
 
     assert events[-1]["type"] == "done"
     assert services.retrieval_judge.asked == []
@@ -150,10 +150,10 @@ async def test_cloudflare_chosen_judges_both_what_turns_need_and_her_emotions(
     )
     backends.append(backend)
 
-    await tell_mano(backend, "早上好")
+    await tell_sora(backend, "早上好")
     lease = backend.config.lease()  # as a call takes it, connecting
     assert lease.keys.emotions is not None
-    said = SegmentToJudge(backend.characters["mano"], "早上好", [], SaidSegment("おはよう！", "早上好！"))
+    said = SegmentToJudge(backend.characters["sora"], "早上好", [], SaidSegment("おはよう！", "早上好！"))
     await lease.keys.emotions.message(1, 0, said)
     lease.release()
 
@@ -179,16 +179,16 @@ async def test_the_judge_model_made_judges_both_on_the_thresholds_in_effect(
         """The emotion the next call hears in a segment."""
         lease = backend.config.lease()
         assert lease.keys.emotions is not None
-        said = SegmentToJudge(backend.characters["mano"], "早上好", [], SaidSegment("わーい！", "耶！"))
+        said = SegmentToJudge(backend.characters["sora"], "早上好", [], SaidSegment("わーい！", "耶！"))
         message = await lease.keys.emotions.message(1, 0, said)
         lease.release()
         assert message is not None
         return message["emotion"]
 
-    await tell_mano(backend, "那次比赛怎么样")  # Jev's 0.5: recalled
+    await tell_sora(backend, "那次比赛怎么样")  # Jev's 0.5: recalled
     before = await felt()
     await backend.config.save("judge_thresholds", {"recall": 0.7, "emotion": 0.7})
-    await tell_mano(backend, "那次比赛怎么样")  # 0.7: not recalled
+    await tell_sora(backend, "那次比赛怎么样")  # 0.7: not recalled
     after = await felt()
 
     # A turn that recalled forbids the tool its model is offered all the same.

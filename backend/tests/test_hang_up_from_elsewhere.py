@@ -40,7 +40,7 @@ from tests.test_call_turns import (  # noqa: F401
     SLOW_REPLY,
     CallUnderTest,
     kinds,
-    mano_call,
+    sora_call,
     spoken,
     without_emotions,
 )
@@ -74,12 +74,12 @@ async def test_a_cooldown_begun_elsewhere_has_her_hang_up_an_idle_call(
     elsewhere = await start_conversation(client)
     keep(settings.database_path, "producer", 5, clock.now)
 
-    async with admin_beside(client, github) as admin, open_browser() as mano:
-        await mano.call(client, conversation_id=in_call)
-        await mano.connect()
+    async with admin_beside(client, github) as admin, open_browser() as sora:
+        await sora.call(client, conversation_id=in_call)
+        await sora.connect()
         await send_turn(client, elsewhere, "随便你")
-        ended = await mano.next_server_message("ended")
-        await mano.hung_up()
+        ended = await sora.next_server_message("ended")
+        await sora.hung_up()
         board = await call_recorded(admin)
     recorded = await record(client, in_call)
 
@@ -94,9 +94,9 @@ async def test_a_cooldown_begun_elsewhere_has_her_hang_up_an_idle_call(
 
 
 async def test_a_reply_she_has_started_speaking_goes_no_further_and_nothing_after_is_taken_up(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(INTERRUPTED_REPLY, REPLY, delay=0.3),
         [spoken("早上好"), *INTERRUPTIBLE, SleepFrame(0.3), spoken("还在吗"), SleepFrame(0.5)],
         affinity=[level(2), level(2)],
@@ -105,16 +105,16 @@ async def test_a_reply_she_has_started_speaking_goes_no_further_and_nothing_afte
 
     told = without_emotions(messages)
     assert kinds(told) == ["user", "done", "ended"]
-    assert (told[-2]["message"]["ja"], told[-2]["message"]["zh"]) == ("ほわっ", "哇")
+    assert (told[-2]["message"]["ja"], told[-2]["message"]["zh"]) == ("えっと", "哇")
     assert messages[-1]["reason"] == "cooldown"
     assert messages[-1]["cooldown_until"] == UNTIL.isoformat()
-    assert shape(await record_of(mano_call)) == ["user:早上好", "character:哇", "hung_up"]
+    assert shape(await record_of(sora_call)) == ["user:早上好", "character:哇", "hung_up"]
 
 
 async def test_a_reply_she_has_not_started_speaking_is_dropped_turn_and_all(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(SLOW_REPLY, delay=0.3),
         [spoken("早上好"), SleepFrame(0.5)],
         affinity=[level(2)],
@@ -123,4 +123,4 @@ async def test_a_reply_she_has_not_started_speaking_is_dropped_turn_and_all(
 
     assert kinds(without_emotions(messages)) == ["user", "ended"]
     assert messages[-1]["reason"] == "cooldown"
-    assert shape(await record_of(mano_call)) == ["hung_up"]
+    assert shape(await record_of(sora_call)) == ["hung_up"]

@@ -192,7 +192,7 @@ cd "$(dirname "$0")/.."
 
 TOTAL_STAGES=8
 
-banner "Eidolon-SC 登录配置"
+banner "Eidolon-GIM 登录配置"
 
 # ── 1 ────────────────────────────────────────────────────────────────────
 stage "网站地址"
@@ -220,9 +220,9 @@ pause "按回车继续"
 stage "GitHub OAuth App"
 open_url "https://github.com/settings/applications/new"
 if [[ -n "$EIDOLON_DOMAIN" ]]; then
-  step "Application name：用户在授权页上看到的名字，和网站标题一样，例如 Eidolon-SC"
+  step "Application name：用户在授权页上看到的名字，和网站标题一样，例如 Eidolon-GIM"
 else
-  step "Application name：开发用的单独建一个，例如 Eidolon-SC (dev)"
+  step "Application name：开发用的单独建一个，例如 Eidolon-GIM (dev)"
 fi
 step "Homepage URL：$SITE"
 step "Application description：一两句话说明网站是做什么的，会显示在授权页上"

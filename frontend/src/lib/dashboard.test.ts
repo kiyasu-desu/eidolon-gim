@@ -272,9 +272,9 @@ describe("affinityRows", () => {
 
   it("tells the shares raised and lowered as percentages, dashes for too few, and on a phone ends the row on them", () => {
     const [many, few, none] = affinityRows([
-      row("mano", 1200, 0.4, 0.125),
-      row("meguru", 3, null, null),
-      row("rinze", 20, 0, 0),
+      row("sora", 1200, 0.4, 0.125),
+      row("hina", 3, null, null),
+      row("rin", 20, 0, 0),
     ]);
     expect([many.raised, many.lowered]).toEqual(["40%", "12.5%"]);
     expect([few.raised, few.lowered]).toEqual(["—", "—"]);

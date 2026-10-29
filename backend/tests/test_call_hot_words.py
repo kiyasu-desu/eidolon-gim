@@ -28,43 +28,43 @@ from tests.conftest import CharacterConfig
 from tests.fakes import FakeCatalog, FakeDashScope, build_faked
 
 READINGS = [
-    "櫻木真乃", "櫻木", "真乃",
-    "有栖川夏葉", "有栖川", "夏葉",
-    "八宮めぐる", "八宮",
-    "田中摩美々", "田中", "摩美々",
-    "黛冬優子", "黛", "冬優子",
-    "月岡恋鐘", "恋鐘",  # her surname not among them
-    "L'Antica", "illumination STARS", "283プロ", "283", "天井社長",
-    "放課後クライマックスガールズ大集合スペシャル",  # 21 characters
-    "The Straylight Story Of Three Girls In Rain",  # 8 words
+    "星野ソラ", "星野", "ソラ",
+    "架空ナツ", "架空", "ナツ",
+    "晴川ヒナ", "晴川",
+    "架空ミナ", "ミナ",
+    "架空フユ", "フユ",
+    "青葉リク", "リク",  # her surname not among them
+    "Sample Harmony", "Sample Stars", "サンプル事務所", "101", "代表",
+    "放課後サンプルグループ大集合スペシャルテスト",  # 21 characters
+    "The Sample Light Story Of Three Girls In Rain",  # 8 words
 ]
 
 CHARACTERS = [  # id, name, name_zh
-    ("mano", "櫻木真乃", "樱木真乃"),
-    ("natsuha", "有栖川夏葉", "有栖川夏叶"),
-    ("meguru", "八宮めぐる", "八宫巡"),
-    ("mamimi", "田中摩美々", "田中摩美美"),
-    ("fuyuko", "黛冬優子", "黛冬优子"),
-    ("kogane", "月岡恋鐘", "月冈恋钟"),
+    ("sora", "星野ソラ", "星野空"),
+    ("natsu", "架空ナツ", "架空夏叶"),
+    ("hina", "晴川ヒナ", "晴川日"),
+    ("mina", "架空ミナ", "架空摩美美"),
+    ("fuyu", "架空フユ", "架空冬优子"),
+    ("riku", "青葉リク", "青叶陆"),
 ]
 
-UNITS = ["illumination STARS", "L'Antica", "放課後クライマックスガールズ"]
+UNITS = ["Sample Stars", "Sample Harmony", "放課後サンプル"]
 
 HOT_WORDS = {
-    # every way of writing in the readings file, but lone surnames (櫻木, 有栖川, 八宮, 田中,
-    # 黛) and those too long (TOO_LONG)
-    "櫻木真乃", "真乃", "有栖川夏葉", "夏葉", "八宮めぐる", "田中摩美々", "摩美々",
-    "黛冬優子", "冬優子", "月岡恋鐘", "恋鐘",
-    "L'Antica", "illumination STARS", "283プロ", "283", "天井社長",
-    # Chinese full names, and given names but where the surname is not known (Kogane)
-    # or one character is left (八宫巡 → 巡)
-    "樱木真乃", "有栖川夏叶", "夏叶", "八宫巡", "田中摩美美", "摩美美", "黛冬优子", "冬优子",
-    "月冈恋钟",
+    # every way of writing in the readings file, but lone surnames (星野, 架空, 晴川, 架空,
+    # 架空) and those too long (TOO_LONG)
+    "星野ソラ", "ソラ", "架空ナツ", "ナツ", "晴川ヒナ", "架空ミナ", "ミナ",
+    "架空フユ", "フユ", "青葉リク", "リク",
+    "Sample Harmony", "Sample Stars", "サンプル事務所", "101", "代表",
+    # Chinese full names, and given names but where the surname is not known (Riku)
+    # or one character is left (晴川日 → 巡)
+    "星野空", "架空夏叶", "夏叶", "晴川日", "架空摩美美", "摩美美", "架空冬优子", "冬优子",
+    "青叶陆",
     # units in the world setting
-    "放課後クライマックスガールズ",
+    "放課後サンプル",
 }
 
-TOO_LONG = ["放課後クライマックスガールズ大集合スペシャル", "The Straylight Story Of Three Girls In Rain"]
+TOO_LONG = ["放課後サンプルグループ大集合スペシャルテスト", "The Sample Light Story Of Three Girls In Rain"]
 
 DEPLOYERS_DASHSCOPE = "sk-deployers-dashscope"
 MY_DASHSCOPE = "sk-my-own-dashscope"
@@ -84,7 +84,7 @@ def characters(tmp_path: Path) -> CharacterConfig:
     ))
     world = World(
         as_of=date(2026, 10, 1),
-        office="283プロダクション",
+        office="サンプル事務所ダクション",
         staff=(),
         units=tuple(Unit(name, None, (), ()) for name in UNITS),
         idols=tuple(Idol(name, "", None, None, ()) for _, name, _ in CHARACTERS),
@@ -139,7 +139,7 @@ async def test_a_call_heard_by_alibaba_cloud_model_studio_asks_for_the_hot_words
     [task] = dashscope.tasks
     parameters = task.run_task["payload"]["parameters"]
     assert parameters["vocabulary"] == {
-        word: 50 if word in ("L'Antica", "illumination STARS") else 4 for word in HOT_WORDS
+        word: 50 if word in ("Sample Harmony", "Sample Stars") else 4 for word in HOT_WORDS
     }
     assert parameters["language_hints"] == ["zh", "ja"]
     assert "vocabulary_id" not in parameters

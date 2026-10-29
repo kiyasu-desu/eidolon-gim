@@ -109,7 +109,7 @@ RECALL_STORY_TOOL = Tool(
         "properties": {
             "query": {
                 "type": "string",
-                "description": "要回顾的事，写成一句概括，例如「拍写真集的那次」「W.I.N.G. 决赛」",
+                "description": "要回顾的事，写成一句概括，例如「一起练习的那次」「学园选拔」",
             }
         },
         "required": ["query"],
@@ -197,7 +197,7 @@ class ReferenceSources:
         self,
         embedder: Embedder,
         sources: Sequence[ReferenceSource],
-        corpus: StoryCorpus,
+        corpus: StoryCorpus | None,
         work: WorkFacts | None,
         unsearched: Sequence[ReferenceSource] = (),
     ) -> None:
@@ -272,23 +272,29 @@ def open_reference_sources(
     world: World | None,
     *,
     warn: bool = True,
+    story_path: Path | None = None,
 ) -> ReferenceSources:
     """The reference sources in the database at `path`: the story, the characters' facts
     and, given a world setting, the work facts; without one, the work facts are there only
     to be embedded again, which forgets whatever vectors they had. Warns (unless not to
     `warn`) if story passages have no vector from `embedder`'s model, as they cannot be
     found."""
-    corpus = StoryCorpus(path, embedder)
-    if warn and (missing := corpus.count_missing_vectors()):
+    from eidolon.story_library import mounted_library
+
+    if story_path is not None and story_path.resolve() == path.resolve():
+        raise ValueError("剧情库必须与用户数据库分开")
+    mounted = mounted_library(story_path) if story_path is not None else None
+    corpus = StoryCorpus(mounted, embedder) if mounted is not None else None
+    if warn and corpus is not None and (missing := corpus.count_missing_vectors()):
         log.warning(
             "%d story passages have no vectors from the embedding model %s and cannot be"
             " found: run `eidolon reembed` after changing the embedding service, model"
             " or dimensions",
             missing, embedder.model,
         )
-    sources: list[ReferenceSource] = [
-        StoryReferences(corpus), CharacterFacts(path, embedder, characters)
-    ]
+    sources: list[ReferenceSource] = [CharacterFacts(path, embedder, characters)]
+    if corpus is not None:
+        sources.insert(0, StoryReferences(corpus))
     work = WorkFacts(path, embedder, world)
     if world is None:
         return ReferenceSources(embedder, sources, corpus, None, [work])
@@ -505,10 +511,10 @@ class Retrieval:
         else:
             episode_ids, found = await asyncio.to_thread(self._relevant, best, story, entries)
         corpus = self._sources.corpus
-        episodes = await asyncio.to_thread(_episodes, corpus, episode_ids) if episode_ids else []
+        episodes = await asyncio.to_thread(_episodes, corpus, episode_ids) if episode_ids and corpus is not None else []
         if not episodes and not found:
             return f"没有想起和「{asked}」有关的剧情：{_NOT_IN_STORY}，或者问问制作人。"
-        catalog = await asyncio.to_thread(corpus.catalog, character.id) if episodes else []
+        catalog = await asyncio.to_thread(corpus.catalog, character.id) if episodes and corpus is not None else []
         return recall_prompt(asked, episodes, catalog, found)
 
     def _relevant(
@@ -536,7 +542,7 @@ class Retrieval:
         # Do not let them occupy every slot when a confirmed episode also passed the
         # same relevance threshold. Keep the total bound and the reranker's order.
         corpus = self._sources.corpus
-        if len(episode_ids) == RECALL_EPISODES and all(
+        if corpus is not None and len(episode_ids) == RECALL_EPISODES and all(
             corpus.imported_from(id) == "gim-conditional-csv" for id in episode_ids
         ):
             confirmed = next((
@@ -634,7 +640,7 @@ def _transcript(episode: Episode) -> str:
 
 _JUDGE_QUESTION = {
     "type": "noul",
-    "instructions": "角色扮演对话中，角色是《偶像大师 闪耀色彩》的偶像，正在和她的制作人对话。"
+    "instructions": "角色扮演对话中，角色是《学园偶像大师》的偶像，正在和她的制作人对话。"
     "可检索的内容有三类：剧情，即她亲身经历过的原作剧情；角色资料，即关于她自己和身边人物的设定"
     "（档案、人物关系等）；作品资料，即作品里的歌曲、唱片和演出（演唱者、发售日、曲目、"
     "演出的日期、会场和出演者）。回答制作人最新的一句话，是否需要检索这些内容？",
@@ -655,7 +661,7 @@ _RECALL_QUESTION = {
 }
 _ABOUT_PRODUCER_QUESTION = {
     "type": "noul",
-    "instructions": "角色扮演对话中，角色是《偶像大师 闪耀色彩》的偶像，正在和她的制作人对话。"
+    "instructions": "角色扮演对话中，角色是《学园偶像大师》的偶像，正在和她的制作人对话。"
     "制作人最新的一句话，是否说起或问起制作人自己的事（生活、近况、工作安排、计划、家人、宠物、喜好、"
     "身体状况等），而制作人以前对偶像们说过的相关的事可能有助于回应？",
     "criteria": {

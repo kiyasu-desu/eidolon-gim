@@ -56,7 +56,7 @@ def files_beside(database: Path) -> list[str]:
 def test_the_database_is_replaced_by_the_one_in_the_file(
     admin: Admin, current: Path, tmp_path: Path, compressed: bool, name: str
 ):
-    database = a_database(tmp_path / "backup.db", "kogane", "mano")
+    database = a_database(tmp_path / "backup.db", "riku", "sora")
     backup = tmp_path / name
     data = database.read_bytes()
     backup.write_bytes(gzip.compress(data) if compressed else data)
@@ -64,7 +64,7 @@ def test_the_database_is_replaced_by_the_one_in_the_file(
 
     out = admin.run("restore", str(backup))
 
-    assert names(current) == ["kogane", "mano"]
+    assert names(current) == ["riku", "sora"]
     assert "2 位用户" in out
     assert files_beside(current) == before  # nothing left over
 
@@ -72,7 +72,7 @@ def test_the_database_is_replaced_by_the_one_in_the_file(
 def test_checking_the_file_says_how_many_users_it_has_and_replaces_nothing(
     admin: Admin, current: Path, tmp_path: Path
 ):
-    backup = a_database(tmp_path / "backup.db", "kogane", "mano")
+    backup = a_database(tmp_path / "backup.db", "riku", "sora")
     before = files_beside(current)
 
     out = admin.run("restore", "--check", str(backup))
@@ -85,7 +85,7 @@ def test_checking_the_file_says_how_many_users_it_has_and_replaces_nothing(
 def test_what_a_restore_killed_part_way_left_is_deleted(
     admin: Admin, current: Path, tmp_path: Path
 ):
-    backup = a_database(tmp_path / "backup.db", "mano")
+    backup = a_database(tmp_path / "backup.db", "sora")
     before = files_beside(current)
     (current.parent / ".restoring-k1ll3d.db").write_bytes(b"half a database")
 
@@ -95,7 +95,7 @@ def test_what_a_restore_killed_part_way_left_is_deleted(
 
 
 def test_the_old_write_ahead_log_is_deleted(admin: Admin, current: Path, tmp_path: Path):
-    backup = a_database(tmp_path / "backup.db", "mano")
+    backup = a_database(tmp_path / "backup.db", "sora")
     for suffix in ["-wal", "-shm"]:
         Path(f"{current}{suffix}").write_bytes(b"what the old database had not checkpointed")
 
@@ -103,7 +103,7 @@ def test_the_old_write_ahead_log_is_deleted(admin: Admin, current: Path, tmp_pat
 
     assert not Path(f"{current}-wal").exists()
     assert not Path(f"{current}-shm").exists()
-    assert names(current) == ["mano"]
+    assert names(current) == ["sora"]
 
 
 def a_damaged_database(path: Path) -> Path:
@@ -136,7 +136,7 @@ def an_inconsistent_database(path: Path) -> Path:
 
 
 def a_truncated_gzip(path: Path) -> Path:
-    data = gzip.compress(a_database(path.with_suffix(".whole"), "mano").read_bytes())
+    data = gzip.compress(a_database(path.with_suffix(".whole"), "sora").read_bytes())
     path.write_bytes(data[: len(data) // 2])
     return path
 
@@ -190,7 +190,7 @@ def test_a_file_that_is_not_there_leaves_the_database_alone(
 def test_backup_runs_the_file_caught_under_way_are_taken_never_to_finish(
     admin: Admin, current: Path, tmp_path: Path
 ):
-    backup = a_database(tmp_path / "backup.db", "mano")
+    backup = a_database(tmp_path / "backup.db", "sora")
     backups = Backups(backup, utc_now)
     backups.start("cron")
     backups.close()

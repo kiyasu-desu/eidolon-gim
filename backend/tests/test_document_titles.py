@@ -9,8 +9,8 @@ from eidolon.facts import CharacterFacts
 from tests.fakes import FakeEmbedder
 
 PARK = Episode(
-    "produce_events/100100101", "培育剧情", "W.I.N.G.編", "公園の歌声", frozenset({"mano"}),
-    (Line("真乃", "ほわっ……"),),
+    "produce_events/100100101", "培育剧情", "練習編", "公園の歌声", frozenset({"sora"}),
+    (Line("ソラ", "えっと……"),),
 )
 
 
@@ -21,18 +21,18 @@ async def test_a_passage_is_titled_with_its_card_or_event_and_episode(tmp_path: 
     await corpus.save([PARK])
     corpus.close()
 
-    assert embedder.titles == ["W.I.N.G.編「公園の歌声」"]
+    assert embedder.titles == ["練習編「公園の歌声」"]
 
 
 async def test_a_fact_is_titled_with_its_headings(tmp_path: Path):
     embedder = FakeEmbedder()
-    mano = Character(
-        "mano", "櫻木真乃", "", "voice", "sheet", None, "#ffbad6",
-        facts=parse_facts("喜欢鸟。\n# 人物关系\n## 風野灯織\n同组合的伙伴。"),
+    sora = Character(
+        "sora", "星野ソラ", "", "voice", "sheet", None, "#ffbad6",
+        facts=parse_facts("喜欢鸟。\n# 人物关系\n## 雨宮ナギ\n同组合的伙伴。"),
     )
-    facts = CharacterFacts(tmp_path / "eidolon.db", embedder, [mano])
+    facts = CharacterFacts(tmp_path / "eidolon.db", embedder, [sora])
 
     assert await facts.embed_missing() == 2
     facts.close()
 
-    assert embedder.titles == [None, "人物关系 / 風野灯織"]
+    assert embedder.titles == [None, "人物关系 / 雨宮ナギ"]

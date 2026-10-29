@@ -39,7 +39,7 @@ def settings(settings: Settings) -> Settings:
     )
 
 
-def status(client: httpx.AsyncClient, character: str = "mano"):
+def status(client: httpx.AsyncClient, character: str = "sora"):
     return client.get(f"/api/characters/{character}/affinity")
 
 
@@ -49,7 +49,7 @@ def keep(
     value: float,
     at: datetime,
     *,
-    character: str = "mano",
+    character: str = "sora",
     cooling: bool = False,
 ) -> None:
     """Have the user's affinity with the character be `value` as of `at`, as a turn left it."""
@@ -96,12 +96,12 @@ async def test_above_the_normal_value_it_never_falls_back(
     clock = FakeClock()
     client = make_client(FakeLLM(), clock=clock)
     keep(settings.database_path, "producer", 85, START)
-    keep(settings.database_path, "producer", 65, START, character="kogane")
+    keep(settings.database_path, "producer", 65, START, character="riku")
 
     clock.advance(days=20)
 
     assert (await status(client)).json()["tier"] == "intimate"
-    assert (await status(client, "kogane")).json()["tier"] == "close"
+    assert (await status(client, "riku")).json()["tier"] == "close"
 
 
 async def test_a_cooldown_ends_once_it_has_recovered_to_the_thaw_line(
@@ -132,7 +132,7 @@ async def test_each_character_is_apart_and_each_user(
     keep(settings.database_path, "producer", 30, START)
 
     assert (await status(client)).json()["tier"] == "distant"
-    assert (await status(client, "kogane")).json()["tier"] == "trust"
+    assert (await status(client, "riku")).json()["tier"] == "trust"
     assert (await status(other)).json()["tier"] == "trust"
 
 

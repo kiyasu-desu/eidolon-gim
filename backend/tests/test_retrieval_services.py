@@ -110,7 +110,7 @@ async def test_a_rerank_failing_again_or_refused_is_reported(answers: list[Answe
     assert len(answers) == 1  # never asked a third time, nor a second when refused
 
 
-MANO = Character("mano", "櫻木真乃", "", "voice", "sheet", None, "#ffbad6")
+MANO = Character("sora", "星野ソラ", "", "voice", "sheet", None, "#ffbad6")
 
 
 def message(role: str, text: str) -> Message:
@@ -168,13 +168,13 @@ async def test_jev_answers_what_the_turn_needs(
 
 async def test_jev_sees_the_latest_messages_and_what_was_just_said():
     requests: list[dict] = []
-    history = [message("user", f"old {i}") for i in range(5)] + [message("character", "ほわっ")]
+    history = [message("user", f"old {i}") for i in range(5)] + [message("character", "えっと")]
 
     await judge_answering(requests, 0.1).judge(MANO, history, "那次比赛")
 
     state = requests[0]["state"]
-    assert state["角色"] == "櫻木真乃"
-    assert state["上文"][-1] == "櫻木真乃：ほわっ" and "制作人：old 4" in state["上文"]
+    assert state["角色"] == "星野ソラ"
+    assert state["上文"][-1] == "星野ソラ：えっと" and "制作人：old 4" in state["上文"]
     assert "制作人：old 1" not in state["上文"]
     assert state["制作人最新的一句话"] == "那次比赛"
 

@@ -52,7 +52,7 @@ from tests.test_call_turns import (  # noqa: F401
     SLOW_REPLY,
     CallUnderTest,
     kinds,
-    mano_call,
+    sora_call,
     spoken,
     without_emotions,
 )
@@ -115,8 +115,8 @@ async def test_the_turn_that_cools_her_has_her_hang_up_once_she_has_said_it(
     calls = board["calls"]
     assert {r: n for r, n in calls["by_result"].items() if n} == {"success": 1}
     assert {r: n for r, n in calls["end_reasons"].items() if n} == {"character_hung_up": 1}
-    [mano] = board["affinity"]["characters"]
-    assert (mano["judged"], mano["cooldowns"], mano["she_ended"]) == (1, 1, 1)
+    [sora] = board["affinity"]["characters"]
+    assert (sora["judged"], sora["cooldowns"], sora["she_ended"]) == (1, 1, 1)
 
 
 async def test_out_of_line_twice_in_a_call_she_hangs_up_and_the_next_call_starts_over(
@@ -167,10 +167,10 @@ def one_by_one(n: int) -> list:
     return [frame for i in range(n) for frame in (spoken(f"第{i}句"), SleepFrame(0.5))]
 
 
-async def test_hurt_turn_after_turn_she_warns_the_user_once_then_hangs_up(mano_call: CallUnderTest):
+async def test_hurt_turn_after_turn_she_warns_the_user_once_then_hangs_up(sora_call: CallUnderTest):
     llm = FakeLLM(*[MANO_REPLY] * 6)
 
-    _, messages = await mano_call.run(llm, one_by_one(6), affinity=[level(1)] * 6)
+    _, messages = await sora_call.run(llm, one_by_one(6), affinity=[level(1)] * 6)
 
     assert [WARNING in about_now(llm, n) for n in range(6)] == [
         False, False, True, False, False, False
@@ -179,16 +179,16 @@ async def test_hurt_turn_after_turn_she_warns_the_user_once_then_hangs_up(mano_c
     assert messages[-1]["type"] == "ended"
     assert messages[-1]["reason"] == "she_hung_up"
     assert "cooldown_until" not in messages[-1]
-    assert shape(await record_of(mano_call))[-1] == "hung_up"
+    assert shape(await record_of(sora_call))[-1] == "hung_up"
 
 
 async def test_only_the_latest_turns_count_so_now_and_then_she_never_hangs_up(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     # Hurt every other turn: twelve in all, but never more than eight in eight turns.
     llm = FakeLLM(*[MANO_REPLY] * 11)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm, one_by_one(11), affinity=[level(1 if n % 2 == 0 else 2) for n in range(11)]
     )
 
@@ -198,11 +198,11 @@ async def test_only_the_latest_turns_count_so_now_and_then_she_never_hangs_up(
 
 
 async def test_hanging_up_comes_before_the_turn_limit_the_same_turn_reaches(
-    mano_call: CallUnderTest, settings: Settings
+    sora_call: CallUnderTest, settings: Settings
 ):
     keep(settings.database_path, "producer", 5, NOW)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(MANO_REPLY), [spoken("随便你")], limits=CallLimits(turns=1), affinity=[level(0)]
     )
 
@@ -210,10 +210,10 @@ async def test_hanging_up_comes_before_the_turn_limit_the_same_turn_reaches(
     assert messages[-1]["reason"] == "cooldown"
 
 
-async def test_a_turn_that_fails_neither_has_her_hang_up_nor_counts(mano_call: CallUnderTest):
+async def test_a_turn_that_fails_neither_has_her_hang_up_nor_counts(sora_call: CallUnderTest):
     llm = FakeLLM(MANO_REPLY, ["  "], MANO_REPLY, MANO_REPLY)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         # 每句隔开到上一回合说完：只隔 50 毫秒时，慢的机器上下一句会当成补充并进上一回合。
         [frame for n in range(4) for frame in (spoken(f"废物{n}"), SleepFrame(0.5))],
@@ -227,15 +227,15 @@ async def test_a_turn_that_fails_neither_has_her_hang_up_nor_counts(mano_call: C
     assert [HANGING_UP in about_now(llm, n) for n in range(4)] == [
         False, True, False, True
     ]
-    assert shape(await record_of(mano_call))[-1] == "hung_up"
+    assert shape(await record_of(sora_call))[-1] == "hung_up"
 
 
 async def test_a_follow_on_has_the_whole_judged_afresh_and_she_hangs_up_only_if_it_still_calls_for_it(
-    mano_call: CallUnderTest,
+    sora_call: CallUnderTest,
 ):
     llm = FakeLLM(MANO_REPLY, SLOW_REPLY, MANO_REPLY, delay=0.3)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         llm,
         [
             spoken("你这个废物"), SleepFrame(1.5),
@@ -248,15 +248,15 @@ async def test_a_follow_on_has_the_whole_judged_afresh_and_she_hangs_up_only_if_
     assert HANGING_UP in about_now(llm, 1)
     assert HANGING_UP not in about_now(llm, 2)
     assert "ended" not in kinds(messages)
-    assert "hung_up" not in shape(await record_of(mano_call))
+    assert "hung_up" not in shape(await record_of(sora_call))
 
 
 async def test_her_last_line_cut_short_she_hangs_up_all_the_same(
-    mano_call: CallUnderTest, settings: Settings
+    sora_call: CallUnderTest, settings: Settings
 ):
     keep(settings.database_path, "producer", 5, NOW)
 
-    _, messages = await mano_call.run(
+    _, messages = await sora_call.run(
         FakeLLM(INTERRUPTED_REPLY, delay=0.3), [spoken("随便你"), *INTERRUPTING],
         affinity=[level(0)],
     )

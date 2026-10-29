@@ -1,85 +1,10 @@
-"""The `eidolon` command: runs the server, and lets the admin manage users.
-
-    eidolon                          run the server (same as `eidolon serve`)
-    eidolon user list                every user: id, name, sign-in methods (each with the
-                                     `provider:subject` EIDOLON_ADMINS lists), when made,
-                                     whether banned (users are made by signing in)
-    eidolon user ban <id> [--note …] ban a user, with a note only admins see, signing them
-                                     out everywhere; the server hangs up their calls within
-                                     seconds (the same as banning in the admin console)
-    eidolon user unban <id>
-    eidolon user usage <id>          the user's text turns and calls in the last 24 hours,
-                                     by hour, and how many were on their own keys; the last
-                                     7 and 30 days are in the admin console's user details
-    eidolon story import-csv <dir>   import SCTranslationData story CSVs into the story corpus
-                                     and report each character's story catalog
-    eidolon story import-json <dir>  the same for the game's own script JSON, filling in what
-                                     SCTranslationData lacks
-    eidolon story sync               import SCTranslationData, then the card, produce and event
-                                     episodes it lacks from the ShinyColorsDB mirror; exits 2
-                                     if the mirror failed
-    eidolon world sync               import the idols, units, president and clerk from
-                                     im@sparql and the official unit pages, and the releases
-                                     and songs from Lantis (singers it leaves out from
-                                     ふじわらはじめ), and the lives from the official
-                                     sites with each day's performers from wikiwiki,
-                                     into the world setting beside the
-                                     character configuration, and report what changed; the
-                                     old file stays if a source failed
-    eidolon character draft-sheet <id>
-                                     have the background model draft a character's sheet
-                                     from the episodes she is cast in, for review
-    eidolon stand fetch              fetch the stands of each character with an idol that
-                                     the build directory lacks from ShinyColorsDB; exits 2
-                                     if it could not be reached, keeping what was fetched
-    eidolon stand outfits            list the outfits of each character with an idol from
-                                     the stands fetched, into the build directory
-    eidolon stand upload             upload the outfits the lists name, their thumbnails and
-                                     the lists to the S3-compatible bucket, skipping what it
-                                     has as it is; exits 2 if the bucket failed
-    eidolon reading draft            draft the readings file beside the character
-                                     configuration from the characters' sheets and the
-                                     world setting, or fill in the phonemes it lacks and
-                                     add who it lacks, leaving the rest as it is (needs
-                                     the development dependencies)
-    eidolon greeting upload          voice the greetings and call openers the character
-                                     configuration has in each one's voice on the
-                                     deployer's Fish Audio key, and put those the stands'
-                                     bucket lacks in it, deleting the old ones and those no
-                                     character has any more; exits 2
-                                     if the bucket could not be listed, 3 if some could not
-                                     be voiced, put or deleted
-    eidolon backup [--source cron]   back the database up, compressed and encrypted to the
-                                     deployer's age key, to the private bucket, and delete
-                                     the backups past the retention save the newest,
-                                     recording the run; exits 2 if the copy failed, 3 if
-                                     the upload did, 4 if deleting the old ones did, 6 if
-                                     another backup was under way
-    eidolon restore [--check] <file> put the database in a backup the deployer decrypted,
-                                     .db or .db.gz, in place of this one, with the server
-                                     stopped (deploy/db-restore.sh), if it is whole and has
-                                     this project's tables, leaving it alone if not; and
-                                     say how many users it has; --check only checks it
-    eidolon reembed                  after changing the embedding service, model or
-                                     dimensions, embed the story corpus, character facts,
-                                     work facts, and memories again from
-                                     the text in the database and the world setting
-    eidolon eval rerank [--model M]  score the reranker on the calibration set, to set its
-                                     thresholds
-    eidolon eval judge [--provider P] [--model M] [--only K] [--json F]
-                                     ask the judge model the judge eval set's turns and
-                                     segments, or only those of kind K, to set its
-                                     thresholds and compare models
-    eidolon eval memory [--json F]
-                                     take the memory eval set's turns on the deployer's
-                                     background model, embedder, reranker and judge
-                                     model, and count what passes by category
-"""
+"""Eidolon-GIM: serve, users, local story packs, speech, backups and evaluation."""
 
 import argparse
 import asyncio
 import logging
 import os
+import sqlite3
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -93,9 +18,8 @@ from eidolon.config import (
     UsageLimits,
     characters_path_from_env,
     database_path_from_env,
-    event_names_path_from_env,
-    mirror_cache_path_from_env,
-    story_path_from_env,
+    story_database_path_from_env,
+    stories_enabled_from_env,
 )
 from eidolon.identity import PROVIDER_LABELS
 from eidolon.store import NotFound, Store
@@ -109,22 +33,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _serve()
     if args.command == "speech":
         return asyncio.run(_speech_check())
-    if args.command == "story" and args.action == "sync":
-        return asyncio.run(_sync_story(args))
-    if args.command == "story" and args.action == "import-gim":
-        return asyncio.run(_import_gim(args))
     if args.command == "story":
-        return asyncio.run(_import_story(args))
-    if args.command == "world":
-        return asyncio.run(_sync_world(args))
+        try:
+            if args.action == "migrate":
+                return _migrate_stories(args)
+            if args.action == "import-gim":
+                return asyncio.run(_import_gim(args))
+            raise ValueError("不支持的剧情操作")
+        except (OSError, ValueError, sqlite3.Error) as error:
+            print(error, file=sys.stderr)
+            return 1
     if args.command == "character":
         return asyncio.run(_draft_sheet(args))
-    if args.command == "stand" and args.action == "fetch":
-        return asyncio.run(_stand_fetch(args))
-    if args.command == "stand" and args.action == "outfits":
-        return _stand_outfits(args)
-    if args.command == "stand":
-        return asyncio.run(_stand_upload(args))
     if args.command == "reading":
         return _draft_readings(args)
     if args.command == "greeting":
@@ -264,6 +184,43 @@ async def _check_chat_llm(settings: Settings) -> None:
         await models.aclose()
 
 
+def _story_target(args: argparse.Namespace, *, legacy_db: bool = False) -> Path:
+    return (args.story_db or (args.db if legacy_db else None)
+            or story_database_path_from_env()
+            or (args.db or database_path_from_env()).with_suffix(".stories.db"))
+
+
+def _checked_story_target(args: argparse.Namespace) -> Path:
+    from eidolon.story_library import check_library
+
+    path = _story_target(args, legacy_db=True)
+    check_library(path)
+    return path
+
+
+def _active_story(args: argparse.Namespace) -> Path | None:
+    from eidolon.story_library import mounted_library
+
+    return mounted_library(_story_target(args), enabled=stories_enabled_from_env())
+
+
+def _migrate_stories(args: argparse.Namespace) -> int:
+    import json
+    import sqlite3
+    from dataclasses import asdict
+    from eidolon.story_library import migrate_stories
+
+    try:
+        source = args.source or args.db or database_path_from_env()
+        destination = args.output or args.story_db or story_database_path_from_env() or source.with_suffix(".stories.db")
+        result = migrate_stories(source, destination)
+    except (OSError, ValueError, sqlite3.Error) as error:
+        print(error, file=sys.stderr)
+        return 1
+    print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
+    return 0
+
+
 async def _import_gim(args: argparse.Namespace) -> int:
     from eidolon.characters import load_characters
     from eidolon.config import EmbeddingSettings
@@ -273,7 +230,8 @@ async def _import_gim(args: argparse.Namespace) -> int:
 
     online = None
     try:
-        protected = [args.manifest, args.db or database_path_from_env()]
+        story_db = _story_target(args, legacy_db=True)
+        protected = [args.manifest, story_db, args.db or database_path_from_env()]
         if args.index is not None:
             protected.append(args.index)
         if (args.report.resolve() in {p.resolve() for p in protected}
@@ -283,7 +241,9 @@ async def _import_gim(args: argparse.Namespace) -> int:
         characters = load_characters(args.characters or characters_path_from_env())
         settings = None if args.offline else EmbeddingSettings.from_env()
         online = open_embedder(settings) if settings else None
-        corpus = StoryCorpus(args.db or database_path_from_env(), online or NoEmbedder())
+        from eidolon.story_library import check_library
+        check_library(story_db)
+        corpus = StoryCorpus(story_db, online or NoEmbedder())
         try:
             report = await import_gim_directory(
                 args.directory, corpus, characters.values(), manifest=args.manifest, index=args.index
@@ -303,261 +263,16 @@ async def _import_gim(args: argparse.Namespace) -> int:
     return 1 if report.has_errors else 0
 
 
-async def _import_story(args: argparse.Namespace) -> int:
-    from eidolon.characters import load_characters
-    from eidolon.config import EmbeddingSettings
-    from eidolon.corpus import StoryCorpus
-    from eidolon.embedding import EmbeddingError, open_embedder
-    from eidolon.story_import import import_csv_directory, import_json_directory
-
-    if not args.directory.is_dir():
-        print(f"找不到剧情目录 {args.directory}", file=sys.stderr)
-        return 1
-    try:
-        characters = load_characters(args.characters or characters_path_from_env())
-        settings = EmbeddingSettings.required_from_env()
-    except RuntimeError as e:
-        print(e, file=sys.stderr)
-        return 1
-    embedder = open_embedder(settings)
-    try:
-        corpus = StoryCorpus(args.db or database_path_from_env(), embedder)
-        try:
-            import_stories = (
-                import_json_directory if args.action == "import-json" else import_csv_directory
-            )
-            report = await import_stories(args.directory, corpus, characters.values())
-            catalogs = {c.name: corpus.catalog(c.id) for c in characters.values()}
-        finally:
-            corpus.close()
-    except EmbeddingError as e:
-        print(f"导入中断（已导入的剧情会保留，重新运行即可继续）：{e}", file=sys.stderr)
-        return 1
-    finally:
-        await embedder.aclose()
-    for warning in report.warnings:
-        print(f"注意：{warning}", file=sys.stderr)
-    for entry in report.looks_like_failures:
-        print(
-            f"注意：{entry.episode_id}「{entry.title}」标题像失败结局，但不在失败结局的规则里，已照常导入",
-            file=sys.stderr,
-        )
-    print(
-        f"已导入 {report.imported} 段剧情，跳过 {report.skipped_failures} 段失败结局"
-        f"（其中 {report.removed} 段从剧情库移除），新向量化 {report.embedded_passages} 段文本"
-    )
-    if report.csv_versions_kept:
-        print(f"另有 {report.csv_versions_kept} 段剧情已从 CSV 导入（带中文翻译），保留 CSV 版本")
-    for name, catalog in catalogs.items():
-        episodes = sum(len(source.episodes) for source in catalog)
-        print(f"剧情目录 {name}：{len(catalog)} 张卡或活动，{episodes} 段剧情")
-    return 0
 
 
-async def _sync_story(args: argparse.Namespace) -> int:
-    from eidolon.characters import load_characters
-    from eidolon.config import EmbeddingSettings
-    from eidolon.corpus import StoryCorpus
-    from eidolon.embedding import EmbeddingError, open_embedder
-    from eidolon.mirror import Mirror
-    from eidolon.story_sync import load_event_names, sync_stories
-
-    story = args.story or story_path_from_env()
-    if not story.is_dir():
-        print(f"找不到 SCTranslationData 的剧情目录 {story}", file=sys.stderr)
-        return 1
-    if args.characters is None or args.db is None:
-        print("legacy SC 同步须显式指定 --characters 和全局 --db；GIM 使用 story import-gim", file=sys.stderr)
-        return 1
-    try:
-        characters = load_characters(args.characters or characters_path_from_env())
-        event_names = load_event_names(
-            args.events or event_names_path_from_env(), required=args.events is not None
-        )
-        settings = EmbeddingSettings.required_from_env()
-    except RuntimeError as e:
-        print(e, file=sys.stderr)
-        return 1
-
-    progress = logging.StreamHandler()  # the first sync takes an hour or two
-    progress.setFormatter(logging.Formatter("%(asctime)s %(message)s", "%H:%M:%S"))
-    for name in ("eidolon.story_sync", "eidolon.story_import"):
-        logging.getLogger(name).addHandler(progress)
-        logging.getLogger(name).setLevel(logging.INFO)
-    embedder = open_embedder(settings)
-    mirror = Mirror()
-    try:
-        corpus = StoryCorpus(args.db or database_path_from_env(), embedder)
-        try:
-            report = await sync_stories(
-                story,
-                args.cache or mirror_cache_path_from_env(),
-                corpus,
-                characters.values(),
-                mirror,
-                event_names=event_names,
-                idols=args.idol,
-            )
-        finally:
-            corpus.close()
-    except EmbeddingError as e:
-        print(f"同步中断（已导入的剧情和已下载的剧本会保留，重新运行即可继续）：{e}", file=sys.stderr)
-        return 1
-    finally:
-        await mirror.aclose()
-        await embedder.aclose()
-    for warning in [*report.translated.warnings, *report.untranslated.warnings]:
-        print(f"注意：{warning}", file=sys.stderr)
-    translated, untranslated = report.translated, report.untranslated
-    print(
-        f"汉化版：新增 {translated.added} 段，更新 {translated.imported - translated.added} 段"
-        f"（其中 {translated.untranslated_replaced} 段取代了原文剧情），"
-        f"跳过 {translated.skipped_failures} 段失败结局（其中 {translated.removed} 段从剧情库移除）"
-    )
-    print(
-        f"原文剧情：下载 {report.downloaded} 个剧本，新增 {untranslated.added} 段，"
-        f"更新 {untranslated.imported - untranslated.added} 段；"
-        f"本次检查的卡牌和相册中有 {report.translations_kept} 段已有汉化版，保留汉化版"
-    )
-    if report.missing:
-        print(f"卡牌列出的剧本中有 {report.missing} 个镜像上还没有，下次同步再试")
-    if report.album_missing:
-        print(f"相册列出的剧本中有 {report.album_missing} 个镜像上没有，相册有变化时再试")
-    if report.unnamed_events:
-        events = "、".join(f"{event:03d}" for event in report.unnamed_events)
-        print(f"活动名对照表里还没有这些活动，暂用「活动剧情 NNN」：{events}")
-    if suspects := report.looks_like_failures:
-        print(f"以下 {len(suspects)} 段培育剧情标题像失败结局，但不在失败结局的规则里，已照常导入，请人工核对：")
-        for entry in suspects:
-            print(f"  {entry.episode_id}「{entry.title}」")
-    print(
-        f"共跳过 {report.skipped_failures} 段失败结局，新向量化 {report.embedded_passages} 段文本"
-    )
-    if report.mirror_error is not None:
-        print(
-            f"无法从镜像拉取原文剧情（汉化版已照常导入，下次同步会接着拉取）：{report.mirror_error}",
-            file=sys.stderr,
-        )
-        return 2
-    return 0
 
 
-async def _sync_world(args: argparse.Namespace) -> int:
-    if args.characters is None:
-        print("legacy SC 世界同步须显式指定 --characters；不适用于 GIM 默认角色目录", file=sys.stderr)
-        return 1
-    from datetime import date
-
-    from eidolon import world_sync
-    from eidolon.world import world_path
-
-    path = world_path(args.characters or characters_path_from_env())
-    client = world_sync.open_client()
-    try:
-        report = await world_sync.sync_world(path, client, date.today())
-    except world_sync.WorldSyncError as e:
-        print(f"导入失败，资料文件没有改动：{e}", file=sys.stderr)
-        return 1
-    finally:
-        await client.aclose()
-    for line in report.lines():
-        print(line)
-    return 0
 
 
-async def _stand_fetch(args: argparse.Namespace) -> int:
-    from eidolon.characters import load_characters
-    from eidolon.config import stand_build_path_from_env
-    from eidolon.mirror import Mirror
-    from eidolon.stand_fetch import fetch_stands
-
-    progress = logging.StreamHandler()  # the first fetch takes a quarter of an hour or so
-    progress.setFormatter(logging.Formatter("%(asctime)s %(message)s", "%H:%M:%S"))
-    logging.getLogger("eidolon.stand_fetch").addHandler(progress)
-    logging.getLogger("eidolon.stand_fetch").setLevel(logging.INFO)
-    mirror = Mirror()
-    try:
-        characters = load_characters(
-            args.characters or characters_path_from_env(), require_sheets=False
-        )
-        report = await fetch_stands(args.build or stand_build_path_from_env(), characters.values(), mirror)
-    except (RuntimeError, OSError) as e:  # SourceLayoutError, a broken character configuration
-        print(e, file=sys.stderr)
-        return 1
-    finally:
-        await mirror.aclose()
-    for skipped in report.skipped:
-        print(f"注意：{skipped}", file=sys.stderr)
-    print(f"拉取了 {len(report.fetched)} 套新衣装（{report.fetched_bytes / 1_000_000:.1f} MB）")
-    if report.error:
-        print(
-            f"没能从 ShinyColorsDB 拉取完新卡（已拉取的都保留，下次同步再拉剩下的）：{report.error}",
-            file=sys.stderr,
-        )
-        return 2
-    return 0
 
 
-def _stand_outfits(args: argparse.Namespace) -> int:
-    from eidolon.characters import load_characters
-    from eidolon.config import stand_build_path_from_env
-    from eidolon.stand_outfits import list_path, make_outfit_lists
-
-    try:
-        characters = load_characters(
-            args.characters or characters_path_from_env(), require_sheets=False
-        )
-        build = args.build or stand_build_path_from_env()
-        report = make_outfit_lists(build, characters.values())
-    except (RuntimeError, OSError) as e:  # SourceLayoutError, a broken character configuration
-        print(e, file=sys.stderr)
-        return 1
-    for warning in report.warnings:
-        print(f"注意：{warning}", file=sys.stderr)
-    if not report.lists:
-        print("角色配置里没有配 idol_id 的角色，没有生成衣装清单")
-    for outfits in report.lists:
-        print(
-            f"{outfits.character}：{len(outfits.cards)} 张卡，{len(outfits.outfits)} 套衣装"
-            f"（{build / list_path(outfits.idol_id)}）"
-        )
-    return 0
 
 
-async def _stand_upload(args: argparse.Namespace) -> int:
-    import time
-
-    from eidolon.config import stand_build_path_from_env
-    from eidolon.s3 import Bucket, S3Error, S3Settings
-    from eidolon.stand_upload import upload_stands
-
-    try:
-        settings = S3Settings.from_env()
-    except RuntimeError as e:
-        print(e, file=sys.stderr)
-        return 1
-    started = time.monotonic()
-    bucket = Bucket(settings)
-    try:
-        report = await upload_stands(args.build or stand_build_path_from_env(), bucket)
-    except S3Error as e:
-        print(f"上传中断（已上传的不会重复上传，重新运行即可继续）：{e}", file=sys.stderr)
-        return 2
-    except (RuntimeError, OSError) as e:  # no outfit lists, or the source lacks a file they name
-        print(e, file=sys.stderr)
-        return 1
-    finally:
-        await bucket.aclose()
-    if report.missing_thumbnails:
-        print(
-            f"注意：{len(report.missing_thumbnails)} 套衣装还没有缩略图，没有上传：{'、'.join(report.missing_thumbnails)}",
-            file=sys.stderr,
-        )
-    print(
-        f"上传 {report.uploaded} 个文件（{report.uploaded_bytes / 1_000_000:.1f} MB），"
-        f"{report.unchanged} 个存储桶里已有、内容没变，没有上传；用时 {time.monotonic() - started:.0f} 秒"
-    )
-    return 0
 
 
 def _draft_readings(args: argparse.Namespace) -> int:
@@ -598,7 +313,7 @@ def _draft_readings(args: argparse.Namespace) -> int:
             f"{'、'.join(report.unread)}"
         )
     if world is None:
-        print("没有世界设定（eidolon world sync），组合名和工作人员没有生成")
+        print("没有配置 world.json 世界设定，组合名和工作人员没有生成")
     return 0
 
 
@@ -734,7 +449,7 @@ async def _draft_sheet(args: argparse.Namespace) -> int:
     logging.getLogger("eidolon.sheet_draft").addHandler(progress)
     logging.getLogger("eidolon.sheet_draft").setLevel(logging.INFO)
     llm = open_llm(llm_settings)
-    corpus = StoryCorpus(args.db or database_path_from_env(), NoEmbedder())
+    corpus = StoryCorpus(_checked_story_target(args), NoEmbedder())
     try:
         report = await draft_sheet(
             character, corpus, llm, output=path, overwrite=args.force, budget=budget
@@ -770,7 +485,8 @@ async def _reembed(args: argparse.Namespace) -> int:
         characters = load_characters(characters_path)
         world = load_world(world_path(characters_path))
         settings = EmbeddingSettings.required_from_env()
-    except RuntimeError as e:
+        library = _active_story(args)
+    except (RuntimeError, ValueError, sqlite3.Error) as e:
         print(e, file=sys.stderr)
         return 1
 
@@ -781,7 +497,7 @@ async def _reembed(args: argparse.Namespace) -> int:
     embedder = open_embedder(settings)
     try:
         report = await reembed(
-            args.db or database_path_from_env(), characters.values(), embedder, world=world
+            args.db or database_path_from_env(), characters.values(), embedder, world=world, story_path=library
         )
     except EmbeddingError as e:
         print(
@@ -815,10 +531,11 @@ async def _eval_rerank(args: argparse.Namespace) -> int:
         world = load_world(world_path(characters_path))
         calibration = load_calibration(args.file, world)
         embedding = EmbeddingSettings.required_from_env()
+        library = _active_story(args)
         rerank = RerankSettings.from_env()
         if rerank is None:
             raise RuntimeError("环境变量 SILICONFLOW_API_KEY 未设置（重排需要）")
-    except RuntimeError as e:
+    except (RuntimeError, ValueError, sqlite3.Error) as e:
         print(e, file=sys.stderr)
         return 1
     if args.model:
@@ -829,7 +546,7 @@ async def _eval_rerank(args: argparse.Namespace) -> int:
     embedder = open_embedder(embedding)
     reranker = SiliconFlowReranker(rerank.api_key, rerank.model, rerank.base_url)
     sources = open_reference_sources(
-        args.db or database_path_from_env(), embedder, characters.values(), world
+        args.db or database_path_from_env(), embedder, characters.values(), world, story_path=library
     )
     try:
         results = await evaluate(calibration, characters, reranker, sources)
@@ -1028,11 +745,12 @@ def _tally_columns(tally: Tally) -> str:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="eidolon", description="Eidolon-SC 后端")
+    parser = argparse.ArgumentParser(prog="eidolon", description="Eidolon-GIM 后端")
     parser.add_argument(
         "--db", type=Path, help="数据库文件（默认取环境变量 EIDOLON_DATABASE_PATH）"
     )
     commands = parser.add_subparsers(dest="command", metavar="命令")
+    parser.add_argument("--story-db", type=Path, help="独立剧情库；默认 EIDOLON_STORY_DATABASE_PATH 或应用库同目录的 *.stories.db")
     commands.add_parser("serve", help="启动服务（默认）")
     speech = commands.add_parser("speech", help="检查 Windows 本机中性语音").add_subparsers(
         dest="action", required=True
@@ -1062,73 +780,16 @@ def _parser() -> argparse.ArgumentParser:
     story = commands.add_parser("story", help="管理剧情库").add_subparsers(
         dest="action", required=True, metavar="操作"
     )
-    import_gim = story.add_parser("import-gim", help="导入本机学园 CSV；独立于 legacy SC 规则")
+    migrate = story.add_parser("migrate", help="备份旧应用库，并无损导出独立剧情库；不删除原数据")
+    migrate.add_argument("--source", type=Path, help="旧应用数据库，默认全局 --db 或 EIDOLON_DATABASE_PATH")
+    migrate.add_argument("--output", type=Path, help="新剧情库，默认全局 --story-db 或 *.stories.db")
+    import_gim = story.add_parser("import-gim", help="导入本机学园 CSV")
     import_gim.add_argument("directory", type=Path, help="CSV 根目录；index 中路径相对此目录")
     import_gim.add_argument("--index", type=Path, help="可选 adv_*.txt → CSV 路径 JSON")
     import_gim.add_argument("--manifest", type=Path, required=True, help="来源、版本、使用条件和 outcome JSON")
     import_gim.add_argument("--report", type=Path, required=True, help="CSV 根目录之外的审计报告 .json")
     import_gim.add_argument("--offline", action="store_true", help="只存文本和目录，之后用 reembed 向量化")
-    import_csv = story.add_parser(
-        "import-csv", help="legacy SC：导入 SCTranslationData CSV（不适用于学园）"
-    )
-    import_csv.add_argument("directory", type=Path, help="剧情 CSV 所在目录，例如 data/story")
-    import_json = story.add_parser(
-        "import-json",
-        help="legacy SC：导入原始剧本 JSON，补全 SCTranslationData（不适用于学园）",
-    )
-    import_json.add_argument(
-        "directory",
-        type=Path,
-        help="剧本 JSON 所在目录；文件路径需含剧本编号，如 produce_events/100100101.json",
-    )
-    sync = story.add_parser(
-        "sync",
-        help="legacy SC（须显式 --characters 和全局 --db）：导入 SCTranslationData，再从 ShinyColorsDB 补齐剧情"
-        "（可重复执行；镜像连不上时退出码为 2）",
-    )
-    sync.add_argument(
-        "--story",
-        type=Path,
-        help="SCTranslationData 的剧情目录（默认取环境变量 EIDOLON_STORY_PATH）",
-    )
-    sync.add_argument(
-        "--cache",
-        type=Path,
-        help="镜像剧本的本地缓存目录（默认取环境变量 EIDOLON_MIRROR_CACHE_PATH），不要放进仓库",
-    )
-    sync.add_argument(
-        "--idol",
-        type=int,
-        action="append",
-        help="只从镜像同步这位偶像的卡牌和相册，不同步活动剧情（镜像 API 的偶像编号，例如 1 是櫻木真乃），可重复",
-    )
-    sync.add_argument(
-        "--events",
-        type=Path,
-        help="活动名对照表（默认取环境变量 EIDOLON_EVENT_NAMES_PATH；默认的文件不存在时活动用占位名）",
-    )
-    for command in (import_gim, import_csv, import_json, sync):
-        command.add_argument(
-            "--characters",
-            type=Path,
-            help="角色配置文件（默认取环境变量 EIDOLON_CHARACTERS_PATH）",
-        )
-
-    world = commands.add_parser("world", help="管理世界设定").add_subparsers(
-        dest="action", required=True, metavar="操作"
-    )
-    world_sync = world.add_parser(
-        "sync",
-        help="从 im@sparql 和官方组合页导入偶像、组合、社长和事务员，从 Lantis（和 ふじわらはじめ）导入唱片和歌曲，"
-        "从偶像大师官方门户和旧官方站导入演出、从 wikiwiki 导入逐日出演者，"
-        "写入角色配置旁边的 world.json，"
-        "并打印导入报告（任何来源失败时不改动旧文件）",
-    )
-    world_sync.add_argument(
-        "--characters",
-        type=Path,
-        help="角色配置文件，资料写在它旁边（默认取环境变量 EIDOLON_CHARACTERS_PATH）",
-    )
+    import_gim.add_argument("--characters", type=Path, help="角色配置文件；默认 EIDOLON_CHARACTERS_PATH")
 
     character = commands.add_parser("character", help="管理角色").add_subparsers(
         dest="action", required=True, metavar="操作"
@@ -1136,7 +797,7 @@ def _parser() -> argparse.ArgumentParser:
     draft = character.add_parser(
         "draft-sheet", help="用后台模型根据角色出场的剧情生成人设初稿，写入人设文件"
     )
-    draft.add_argument("character_id", help="角色标识，例如 mano")
+    draft.add_argument("character_id", help="角色标识，例如 temari")
     draft.add_argument(
         "--characters",
         type=Path,
@@ -1153,36 +814,6 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         help="每次请求后台模型最多带多少字的剧情素材（默认 40000，至少 1000），超出时分批总结",
     )
-
-    stand = commands.add_parser("stand", help="同步立绘素材").add_subparsers(
-        dest="action", required=True, metavar="操作"
-    )
-    fetch = stand.add_parser(
-        "fetch",
-        help="从 ShinyColorsDB 为配了 idol_id 的角色拉取还没有的私服和演出服，存进整理目录的 source/（可重复执行）",
-    )
-    outfits = stand.add_parser(
-        "outfits",
-        help="从拉取到的立绘为配了 idol_id 的角色生成衣装清单，写进整理目录的 outfits/<idol_id>.json（可重复执行）",
-    )
-    for command in (fetch, outfits):
-        command.add_argument(
-            "--characters",
-            type=Path,
-            help="角色配置文件（默认取环境变量 EIDOLON_CHARACTERS_PATH）",
-        )
-    upload = stand.add_parser(
-        "upload",
-        help="把衣装清单列出的立绘文件、缩略图和衣装清单上传到 S3 兼容的存储桶，内容没变的不重复上传"
-        "（存储桶的地址和密钥取环境变量 EIDOLON_STAND_S3_*）",
-    )
-    for command in (fetch, outfits, upload):
-        command.add_argument(
-            "--build",
-            type=Path,
-            help="拉取的立绘、衣装清单和缩略图的整理目录（默认取环境变量 EIDOLON_STAND_BUILD_PATH，没有时是 ../corpus/stand），"
-            "不要放进仓库",
-        )
 
     reading = commands.add_parser("reading", help="管理读音").add_subparsers(
         dest="action", required=True, metavar="操作"

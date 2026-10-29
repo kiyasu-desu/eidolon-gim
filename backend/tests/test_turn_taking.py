@@ -79,12 +79,12 @@ HUNG_UP_ON: Event = TurnTaking.hung_up_on
 
 REPLYING: list[Step] = [(turn("早上好"), [Reply("早上好", voiced=True, number=1)])]
 """A turn is being replied to, voiced; nothing of the reply is out yet."""
-SPEAKING: list[Step] = [*REPLYING, (ja("ほわっ"), [Voice("ほわっ", 1, 0)]), (VOICE_STARTS, [])]
+SPEAKING: list[Step] = [*REPLYING, (ja("えっと"), [Voice("えっと", 1, 0)]), (VOICE_STARTS, [])]
 """The character has started speaking the reply; no segment of it is complete yet."""
 INTERRUPTIBLE: list[Step] = [*SPEAKING, (zh("哇"), []), (COMPLETE, [FlushVoice(1, 0)])]
 """The character has started speaking the reply, and it has a complete segment."""
 RECORDED_AND_HEARD: list[Step] = [
-    *REPLYING, (ja("ほわっ"), [Voice("ほわっ", 1, 0)]), (zh("哇"), []),
+    *REPLYING, (ja("えっと"), [Voice("えっと", 1, 0)]), (zh("哇"), []),
     (COMPLETE, [FlushVoice(1, 0)]), (RECORDED, []), (ENDED, []), (VOICE_STARTS, []),
 ]
 """The reply is recorded and over, and its voice is still playing."""
@@ -194,12 +194,12 @@ def test_follow_ons(steps: list[Step]):
     "steps",
     [
         pytest.param(
-            [(turn("早上好"), [Reply("早上好", voiced=False, number=1)]), (ja("ほわっ"), []), (TALKS, [DropReply()])],
+            [(turn("早上好"), [Reply("早上好", voiced=False, number=1)]), (ja("えっと"), []), (TALKS, [DropReply()])],
             id="its first line shown but nothing complete yet",
         ),
         pytest.param(
             [
-                (turn("早上好"), [Reply("早上好", voiced=False, number=1)]), (ja("ほわっ"), []), (zh("哇"), []),
+                (turn("早上好"), [Reply("早上好", voiced=False, number=1)]), (ja("えっと"), []), (zh("哇"), []),
                 (COMPLETE, []), (TALKS, [StopReply()]), (says("在吗"), [QueueTurn("在吗")]),
             ],
             id="its first line shown and a segment complete",
@@ -226,7 +226,7 @@ INTERRUPTIONS = [
     ),
     pytest.param(
         [
-            *REPLYING, (ja("ほわっ"), [Voice("ほわっ", 1, 0)]), (zh("哇"), []), (COMPLETE, [FlushVoice(1, 0)]),
+            *REPLYING, (ja("えっと"), [Voice("えっと", 1, 0)]), (zh("哇"), []), (COMPLETE, [FlushVoice(1, 0)]),
             (RECORDED, []),
             (TALKS, [StopReply()]),
             (ENDED, []),
@@ -268,12 +268,12 @@ def test_interruptions(steps: list[Step]):
         pytest.param(
             [
                 *REPLYING,
-                (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+                (ja("えっと"), [Voice("えっと", 1, 0)]),
                 (types("在吗"), [DropReply(), ClearVoice()]),
                 (DROPPED, [Reply("早上好\n在吗", voiced=True, number=2)]),
                 (VOICE_STARTS, []),
                 (VOICE_STOPS, []),
-                (ja("ほわっ"), [Voice("ほわっ", 2, 0)]),
+                (ja("えっと"), [Voice("えっと", 2, 0)]),
                 (zh("哇"), []),
                 (COMPLETE, [FlushVoice(2, 0)]),
                 (TALKS, [DropReply()]),
@@ -282,7 +282,7 @@ def test_interruptions(steps: list[Step]):
         ),
         pytest.param(
             [
-                *REPLYING, (ja("ほわっ"), [Voice("ほわっ", 1, 0)]), (zh("哇"), []), (COMPLETE, [FlushVoice(1, 0)]),
+                *REPLYING, (ja("えっと"), [Voice("えっと", 1, 0)]), (zh("哇"), []), (COMPLETE, [FlushVoice(1, 0)]),
                 (TALKS, [DropReply()]),
                 (VOICE_STARTS, []),
                 (DROPPED, [WaitForFollowOn()]),
@@ -323,7 +323,7 @@ def test_switching_to_text_only_leaves_the_reply_in_progress_voiced():
     run([
         *REPLYING,
         (text_only(True), []),
-        (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+        (ja("えっと"), [Voice("えっと", 1, 0)]),
         (RECORDED, []),
         (ENDED, []),
         (turn("在吗"), [Reply("在吗", voiced=False, number=2)]),
@@ -339,7 +339,7 @@ def test_switching_to_text_only_leaves_the_reply_in_progress_voiced():
 def test_each_segment_goes_to_tts_under_its_reply_and_is_voiced_in_full_once_complete():
     run([
         *REPLYING,
-        (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+        (ja("えっと"), [Voice("えっと", 1, 0)]),
         (ja("、おはよう"), [Voice("、おはよう", 1, 0)]),
         (zh("哇，早上好"), []),
         (complete(0), [FlushVoice(1, 0)]),
@@ -360,7 +360,7 @@ def test_replies_are_numbered_whether_voiced_or_not_and_nothing_unvoiced_is_flus
         (DROPPED, [WaitForFollowOn()]),
         (text_only(True), []),
         (MISSED, [Reply("早上好", voiced=False, number=2)]),
-        (ja("ほわっ"), []),
+        (ja("えっと"), []),
         (complete(0), []),
         (RECORDED, []),
         (ENDED, []),
@@ -440,7 +440,7 @@ def test_hung_up_on_from_outside_the_call_nothing_more_is_taken_up(steps: list[S
                 (turn("早上好"), [Reply("早上好", voiced=True, number=1)]),
                 (VOICE_STARTS, []),
                 (VOICE_STOPS, []),
-                (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+                (ja("えっと"), [Voice("えっと", 1, 0)]),
                 (VOICE_STARTS, [Spoke()]),
                 (VOICE_STOPS, []),
                 (VOICE_STARTS, []),
@@ -450,7 +450,7 @@ def test_hung_up_on_from_outside_the_call_nothing_more_is_taken_up(steps: list[S
         pytest.param(
             [
                 (turn("早上好"), [Reply("早上好", voiced=True, number=1)]),
-                (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+                (ja("えっと"), [Voice("えっと", 1, 0)]),
                 (VOICE_STARTS, [Spoke()]),
                 (RECORDED, []),
                 (ENDED, []),
@@ -464,7 +464,7 @@ def test_hung_up_on_from_outside_the_call_nothing_more_is_taken_up(steps: list[S
             [
                 (text_only(True), []),
                 (turn("早上好"), [Reply("早上好", voiced=False, number=1)]),
-                (ja("ほわっ"), [Spoke()]),
+                (ja("えっと"), [Spoke()]),
                 (zh("哇"), []),
                 (VOICE_STARTS, []),
             ],
@@ -473,7 +473,7 @@ def test_hung_up_on_from_outside_the_call_nothing_more_is_taken_up(steps: list[S
         pytest.param(
             [
                 (turn("早上好"), [Reply("早上好", voiced=True, number=1)]),
-                (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+                (ja("えっと"), [Voice("えっと", 1, 0)]),
                 (zh("哇"), []),
                 (COMPLETE, [FlushVoice(1, 0)]),
                 (RECORDED, []),
@@ -485,7 +485,7 @@ def test_hung_up_on_from_outside_the_call_nothing_more_is_taken_up(steps: list[S
         pytest.param(
             [
                 (turn("早上好"), [Reply("早上好", voiced=True, number=1)]),
-                (ja("ほわっ"), [Voice("ほわっ", 1, 0)]),
+                (ja("えっと"), [Voice("えっと", 1, 0)]),
                 (VOICE_STARTS, [Spoke()]),
                 (TALKS, [DropReply()]),
                 (DROPPED, [WaitForFollowOn()]),
@@ -493,7 +493,7 @@ def test_hung_up_on_from_outside_the_call_nothing_more_is_taken_up(steps: list[S
                 (says("在吗"), [Reply("早上好\n在吗", voiced=True, number=2)]),
                 (VOICE_STARTS, []),  # the dropped reply's, starting late
                 (VOICE_STOPS, []),
-                (ja("ほわっ"), [Voice("ほわっ", 2, 0)]),
+                (ja("えっと"), [Voice("えっと", 2, 0)]),
                 (VOICE_STARTS, [Spoke()]),
             ],
             id="once for each reply, a reply given afresh after a follow-on again",

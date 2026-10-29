@@ -66,7 +66,7 @@ async def test_the_tasks_done_count_as_no_turns_users_or_characters(
     assert board["active_users"] == 1
     assert sum(s["turns"] for s in board["trend"]) == 10
     assert max(s["active_users"] for s in board["trend"]) == 1
-    assert [(c["character_id"], c["turns"]) for c in board["characters"]] == [("mano", 10)]
+    assert [(c["character_id"], c["turns"]) for c in board["characters"]] == [("sora", 10)]
 
 
 async def test_off_there_is_no_section_unless_the_range_holds_some_done(

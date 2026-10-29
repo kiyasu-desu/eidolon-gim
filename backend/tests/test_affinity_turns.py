@@ -58,7 +58,7 @@ def settings(settings: Settings) -> Settings:
     )
 
 
-def value(database: Path, user: str = "producer", character: str = "mano") -> float | None:
+def value(database: Path, user: str = "producer", character: str = "sora") -> float | None:
     """Her affinity with the user as last kept; None if never."""
     with sqlite3.connect(database) as db:
         row = db.execute(

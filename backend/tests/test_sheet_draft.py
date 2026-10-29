@@ -9,40 +9,40 @@ import pytest
 from eidolon.characters import DRAFT_MARKER, Character, load_characters
 from eidolon.corpus import Episode, Line, StoryCorpus
 from eidolon.sheet_draft import MAX_BATCHES, SECTIONS, NoEpisodes, SheetReviewed, draft_sheet
-from eidolon.story_import import import_csv_directory
+from tests.stories import seed_sample_stories
 from tests.conftest import KOGANE_SHEET, Admin, CharacterConfig
 from tests.fakes import FakeEmbedder, FakeLLM
 
 SHEET = """\
 ## 身份
-你是櫻木真乃。
+你是星野ソラ。
 ## 自称
 わたし
 ## 对他人的称呼
 プロデューサーさん
 ## 口癖
-ほわっ
+えっと
 ## 与组合伙伴的关系
-灯織ちゃん、めぐるちゃん，一起发光的好朋友。
+ナギちゃん、ヒナちゃん，一起发光的好朋友。
 ## 硬性规则
-始终以真乃的身份说话。
+始终以ソラ的身份说话。
 """
 
 
 @pytest.fixture
 def characters(tmp_path: Path) -> CharacterConfig:
-    """Mano has no sheet yet; Kogane's has been written and reviewed by hand."""
+    """Sora has no sheet yet; Riku's has been written and reviewed by hand."""
     return (
         CharacterConfig(tmp_path / "characters")
-        .add("mano", "櫻木真乃", None, speakers=["真乃"])
-        .add("kogane", "月岡恋鐘", KOGANE_SHEET, speakers=["恋鐘"])
+        .add("sora", "星野ソラ", None, speakers=["ソラ"])
+        .add("riku", "青葉リク", KOGANE_SHEET, speakers=["リク"])
     )
 
 
 @pytest.fixture
 async def corpus(tmp_path: Path, characters: CharacterConfig, story: Path):
     corpus = StoryCorpus(tmp_path / "eidolon.db", FakeEmbedder())
-    await import_csv_directory(story, corpus, drafting(characters).values())
+    await seed_sample_stories(story, corpus, drafting(characters).values())
     yield corpus
     corpus.close()
 
@@ -61,13 +61,13 @@ async def test_the_draft_is_written_only_from_episodes_the_character_is_cast_in(
 ):
     llm = FakeLLM([SHEET])
 
-    await draft_sheet(drafting(characters)["mano"], corpus, llm)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm)
 
     shown = material(llm)
-    assert "公園で鳩と一緒に歌っていました" in shown  # her W.I.N.G.
-    assert "優勝、したんですね" in shown
-    assert "長崎のちゃんぽん" in shown  # Kogane's card, where Mano has a line too
-    assert "撮影、頑張ります" not in shown  # an event she is not in
+    assert "公園で新しい練習をしていました" in shown  # her 練習
+    assert "練習の成果が出たんですね" in shown
+    assert "手作りのご飯" in shown  # Riku's card, where Sora has a line too
+    assert "準備の手順を確認します" not in shown  # an event she is not in
     assert "負けちゃいました" not in shown  # a failure ending, never imported
 
 
@@ -76,10 +76,10 @@ async def test_another_characters_draft_leaves_out_episodes_she_is_not_in(
 ):
     llm = FakeLLM([SHEET])
 
-    await draft_sheet(drafting(characters)["kogane"], corpus, llm, overwrite=True)
+    await draft_sheet(drafting(characters)["riku"], corpus, llm, overwrite=True)
 
     shown = material(llm)
-    assert "長崎のちゃんぽん" in shown
+    assert "手作りのご飯" in shown
     assert "公園で鳩" not in shown and "優勝" not in shown
 
 
@@ -87,19 +87,19 @@ async def test_the_draft_has_every_part_of_a_sheet_and_is_marked_as_a_draft(
     corpus: StoryCorpus, characters: CharacterConfig
 ):
     # The model forgets two sections.
-    llm = FakeLLM(["## 身份\n你是櫻木真乃。\n## 自称\nわたし\n## 口癖\nほわっ\n## 硬性规则\n不提到自己是 AI。"])
+    llm = FakeLLM(["## 身份\n你是星野ソラ。\n## 自称\nわたし\n## 口癖\nえっと\n## 硬性规则\n不提到自己是 AI。"])
 
-    await draft_sheet(drafting(characters)["mano"], corpus, llm)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm)
 
-    written = (characters.directory / "sheets/mano.md").read_text(encoding="utf-8")
+    written = (characters.directory / "sheets/sora.md").read_text(encoding="utf-8")
     assert written.startswith(DRAFT_MARKER)
     for section in SECTIONS:
         assert f"\n## {section}\n" in written
-    assert "ほわっ" in written
+    assert "えっと" in written
     # The sheet works as is; the marker stays out of the prompt.
-    mano = load_characters(characters.path)["mano"]
-    assert DRAFT_MARKER not in mano.sheet and "你是櫻木真乃。" in mano.sheet
-    assert "## 与组合伙伴的关系" in mano.sheet
+    sora = load_characters(characters.path)["sora"]
+    assert DRAFT_MARKER not in sora.sheet and "你是星野ソラ。" in sora.sheet
+    assert "## 与组合伙伴的关系" in sora.sheet
 
 
 async def test_the_draft_asks_for_her_relations_with_her_partners_not_a_member_list(
@@ -108,9 +108,9 @@ async def test_the_draft_asks_for_her_relations_with_her_partners_not_a_member_l
     # Who is in which unit comes from the world setting; a sheet listing them again
     # could disagree with it.
     # Taking notes first, so both kinds of instructions are seen.
-    llm = FakeLLM(["- 自称わたし"], ["- 口癖ほわっ"], ["- 喜欢鸽子"], [SHEET])
+    llm = FakeLLM(["- 自称わたし"], ["- 口癖えっと"], ["- 喜欢鸽子"], [SHEET])
 
-    await draft_sheet(drafting(characters)["mano"], corpus, llm, budget=180)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm, budget=180)
 
     instructions = [prompt[0].content for prompt in llm.prompts]
     draft = instructions[-1]
@@ -119,7 +119,7 @@ async def test_the_draft_asks_for_her_relations_with_her_partners_not_a_member_l
     assert "不要列成员名单" in draft
     assert not any("所属组合和" in i or "其他成员" in i for i in instructions)
     assert all("组合伙伴" in i for i in instructions)
-    written = (characters.directory / "sheets/mano.md").read_text(encoding="utf-8")
+    written = (characters.directory / "sheets/sora.md").read_text(encoding="utf-8")
     assert "## 组合成员" not in written and "（待补充）" not in written
 
 
@@ -127,17 +127,17 @@ async def test_a_reviewed_sheet_is_not_overwritten_unless_asked(
     corpus: StoryCorpus, characters: CharacterConfig
 ):
     llm = FakeLLM([SHEET])
-    kogane = drafting(characters)["kogane"]
+    riku = drafting(characters)["riku"]
 
     with pytest.raises(SheetReviewed):
-        await draft_sheet(kogane, corpus, llm)
+        await draft_sheet(riku, corpus, llm)
 
-    assert (characters.directory / "sheets/kogane.md").read_text(encoding="utf-8") == KOGANE_SHEET
+    assert (characters.directory / "sheets/riku.md").read_text(encoding="utf-8") == KOGANE_SHEET
     assert llm.prompts == []  # nothing was spent on it
 
-    await draft_sheet(kogane, corpus, llm, overwrite=True)
+    await draft_sheet(riku, corpus, llm, overwrite=True)
 
-    written = (characters.directory / "sheets/kogane.md").read_text(encoding="utf-8")
+    written = (characters.directory / "sheets/riku.md").read_text(encoding="utf-8")
     assert written.startswith(DRAFT_MARKER) and "## 口癖" in written
 
 
@@ -145,29 +145,29 @@ async def test_an_unreviewed_draft_is_replaced_by_a_new_one(
     corpus: StoryCorpus, characters: CharacterConfig
 ):
     llm = FakeLLM(["## 身份\n第一稿"], ["## 身份\n第二稿"])
-    await draft_sheet(drafting(characters)["mano"], corpus, llm)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm)
 
-    await draft_sheet(drafting(characters)["mano"], corpus, llm)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm)
 
-    written = (characters.directory / "sheets/mano.md").read_text(encoding="utf-8")
+    written = (characters.directory / "sheets/sora.md").read_text(encoding="utf-8")
     assert "第二稿" in written and "第一稿" not in written
 
 
 async def test_material_beyond_one_request_is_taken_notes_on_in_batches(
     corpus: StoryCorpus, characters: CharacterConfig
 ):
-    # Each of Mano's three episodes fits in a request, but not all of them together.
-    llm = FakeLLM(["- 自称わたし"], ["- 口癖ほわっ"], ["- 喜欢鸽子"], [SHEET])
+    # Each of Sora's three episodes fits in a request, but not all of them together.
+    llm = FakeLLM(["- 自称わたし"], ["- 口癖えっと"], ["- 喜欢鸽子"], [SHEET])
 
-    report = await draft_sheet(drafting(characters)["mano"], corpus, llm, budget=180)
+    report = await draft_sheet(drafting(characters)["sora"], corpus, llm, budget=180)
 
     assert report.requests == len(llm.prompts) == 4
     assert all(len(prompt[1].content) <= 180 for prompt in llm.prompts)
     *notes, draft = llm.prompts
-    assert "公園で鳩" in "".join(p[1].content for p in notes)
-    assert all(n in draft[1].content for n in ("自称わたし", "口癖ほわっ", "喜欢鸽子"))
+    assert "公園で新しい練習" in "".join(p[1].content for p in notes)
+    assert all(n in draft[1].content for n in ("自称わたし", "口癖えっと", "喜欢鸽子"))
     assert "公園で鳩" not in draft[1].content
-    assert "## 身份" in (characters.directory / "sheets/mano.md").read_text(encoding="utf-8")
+    assert "## 身份" in (characters.directory / "sheets/sora.md").read_text(encoding="utf-8")
 
 
 async def test_too_many_episodes_are_sampled_evenly(
@@ -175,14 +175,14 @@ async def test_too_many_episodes_are_sampled_evenly(
 ):
     many = [
         Episode(f"produce_events/3001001{i:04d}", "S卡剧情", "卡", f"第{i}話",
-                frozenset({"mano"}), (Line("真乃", f"エピソード{i:04d}です" + "。" * 80),))
+                frozenset({"sora"}), (Line("ソラ", f"エピソード{i:04d}です" + "。" * 80),))
         for i in range(200)
     ]
     await corpus.save(many)
     budget = 400
     llm = FakeLLM(*[["- 要点"]] * 100, [SHEET])
 
-    report = await draft_sheet(drafting(characters)["mano"], corpus, llm, budget=budget)
+    report = await draft_sheet(drafting(characters)["sora"], corpus, llm, budget=budget)
 
     assert report.episodes_cast == 203
     assert report.episodes_read < report.episodes_cast
@@ -196,28 +196,28 @@ async def test_too_many_episodes_are_sampled_evenly(
 async def test_a_character_in_no_episode_has_nothing_to_draft_from(
     corpus: StoryCorpus, characters: CharacterConfig
 ):
-    characters.add("hiori", "風野灯織", None)
+    characters.add("nagi", "雨宮ナギ", None)
     llm = FakeLLM()
 
     with pytest.raises(NoEpisodes):
-        await draft_sheet(drafting(characters)["hiori"], corpus, llm)
+        await draft_sheet(drafting(characters)["nagi"], corpus, llm)
 
-    assert not (characters.directory / "sheets/hiori.md").exists()
+    assert not (characters.directory / "sheets/nagi.md").exists()
 
 
 def test_the_command_will_not_overwrite_a_reviewed_sheet(
     admin: Admin, characters: CharacterConfig
 ):
-    err = admin.fails("character", "draft-sheet", "kogane", "--characters", str(characters.path))
+    err = admin.fails("character", "draft-sheet", "riku", "--characters", str(characters.path))
 
     assert "--force" in err
-    assert (characters.directory / "sheets/kogane.md").read_text(encoding="utf-8") == KOGANE_SHEET
+    assert (characters.directory / "sheets/riku.md").read_text(encoding="utf-8") == KOGANE_SHEET
 
 
 def test_the_command_reports_an_unknown_character(admin: Admin, characters: CharacterConfig):
-    err = admin.fails("character", "draft-sheet", "hiori", "--characters", str(characters.path))
+    err = admin.fails("character", "draft-sheet", "nagi", "--characters", str(characters.path))
 
-    assert "hiori" in err
+    assert "nagi" in err
 
 
 def test_the_command_needs_the_background_model(
@@ -227,7 +227,7 @@ def test_the_command_needs_the_background_model(
         monkeypatch.delenv(name, raising=False)
         monkeypatch.delenv(name.replace("CHAT", "BACKGROUND"), raising=False)
 
-    err = admin.fails("character", "draft-sheet", "mano", "--characters", str(characters.path))
+    err = admin.fails("character", "draft-sheet", "sora", "--characters", str(characters.path))
 
     assert "BACKGROUND_LLM" in err
 
@@ -237,23 +237,23 @@ async def test_the_draft_can_go_elsewhere_leaving_the_sheet_alone(
 ):
     # As in the container, where the character configuration is read-only.
     llm = FakeLLM([SHEET])
-    output = tmp_path / "drafts/kogane.md"
+    output = tmp_path / "drafts/riku.md"
 
-    await draft_sheet(drafting(characters)["kogane"], corpus, llm, output=output)
+    await draft_sheet(drafting(characters)["riku"], corpus, llm, output=output)
 
     assert output.read_text(encoding="utf-8").startswith(DRAFT_MARKER)
-    assert (characters.directory / "sheets/kogane.md").read_text(encoding="utf-8") == KOGANE_SHEET
+    assert (characters.directory / "sheets/riku.md").read_text(encoding="utf-8") == KOGANE_SHEET
 
 
 async def test_a_long_episode_is_split_rather_than_cut_short(
     corpus: StoryCorpus, characters: CharacterConfig
 ):
-    lines = tuple(Line("真乃", f"第{i:03d}句のセリフです。") for i in range(100))
+    lines = tuple(Line("ソラ", f"第{i:03d}句のセリフです。") for i in range(100))
     await corpus.save([Episode("produce_events/300100101", "S卡剧情", "长卡", "第1話",
-                               frozenset({"mano"}), lines)])
+                               frozenset({"sora"}), lines)])
     llm = FakeLLM(*[["- 要点"]] * 30, [SHEET])
 
-    await draft_sheet(drafting(characters)["mano"], corpus, llm, budget=300)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm, budget=300)
 
     read = "".join(p[1].content for p in llm.prompts)
     assert "第000句" in read and "第099句" in read
@@ -265,9 +265,9 @@ async def test_sections_the_model_titled_a_little_differently_are_not_repeated(
 ):
     llm = FakeLLM([SHEET.replace("## 身份", "## 身份：").replace("## 口癖", "### 口癖")])
 
-    await draft_sheet(drafting(characters)["mano"], corpus, llm)
+    await draft_sheet(drafting(characters)["sora"], corpus, llm)
 
-    written = (characters.directory / "sheets/mano.md").read_text(encoding="utf-8")
+    written = (characters.directory / "sheets/sora.md").read_text(encoding="utf-8")
     assert "（待补充）" not in written
 
 
@@ -278,8 +278,8 @@ def test_the_command_will_not_spend_anything_on_a_draft_it_cannot_write(
     blocked.write_text("")
 
     err = admin.fails(
-        "character", "draft-sheet", "mano", "--characters", str(characters.path),
-        "--output", str(blocked / "mano.md"),
+        "character", "draft-sheet", "sora", "--characters", str(characters.path),
+        "--output", str(blocked / "sora.md"),
     )
 
     assert "无法写入" in err

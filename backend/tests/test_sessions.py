@@ -17,8 +17,8 @@ from tests.test_text_turn import send_turn, start_conversation
 REPLY = ["<ja>はいっ</ja><zh>好的</zh>"]
 
 
-async def mano_conversations(client: httpx.AsyncClient) -> httpx.Response:
-    return await client.get("/api/conversations", params={"character_id": "mano"})
+async def sora_conversations(client: httpx.AsyncClient) -> httpx.Response:
+    return await client.get("/api/conversations", params={"character_id": "sora"})
 
 
 async def dev_login(client: httpx.AsyncClient, name: str) -> httpx.Response:
@@ -34,8 +34,8 @@ async def test_requests_without_a_valid_session_are_refused(
         client.cookies.set(SESSION_COOKIE, cookie, domain=COOKIE_DOMAIN)
 
     for res in [
-        await mano_conversations(client),
-        await client.post("/api/conversations", json={"character_id": "mano"}),
+        await sora_conversations(client),
+        await client.post("/api/conversations", json={"character_id": "sora"}),
         await client.get("/api/conversations/any/messages"),
         await client.post("/api/conversations/any/turns", json={"text": "在吗"}),
     ]:
@@ -62,7 +62,7 @@ async def test_dev_login_sets_an_http_only_session_cookie_for_the_user_with_that
     assert cookie.startswith(f"{SESSION_COOKIE}=")
     assert "HttpOnly" in cookie and "SameSite=lax" in cookie and "Secure" not in cookie
     assert "Max-Age=2592000" in cookie  # 30 days
-    assert [c["id"] for c in (await mano_conversations(phone)).json()] == [conversation_id]
+    assert [c["id"] for c in (await sora_conversations(phone)).json()] == [conversation_id]
 
 
 async def test_dev_login_makes_a_user_the_first_time_a_name_is_used(make_client: ClientFactory):
@@ -73,7 +73,7 @@ async def test_dev_login_makes_a_user_the_first_time_a_name_is_used(make_client:
     assert (await dev_login(newcomer, "newcomer")).status_code == 204
 
     await agree_to_terms(newcomer)
-    assert (await mano_conversations(newcomer)).json() == []
+    assert (await sora_conversations(newcomer)).json() == []
 
 
 async def test_without_the_dev_login_switch_there_is_no_dev_login(
@@ -88,12 +88,12 @@ async def test_a_session_expires_30_days_after_it_was_last_used(make_client: Cli
     clock = FakeClock()
     client = make_client(FakeLLM(), clock=clock)
     clock.advance(days=29, hours=23)
-    assert (await mano_conversations(client)).status_code == 200  # renews it
+    assert (await sora_conversations(client)).status_code == 200  # renews it
 
     clock.advance(days=29, hours=23)
-    assert (await mano_conversations(client)).status_code == 200
+    assert (await sora_conversations(client)).status_code == 200
     clock.advance(days=30)
-    res = await mano_conversations(client)
+    res = await sora_conversations(client)
 
     assert res.status_code == 401
 
@@ -101,10 +101,10 @@ async def test_a_session_expires_30_days_after_it_was_last_used(make_client: Cli
 async def test_renewing_a_session_renews_its_cookie(make_client: ClientFactory):
     clock = FakeClock()
     client = make_client(FakeLLM(), clock=clock)
-    assert "set-cookie" not in (await mano_conversations(client)).headers  # just made
+    assert "set-cookie" not in (await sora_conversations(client)).headers  # just made
 
     clock.advance(days=1)
-    res = await mano_conversations(client)
+    res = await sora_conversations(client)
 
     assert res.headers["set-cookie"].startswith(f"{SESSION_COOKIE}=")
     assert "Max-Age=2592000" in res.headers["set-cookie"]
@@ -120,8 +120,8 @@ async def test_signing_out_ends_the_session_on_this_device_only(make_client: Cli
     assert res.status_code == 204
     assert f'{SESSION_COOKIE}=""' in res.headers["set-cookie"]
     desktop.cookies.set(SESSION_COOKIE, session, domain=COOKIE_DOMAIN)  # a copy of the cookie kept elsewhere
-    assert (await mano_conversations(desktop)).status_code == 401
-    assert (await mano_conversations(phone)).status_code == 200
+    assert (await sora_conversations(desktop)).status_code == 401
+    assert (await sora_conversations(phone)).status_code == 200
 
 
 @pytest.mark.parametrize(
@@ -133,13 +133,13 @@ async def test_requests_that_change_something_from_other_sites_are_refused(
     client = make_client(FakeLLM())
 
     res = await client.post(
-        "/api/conversations", json={"character_id": "mano"}, headers={"Origin": origin}
+        "/api/conversations", json={"character_id": "sora"}, headers={"Origin": origin}
     )
 
     assert res.status_code == 403
-    assert (await mano_conversations(client)).json() == []
+    assert (await sora_conversations(client)).json() == []
     reading = await client.get(
-        "/api/conversations", params={"character_id": "mano"}, headers={"Origin": origin}
+        "/api/conversations", params={"character_id": "sora"}, headers={"Origin": origin}
     )
     assert reading.status_code == 200
 
@@ -151,11 +151,11 @@ async def test_a_public_deployment_accepts_only_its_own_origin_and_secure_cookie
     client = make_client(FakeLLM(), settings=public)
 
     local = await client.post(
-        "/api/conversations", json={"character_id": "mano"},
+        "/api/conversations", json={"character_id": "sora"},
         headers={"Origin": "http://localhost:3000"},
     )
     own = await client.post(
-        "/api/conversations", json={"character_id": "mano"},
+        "/api/conversations", json={"character_id": "sora"},
         headers={"Origin": "https://eidolon.example.com"},
     )
     signed_out = await client.post(
@@ -206,16 +206,16 @@ async def test_a_signed_in_request_that_does_not_say_where_it_comes_from_is_refu
     client = make_client(FakeLLM())
     client.headers.pop("Origin")
 
-    res = await client.post("/api/conversations", json={"character_id": "mano"})
+    res = await client.post("/api/conversations", json={"character_id": "sora"})
 
     assert res.status_code == 403
-    assert (await mano_conversations(client)).json() == []
+    assert (await sora_conversations(client)).json() == []
 
 
 async def test_a_request_without_a_session_needs_no_origin(make_client: ClientFactory):
     client = make_client(FakeLLM(), user=None)
     client.headers.pop("Origin")
 
-    res = await client.post("/api/conversations", json={"character_id": "mano"})
+    res = await client.post("/api/conversations", json={"character_id": "sora"})
 
     assert res.status_code == 401
